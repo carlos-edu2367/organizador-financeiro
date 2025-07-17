@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard Premium - Clarify</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: { DEFAULT: '#3b82f6', dark: '#2563eb', light: '#60a5fa' },
+            background: '#0f172a',
+            surface: '#1e293b',
+            expense: '#ef4444',
+            investment: '#22c55e',
+            free: '#e5e7eb',
+            gold: '#facc15', // Cor para destaques premium
+          },
+          fontFamily: { sans: ['Inter', 'sans-serif'] },
+          dropShadow: {
+            'glow-primary': '0 0 8px rgba(59, 130, 246, 0.6)',
+            'glow-white': '0 0 10px rgba(255, 255, 255, 0.6)',
+          }
+        }
+      }
+    };
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Font Awesome para ícones -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+</head>
+<body class="bg-background text-white font-sans">
+
+  <!-- Header -->
+  <header class="bg-surface p-4 shadow-md sticky top-0 z-20">
+    <div class="container mx-auto flex justify-between items-center">
+      <a href="#" class="flex items-center space-x-3">
+        <svg class="drop-shadow-glow-primary" width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11 19C15.4183 19 19 15.4183 19 11C19 6.58172 15.4183 3 11 3C6.58172 3 3 6.58172 3 11C3 15.4183 6.58172 19 11 19Z" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 21L16.65 16.65" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 11.5L10.5 13L13.5 10" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span class="text-2xl font-bold text-white">Clarify</span>
+      </a>
+      <div class="flex items-center space-x-4">
+        <span class="hidden sm:block text-gray-300">Olá, Ana! <span class="text-gold font-bold">💎</span></span>
+        <div class="relative">
+          <button id="menu-button" class="p-2 rounded-full hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg></button>
+          <div id="menu-card" class="hidden absolute right-0 mt-2 w-48 bg-surface rounded-lg shadow-xl py-2 z-30"><a href="#" class="block px-4 py-2 text-sm text-gray-300 hover:bg-primary hover:text-white">Minha Conta</a><a href="#" class="block px-4 py-2 text-sm text-gray-300 hover:bg-primary hover:text-white">Meu Grupo</a><div class="border-t border-gray-700 my-1"></div><a href="./login_page.html" class="block px-4 py-2 text-sm text-gray-300 hover:bg-primary hover:text-white">Sair</a></div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="container mx-auto p-4 lg:p-8">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+        <!-- Coluna Esquerda: Dados Principais -->
+        <div class="lg:col-span-2 space-y-8 order-1">
+            <div class="text-center">
+              <img src="/assets/mascote_feliz.png" alt="Mascote Clarify Feliz" class="mx-auto w-28 h-28 mb-4">
+              <h2 class="text-2xl font-bold text-gray-200">Situação Financeira: Excelente</h2>
+              <p class="text-gray-400 max-w-md mx-auto">Vocês estão no caminho certo! Continuem assim para bater todas as metas.</p>
+            </div>
+
+            <div class="bg-surface p-6 rounded-xl shadow-lg">
+              <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-gray-200">Resumo Mensal</h3>
+                <div class="hidden sm:flex items-center space-x-2 p-1 bg-background rounded-lg">
+                    <button class="px-3 py-1 text-sm bg-primary rounded-md">Visão Geral</button>
+                    <button class="px-3 py-1 text-sm text-gray-400 hover:bg-gray-700 rounded-md">Categorias</button>
+                </div>
+              </div>
+              <div class="flex justify-around items-end h-64 space-x-2 sm:space-x-4"><!-- Gráfico de Barras --></div>
+              <div class="mt-8 pt-6 border-t border-gray-700 grid grid-cols-1 sm:grid-cols-2 gap-4"><div class="bg-background p-4 rounded-lg"><h4 class="text-sm font-medium text-gray-400">Total Investido</h4><p class="text-2xl font-bold text-investment">R$ 12.500,00</p></div><div class="bg-background p-4 rounded-lg"><h4 class="text-sm font-medium text-gray-400">Juros Estimados (Mês)</h4><p class="text-2xl font-bold text-investment">+ R$ 125,00</p></div></div>
+            </div>
+
+            <div class="bg-surface p-6 rounded-xl shadow-lg">
+              <div class="flex justify-between items-center mb-4"><h3 class="text-xl font-bold text-gray-200">Histórico Completo</h3><button class="text-sm font-medium bg-primary hover:bg-primary-dark text-white py-2 px-3 rounded-lg flex items-center"><i class="fa-solid fa-file-export mr-2"></i>Exportar</button></div>
+              <div class="overflow-x-auto max-h-80"><table class="w-full text-left"><thead><tr class="border-b border-gray-700"><th class="py-2 px-2">Título</th><th class="py-2 px-2">Valor</th><th class="py-2 px-2">Responsável</th><th class="py-2 px-2">Data</th></tr></thead><tbody><tr class="border-b border-gray-800 hover:bg-gray-800/50"><td class="py-3 px-2">Salário</td><td class="py-3 px-2 text-investment">+ R$ 5.000,00</td><td class="py-3 px-2">Ana</td><td class="py-3 px-2">05/10/2025</td></tr><tr class="border-b border-gray-800 hover:bg-gray-800/50"><td class="py-3 px-2">Aluguel</td><td class="py-3 px-2 text-expense">- R$ 1.800,00</td><td class="py-3 px-2">Carlos</td><td class="py-3 px-2">06/10/2025</td></tr><tr class="border-b border-gray-800 hover:bg-gray-800/50"><td class="py-3 px-2">Aporte Ações</td><td class="py-3 px-2 text-investment">+ R$ 1.000,00</td><td class="py-3 px-2">Carlos</td><td class="py-3 px-2">12/10/2025</td></tr><tr class="border-b border-gray-800 hover:bg-gray-800/50"><td class="py-3 px-2">Supermercado</td><td class="py-3 px-2 text-expense">- R$ 450,75</td><td class="py-3 px-2">Ana</td><td class="py-3 px-2">15/10/2025</td></tr><tr class="hover:bg-gray-800/50"><td class="py-3 px-2">Recebimento Freelance</td><td class="py-3 px-2 text-investment">+ R$ 200,00</td><td class="py-3 px-2">Ana</td><td class="py-3 px-2">16/10/2025</td></tr></tbody></table></div>
+            </div>
+        </div>
+
+        <!-- Coluna Direita: Ações e Motivação -->
+        <div class="space-y-8 order-2">
+            <div class="bg-surface p-6 rounded-xl shadow-lg">
+              <h3 class="text-xl font-bold mb-4 text-gray-200">Adicionar Transação</h3>
+              <p class="text-sm text-gray-400 mb-4">Descreva sua movimentação por texto ou áudio.</p>
+              <textarea placeholder="Ex: 'Recebi R$200 de um freela' ou 'gastei R$80 no mercado'" class="w-full h-24 px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary"></textarea>
+              <div class="flex space-x-2 mt-4"><button class="w-full py-2 bg-primary hover:bg-primary-dark transition rounded-lg font-medium text-white">Analisar</button><button class="py-2 px-4 bg-gray-600 hover:bg-gray-700 transition rounded-lg font-medium text-white" title="Gravar áudio"><i class="fa-solid fa-microphone"></i></button><button class="py-2 px-4 bg-investment hover:opacity-90 transition rounded-lg font-medium text-white" title="Registrar via WhatsApp"><i class="fa-brands fa-whatsapp"></i></button></div>
+            </div>
+
+            <div class="bg-surface p-6 rounded-xl shadow-lg">
+              <h3 class="text-xl font-bold mb-4 text-gray-200">Nossas Metas</h3>
+              <div class="space-y-4">
+                  <div><p class="text-sm font-medium text-primary-light">Viagem de Fim de Ano</p><div class="mt-1"><div class="flex justify-between text-sm text-gray-300 mb-1"><span>Progresso</span><span>85%</span></div><div class="w-full bg-background rounded-full h-2.5"><div class="bg-primary h-2.5 rounded-full" style="width: 85%"></div></div><p class="text-right text-xs text-gray-400 mt-1">R$ 8.500 / R$ 10.000</p></div></div>
+                  <div class="pt-4 border-t border-gray-700"><p class="text-sm font-medium text-primary-light">Reserva de Emergência</p><div class="mt-1"><div class="flex justify-between text-sm text-gray-300 mb-1"><span>Progresso</span><span>25%</span></div><div class="w-full bg-background rounded-full h-2.5"><div class="bg-primary h-2.5 rounded-full" style="width: 25%"></div></div><p class="text-right text-xs text-gray-400 mt-1">R$ 2.500 / R$ 10.000</p></div></div>
+              </div>
+              <button class="w-full text-center mt-4 py-2 bg-primary/50 hover:bg-primary transition text-white rounded-lg">Criar nova meta</button>
+            </div>
+
+            <div class="bg-surface p-6 rounded-xl shadow-lg">
+                <h3 class="text-xl font-bold mb-4 text-gray-200">Nossas Conquistas</h3>
+                <div class="grid grid-cols-3 gap-4 text-center">
+                    <div class="flex flex-col items-center p-2 rounded-lg bg-background"><span class="text-4xl">🟤</span><p class="text-sm font-medium mt-1">Mês de Bronze</p></div>
+                    <div class="flex flex-col items-center p-2 rounded-lg bg-background"><span class="text-4xl">🥈</span><p class="text-sm font-medium mt-1">Economia de Prata</p></div>
+                    <div class="flex flex-col items-center p-2 rounded-lg bg-background"><span class="text-4xl">🥇</span><p class="text-sm font-medium mt-1">Meta de Ouro</p></div>
+                    <div class="flex flex-col items-center p-2 rounded-lg bg-background"><span class="text-4xl">💎</span><p class="text-sm font-medium mt-1">Ano de Platina</p></div>
+                </div>
+            </div>
+
+            <div class="bg-surface p-6 rounded-xl shadow-lg">
+              <h3 class="text-xl font-bold mb-4 text-gray-200">Meu Grupo (3/4)</h3>
+              <div class="space-y-3">
+                <div class="flex items-center justify-between"><div class="flex items-center"><div class="w-10 h-10 rounded-full bg-blue-400 flex items-center justify-center font-bold text-black mr-3">A</div><span>Ana (Você)</span></div></div>
+                <div class="flex items-center justify-between"><div class="flex items-center"><div class="w-10 h-10 rounded-full bg-purple-400 flex items-center justify-center font-bold text-black mr-3">J</div><span>Carlos</span></div></div>
+                <div class="flex items-center justify-between"><div class="flex items-center"><div class="w-10 h-10 rounded-full bg-pink-400 flex items-center justify-center font-bold text-black mr-3">M</div><span>Maria</span></div><button class="text-xs text-red-400 hover:underline">Remover</button></div>
+              </div>
+              <div class="mt-6"><label for="email-convite" class="block text-sm font-medium text-gray-300">Convidar para o grupo</label><div class="flex space-x-2 mt-1"><input type="email" id="email-convite" placeholder="email@exemplo.com" class="flex-grow px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary" /><button class="py-2 px-4 bg-primary hover:bg-primary-dark transition rounded-lg font-medium text-white">+</button></div></div>
+            </div>
+        </div>
+    </div>
+  </main>
+
+  <script>
+    const menuButton = document.getElementById('menu-button');
+    const menuCard = document.getElementById('menu-card');
+    menuButton.addEventListener('click', (e) => { e.stopPropagation(); menuCard.classList.toggle('hidden'); });
+    window.addEventListener('click', (e) => { if (!menuCard.classList.contains('hidden')) { menuCard.classList.add('hidden'); } });
+  </script>
+
+</body>
+</html>

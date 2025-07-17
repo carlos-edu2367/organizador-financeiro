@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Verificar Código</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: {
+              DEFAULT: '#3b82f6',
+              dark: '#2563eb',
+              light: '#60a5fa',
+            },
+            background: '#0f172a',
+            surface: '#1e293b',
+          }
+        }
+      }
+    };
+  </script>
+</head>
+<body class="bg-background text-white min-h-screen flex items-center justify-center font-sans">
+
+  <div class="bg-surface p-8 rounded-xl shadow-lg w-full max-w-sm">
+    <h2 class="text-2xl font-bold mb-6 text-center text-primary">Verificação</h2>
+
+    <form id="verificar-codigo-form" class="space-y-5">
+      <div>
+        <label for="codigo" class="block text-sm font-medium text-gray-300">Código de verificação</label>
+        <input 
+          type="text" 
+          id="codigo" 
+          required
+          placeholder="Digite o código recebido"
+          class="mt-1 w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary"
+        />
+      </div>
+
+      <button 
+        type="submit" 
+        class="w-full py-2 bg-primary hover:bg-primary-dark transition rounded-lg font-medium text-white"
+      >
+        Verificar
+      </button>
+
+      <div class="text-center mt-4">
+        <a href="/pages/auth/esqueci_a_senha.html" class="text-sm text-primary hover:underline">Voltar</a>
+      </div>
+    </form>
+  </div>
+
+</body>
+</html>
