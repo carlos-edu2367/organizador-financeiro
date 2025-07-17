@@ -66,17 +66,26 @@
               <div class="h-64 relative"><canvas id="monthly-chart"></canvas></div>
               <div class="mt-8 pt-6 border-t border-gray-700 grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div class="bg-background p-4 rounded-lg"><h4 class="text-sm font-medium text-gray-400">Total Investido</h4><p id="total-investido" class="text-2xl font-bold text-investment">R$ 0,00</p></div>
-                  <div class="bg-background p-4 rounded-lg"><h4 class="text-sm font-medium text-gray-400">Juros Estimados (Mês)</h4><p id="juros-estimados" class="text-2xl font-bold text-investment">+ R$ 0,00</p></div>
+                  <div class="bg-background p-4 rounded-lg">
+                      <h4 class="text-sm font-medium text-gray-400">Saldo Total</h4>
+                      <p id="saldo-total" class="text-2xl font-bold">R$ 0,00</p>
+                      <p class="text-xs text-gray-500">Ganhos subtraídos de gastos e investimentos.</p>
+                  </div>
               </div>
             </div>
             <div class="bg-surface p-6 rounded-xl shadow-lg">
-              <div class="flex justify-between items-center mb-4"><h3 class="text-xl font-bold text-gray-200">Histórico Completo</h3><button class="text-sm font-medium bg-primary hover:bg-primary-dark text-white py-2 px-3 rounded-lg flex items-center"><i class="fa-solid fa-file-export mr-2"></i>Exportar</button></div>
-              <div class="overflow-x-auto max-h-80"><table class="w-full text-left"><thead><tr class="border-b border-gray-700"><th class="py-2 px-2">Título</th><th class="py-2 px-2">Valor</th><th class="py-2 px-2">Responsável</th><th class="py-2 px-2">Data</th></tr></thead><tbody id="transactions-table-body"></tbody></table></div>
+              <div class="flex justify-between items-center mb-4">
+                  <h3 class="text-xl font-bold text-gray-200">Histórico Completo</h3>
+                  <div>
+                      <button id="add-transaction-button" class="text-sm font-medium bg-primary hover:bg-primary-dark text-white py-2 px-3 rounded-lg flex items-center"><i class="fas fa-plus mr-2"></i>Adicionar</button>
+                  </div>
+              </div>
+              <div class="overflow-x-auto max-h-80"><table class="w-full text-left"><thead><tr class="border-b border-gray-700"><th class="py-2 px-2">Título</th><th class="py-2 px-2">Valor</th><th class="py-2 px-2">Responsável</th><th class="py-2 px-2">Data</th><th class="py-2 px-2 text-center">Ações</th></tr></thead><tbody id="transactions-table-body"></tbody></table></div>
             </div>
         </div>
         <div class="space-y-8 order-2">
             <div class="bg-surface p-6 rounded-xl shadow-lg">
-              <h3 class="text-xl font-bold mb-4 text-gray-200">Adicionar Transação</h3>
+              <h3 class="text-xl font-bold mb-4 text-gray-200">Adicionar Transação (IA)</h3>
               <p class="text-sm text-gray-400 mb-4">Descreva a sua movimentação por texto ou áudio.</p>
               <textarea placeholder="Ex: 'Recebi R$200 de um freela' ou 'gastei R$80 no mercado'" class="w-full h-24 px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary"></textarea>
               <div class="flex space-x-2 mt-4"><button class="w-full py-2 bg-primary hover:bg-primary-dark transition rounded-lg font-medium text-white">Analisar</button><button class="py-2 px-4 bg-gray-600 hover:bg-gray-700 transition rounded-lg font-medium text-white" title="Gravar áudio"><i class="fa-solid fa-microphone"></i></button><button class="py-2 px-4 bg-gain hover:opacity-90 transition rounded-lg font-medium text-white" title="Registar via WhatsApp"><i class="fa-brands fa-whatsapp"></i></button></div>
@@ -104,7 +113,22 @@
     </div>
   </main>
   
-  <!-- Modal para Adicionar/Editar Meta -->
+  <!-- Modais -->
+  <div id="transaction-form-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
+    <div class="bg-surface rounded-xl shadow-lg w-full max-w-md p-6">
+      <h3 id="transaction-form-title" class="text-xl font-bold text-white mb-4"></h3>
+      <form id="transaction-form" class="space-y-4">
+        <input type="hidden" id="transaction-id">
+        <div><label for="transaction-type" class="block text-sm font-medium text-gray-300">Tipo</label><select id="transaction-type" required class="mt-1 w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary"><option value="gasto">Gasto</option><option value="ganho">Ganho</option><option value="investimento">Investimento</option></select></div>
+        <div><label for="transaction-description" class="block text-sm font-medium text-gray-300">Descrição</label><input type="text" id="transaction-description" required class="mt-1 w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary"></div>
+        <div><label for="transaction-value" class="block text-sm font-medium text-gray-300">Valor (R$)</label><input type="number" id="transaction-value" required step="0.01" class="mt-1 w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary"></div>
+        <div><label for="transaction-responsible" class="block text-sm font-medium text-gray-300">Responsável</label><select id="transaction-responsible" required class="mt-1 w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary"></select></div>
+        <div><label for="transaction-date" class="block text-sm font-medium text-gray-300">Data</label><input type="date" id="transaction-date" required class="mt-1 w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary"></div>
+        <div id="transaction-error-message" class="hidden text-red-400 text-sm"></div>
+        <div class="flex justify-end space-x-4 pt-4"><button type="button" id="cancel-transaction-button" class="py-2 px-4 text-gray-300 hover:text-white">Cancelar</button><button type="submit" class="py-2 px-6 bg-primary hover:bg-primary-dark rounded-lg font-medium text-white">Guardar</button></div>
+      </form>
+    </div>
+  </div>
   <div id="goal-form-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
     <div class="bg-surface rounded-xl shadow-lg w-full max-w-md p-6">
       <h3 id="goal-form-title" class="text-xl font-bold text-white mb-4"></h3>
@@ -118,26 +142,16 @@
       </form>
     </div>
   </div>
-
-  <!-- Modal para Adicionar Fundos -->
   <div id="add-funds-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
     <div class="bg-surface rounded-xl shadow-lg w-full max-w-md p-6">
       <h3 class="text-xl font-bold text-white mb-4">Adicionar Fundos à Meta</h3>
       <form id="add-funds-form" class="space-y-4">
-        <div>
-          <label for="funds-amount" class="block text-sm font-medium text-gray-300">Valor a Adicionar (R$)</label>
-          <input type="number" id="funds-amount" required step="0.01" placeholder="100.00" class="mt-1 w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary">
-        </div>
+        <div><label for="funds-amount" class="block text-sm font-medium text-gray-300">Valor a Adicionar (R$)</label><input type="number" id="funds-amount" required step="0.01" placeholder="100.00" class="mt-1 w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary"></div>
         <div id="funds-error-message" class="hidden text-red-400 text-sm"></div>
-        <div class="flex justify-end space-x-4 pt-4">
-          <button type="button" id="cancel-funds-button" class="py-2 px-4 text-gray-300 hover:text-white">Cancelar</button>
-          <button type="submit" class="py-2 px-6 bg-primary hover:bg-primary-dark rounded-lg font-medium text-white">Guardar Dinheiro</button>
-        </div>
+        <div class="flex justify-end space-x-4 pt-4"><button type="button" id="cancel-funds-button" class="py-2 px-4 text-gray-300 hover:text-white">Cancelar</button><button type="submit" class="py-2 px-6 bg-primary hover:bg-primary-dark rounded-lg font-medium text-white">Guardar Dinheiro</button></div>
       </form>
     </div>
   </div>
-
-  <!-- Modal para Retirar Fundos -->
   <div id="withdraw-funds-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
     <div class="bg-surface rounded-xl shadow-lg w-full max-w-md p-6">
       <h3 class="text-xl font-bold text-white mb-4">Retirar Fundos da Meta</h3>

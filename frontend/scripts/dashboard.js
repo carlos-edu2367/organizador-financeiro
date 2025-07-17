@@ -1,8 +1,9 @@
 const API_URL = 'http://127.0.0.1:8000';
 
-// Variável global para guardar a lista completa de metas recebida da API
+// Variáveis globais para guardar os dados recebidos da API
 let allGoals = [];
-// Variável global para guardar a instância do gráfico
+let groupMembers = [];
+let allTransactions = [];
 let monthlyChart = null;
 
 // --- INICIALIZAÇÃO E EVENTOS PRINCIPAIS ---
@@ -20,6 +21,13 @@ function setupEventListeners() {
     // Logout
     document.getElementById('logout-button')?.addEventListener('click', logout);
     
+    // Botão para adicionar transação manualmente
+    document.getElementById('add-transaction-button')?.addEventListener('click', () => openTransactionFormModal());
+
+    // Modal de Transação (Adicionar/Editar)
+    document.getElementById('transaction-form')?.addEventListener('submit', handleTransactionFormSubmit);
+    document.getElementById('cancel-transaction-button')?.addEventListener('click', () => toggleModal('transaction-form-modal', false));
+
     // Botão principal para adicionar uma nova meta (no card de metas)
     document.getElementById('add-goal-button')?.addEventListener('click', () => openGoalFormModal());
 
@@ -86,6 +94,9 @@ async function fetchDashboardData() {
         const dashboardData = await dashboardResponse.json();
         allGoals = await goalsResponse.json();
         const chartData = await chartResponse.json();
+        
+        groupMembers = dashboardData.membros;
+        allTransactions = dashboardData.movimentacoes_recentes;
 
         // Preenche toda a interface do utilizador com os novos dados
         populateUI(dashboardData, chartData);
@@ -96,12 +107,100 @@ async function fetchDashboardData() {
 }
 
 
+// --- LÓGICA DE GESTÃO DE TRANSAÇÕES ---
+
+function openTransactionFormModal(transactionId = null) {
+    const form = document.getElementById('transaction-form');
+    const modalTitle = document.getElementById('transaction-form-title');
+    form.reset();
+    document.getElementById('transaction-id').value = '';
+    document.getElementById('transaction-error-message').classList.add('hidden');
+
+    // Preenche o dropdown de responsáveis
+    const responsibleSelect = document.getElementById('transaction-responsible');
+    responsibleSelect.innerHTML = '';
+    groupMembers.forEach(member => {
+        const option = document.createElement('option');
+        option.value = member.id;
+        option.textContent = member.nome;
+        responsibleSelect.appendChild(option);
+    });
+
+    if (transactionId) {
+        const tx = allTransactions.find(t => t.id === transactionId);
+        if (tx) {
+            modalTitle.textContent = 'Editar Movimentação';
+            document.getElementById('transaction-id').value = tx.id;
+            document.getElementById('transaction-type').value = tx.tipo;
+            document.getElementById('transaction-description').value = tx.descricao || '';
+            document.getElementById('transaction-value').value = tx.valor;
+            document.getElementById('transaction-responsible').value = groupMembers.find(m => m.nome === tx.responsavel_nome)?.id;
+            document.getElementById('transaction-date').value = new Date(tx.data_transacao).toISOString().split('T')[0];
+        }
+    } else {
+        modalTitle.textContent = 'Adicionar Movimentação';
+        document.getElementById('transaction-date').value = new Date().toISOString().split('T')[0];
+    }
+    toggleModal('transaction-form-modal', true);
+}
+
+async function handleTransactionFormSubmit(event) {
+    event.preventDefault();
+    const token = localStorage.getItem('accessToken');
+    const groupId = localStorage.getItem('activeGroupId');
+    const transactionId = document.getElementById('transaction-id').value;
+
+    const transactionData = {
+        tipo: document.getElementById('transaction-type').value,
+        descricao: document.getElementById('transaction-description').value,
+        valor: parseFloat(document.getElementById('transaction-value').value),
+        responsavel_id: document.getElementById('transaction-responsible').value,
+        data_transacao: document.getElementById('transaction-date').value,
+    };
+
+    const isEditing = !!transactionId;
+    const url = isEditing ? `${API_URL}/transactions/${transactionId}` : `${API_URL}/transactions/group/${groupId}`;
+    const method = isEditing ? 'PUT' : 'POST';
+
+    try {
+        const response = await fetch(url, {
+            method,
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify(transactionData),
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.detail);
+
+        toggleModal('transaction-form-modal', false);
+        await fetchDashboardData();
+    } catch (error) {
+        document.getElementById('transaction-error-message').textContent = error.message;
+        document.getElementById('transaction-error-message').classList.remove('hidden');
+    }
+}
+
+async function handleDeleteTransaction(transactionId) {
+    if (!confirm('Tem a certeza que quer apagar esta movimentação?')) return;
+    
+    const token = localStorage.getItem('accessToken');
+    try {
+        const response = await fetch(`${API_URL}/transactions/${transactionId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (!response.ok) {
+            const data = await response.json();
+            throw new Error(data.detail);
+        }
+        await fetchDashboardData();
+    } catch (error) {
+        alert(`Erro ao apagar movimentação: ${error.message}`);
+    }
+}
+
+
 // --- LÓGICA DE GESTÃO DE METAS ---
 
-/**
- * Abre o formulário para criar ou editar uma meta.
- * @param {string | null} goalId - O ID da meta a ser editada, ou null para criar uma nova.
- */
 function openGoalFormModal(goalId = null) {
     const form = document.getElementById('goal-form');
     const modalTitle = document.getElementById('goal-form-title');
@@ -123,9 +222,6 @@ function openGoalFormModal(goalId = null) {
     toggleModal('goal-form-modal', true);
 }
 
-/**
- * Lida com o envio do formulário de criação/edição de metas.
- */
 async function handleGoalFormSubmit(event) {
     event.preventDefault();
     const token = localStorage.getItem('accessToken');
@@ -153,16 +249,12 @@ async function handleGoalFormSubmit(event) {
 
         toggleModal('goal-form-modal', false);
         await fetchDashboardData();
-
     } catch (error) {
         document.getElementById('goal-error-message').textContent = error.message;
         document.getElementById('goal-error-message').classList.remove('hidden');
     }
 }
 
-/**
- * Lida com o pedido de apagar uma meta.
- */
 async function handleDeleteGoal(goalId) {
     if (!confirm('Tem a certeza que quer apagar esta meta? Esta ação não pode ser desfeita.')) return;
     
@@ -182,18 +274,12 @@ async function handleDeleteGoal(goalId) {
     }
 }
 
-/**
- * Abre o modal para adicionar fundos a uma meta específica.
- */
 function openAddFundsModal(goalId) {
     const form = document.getElementById('add-funds-form');
     form.dataset.goalId = goalId;
     toggleModal('add-funds-modal', true);
 }
 
-/**
- * Lida com o envio do formulário para adicionar fundos.
- */
 async function handleAddFundsSubmit(event) {
     event.preventDefault();
     const token = localStorage.getItem('accessToken');
@@ -218,18 +304,11 @@ async function handleAddFundsSubmit(event) {
     }
 }
 
-
-/**
- * Abre o modal para retirar fundos de uma meta específica.
- */
 function openWithdrawFundsModal(goalId) {
     document.getElementById('withdraw-goal-id').value = goalId;
     toggleModal('withdraw-funds-modal', true);
 }
 
-/**
- * Lida com o envio do formulário para retirar fundos.
- */
 async function handleWithdrawFormSubmit(event) {
     event.preventDefault();
     const token = localStorage.getItem('accessToken');
@@ -257,28 +336,21 @@ async function handleWithdrawFormSubmit(event) {
 
 // --- FUNÇÕES DE RENDERIZAÇÃO E UTILITÁRIOS ---
 
-/**
- * Função central para preencher toda a UI com os dados recebidos.
- * @param {object} data - O objeto de dados vindo do endpoint do dashboard.
- */
 function populateUI(dashboardData, chartData) {
     populateUserInfo(dashboardData.nome_utilizador, dashboardData.plano);
     populateGroupInfo(dashboardData.nome_grupo, dashboardData.membros);
     populateTransactions(dashboardData.movimentacoes_recentes);
     populateGoalsOnDashboard(dashboardData.plano);
-    populateInvestmentInfo(dashboardData.total_investido, dashboardData.juros_estimados);
+    populateSummaryCards(dashboardData.total_investido, dashboardData.saldo_total);
     renderChart(chartData);
 }
 
-/**
- * Preenche o card de metas no dashboard principal.
- */
 function populateGoalsOnDashboard(plan) {
     const goalContainer = document.getElementById('goals-list-container');
     const addGoalButton = document.getElementById('add-goal-button');
     if (!goalContainer || !addGoalButton) return;
     
-    goalContainer.innerHTML = ''; // Limpa antes de popular
+    goalContainer.innerHTML = '';
 
     if (allGoals.length > 0) {
         allGoals.forEach(goal => {
@@ -308,7 +380,6 @@ function populateGoalsOnDashboard(plan) {
         goalContainer.innerHTML = '<p class="text-center text-gray-400">Nenhuma meta criada ainda.</p>';
     }
 
-    // Lógica para o botão de adicionar meta
     if (plan === 'gratuito' && allGoals.length > 0) {
         addGoalButton.disabled = true;
         addGoalButton.className = 'w-full text-center mt-4 py-2 border-2 border-dashed border-gray-600 text-gray-500 rounded-lg cursor-not-allowed';
@@ -360,7 +431,7 @@ function populateTransactions(transactions) {
     if (transactions.length === 0) {
         const row = tableBody.insertRow();
         const cell = row.insertCell();
-        cell.colSpan = 4;
+        cell.colSpan = 5;
         cell.textContent = 'Ainda não há transações registadas.';
         cell.className = 'text-center text-gray-400 py-4';
         return;
@@ -369,24 +440,12 @@ function populateTransactions(transactions) {
         const row = tableBody.insertRow();
         row.className = 'border-b border-gray-800 hover:bg-gray-800/50';
         
-        let valorClass = '';
-        let valorSignal = '';
-
+        let valorClass = '', valorSignal = '';
         switch (tx.tipo) {
-            case 'gasto':
-                valorClass = 'text-expense';
-                valorSignal = '-';
-                break;
-            case 'ganho':
-                valorClass = 'text-gain';
-                valorSignal = '+';
-                break;
-            case 'investimento':
-                valorClass = 'text-investment';
-                valorSignal = '-';
-                break;
-            default:
-                valorClass = 'text-gray-400';
+            case 'gasto': valorClass = 'text-expense'; valorSignal = '-'; break;
+            case 'ganho': valorClass = 'text-gain'; valorSignal = '+'; break;
+            case 'investimento': valorClass = 'text-investment'; valorSignal = '-'; break;
+            default: valorClass = 'text-gray-400';
         }
         
         row.innerHTML = `
@@ -394,96 +453,54 @@ function populateTransactions(transactions) {
             <td class="py-3 px-2 ${valorClass}">${valorSignal} R$ ${Number(tx.valor).toFixed(2)}</td>
             <td class="py-3 px-2">${tx.responsavel_nome}</td>
             <td class="py-3 px-2">${new Date(tx.data_transacao).toLocaleDateString()}</td>
+            <td class="py-3 px-2 text-center">
+                <button onclick="openTransactionFormModal('${tx.id}')" class="text-primary-light hover:opacity-75"><i class="fas fa-pencil-alt"></i></button>
+                <button onclick="handleDeleteTransaction('${tx.id}')" class="text-expense hover:opacity-75 ml-3"><i class="fas fa-trash"></i></button>
+            </td>
         `;
         tableBody.appendChild(row);
     });
 }
 
-function populateInvestmentInfo(totalInvestido, jurosEstimados) {
+function populateSummaryCards(totalInvestido, saldoTotal) {
     const totalInvestidoEl = document.getElementById('total-investido');
-    const jurosEstimadosEl = document.getElementById('juros-estimados');
+    const saldoTotalEl = document.getElementById('saldo-total');
 
     if (totalInvestidoEl) {
         totalInvestidoEl.textContent = `R$ ${Number(totalInvestido).toFixed(2).replace('.', ',')}`;
     }
-    if (jurosEstimadosEl) {
-        jurosEstimadosEl.textContent = `+ R$ ${Number(jurosEstimados).toFixed(2).replace('.', ',')}`;
+    if (saldoTotalEl) {
+        saldoTotalEl.textContent = `R$ ${Number(saldoTotal).toFixed(2).replace('.', ',')}`;
+        saldoTotalEl.classList.remove('text-gain', 'text-expense');
+        if (saldoTotal >= 0) {
+            saldoTotalEl.classList.add('text-gain');
+        } else {
+            saldoTotalEl.classList.add('text-expense');
+        }
     }
 }
 
 function renderChart(chartData) {
     const ctx = document.getElementById('monthly-chart');
     if (!ctx) return;
-
-    if (monthlyChart) {
-        monthlyChart.destroy();
-    }
-
-    const labels = chartData.map(d => d.mes);
-    
+    if (monthlyChart) monthlyChart.destroy();
     monthlyChart = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: labels,
+            labels: chartData.map(d => d.mes),
             datasets: [
-                {
-                    label: 'Ganhos',
-                    data: chartData.map(d => d.ganhos),
-                    backgroundColor: 'rgba(34, 197, 94, 0.6)',
-                    borderColor: 'rgba(34, 197, 94, 1)',
-                    borderWidth: 1
-                },
-                {
-                    label: 'Gastos',
-                    data: chartData.map(d => d.gastos),
-                    backgroundColor: 'rgba(239, 68, 68, 0.6)',
-                    borderColor: 'rgba(239, 68, 68, 1)',
-                    borderWidth: 1
-                },
-                {
-                    label: 'Investimentos',
-                    data: chartData.map(d => d.investimentos),
-                    backgroundColor: 'rgba(56, 189, 248, 0.6)',
-                    borderColor: 'rgba(56, 189, 248, 1)',
-                    borderWidth: 1
-                },
-                {
-                    label: 'Livre',
-                    data: chartData.map(d => d.livre),
-                    backgroundColor: 'rgba(229, 231, 235, 0.6)',
-                    borderColor: 'rgba(229, 231, 235, 1)',
-                    borderWidth: 1
-                }
+                { label: 'Ganhos', data: chartData.map(d => d.ganhos), backgroundColor: 'rgba(34, 197, 94, 0.6)' },
+                { label: 'Gastos', data: chartData.map(d => d.gastos), backgroundColor: 'rgba(239, 68, 68, 0.6)' },
+                { label: 'Investimentos', data: chartData.map(d => d.investimentos), backgroundColor: 'rgba(56, 189, 248, 0.6)' },
+                { label: 'Saldo', data: chartData.map(d => d.saldo), backgroundColor: 'rgba(229, 231, 235, 0.6)' }
             ]
         },
         options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            let label = context.dataset.label || '';
-                            if (label) { label += ': '; }
-                            if (context.parsed.y !== null) {
-                                label += new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(context.parsed.y);
-                            }
-                            return label;
-                        }
-                    }
-                }
-            },
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
             scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: { color: '#9ca3af' },
-                    grid: { color: 'rgba(255, 255, 255, 0.1)' }
-                },
-                x: {
-                    ticks: { color: '#9ca3af' },
-                    grid: { display: false }
-                }
+                y: { beginAtZero: true, ticks: { color: '#9ca3af' }, grid: { color: 'rgba(255, 255, 255, 0.1)' } },
+                x: { ticks: { color: '#9ca3af' }, grid: { display: false } }
             }
         }
     });

@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from . import models
 from .database import engine
-from .routers import auth, users, groups # Importa o novo router
+from .routers import auth, users, groups, transactions # Importa o novo router
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -30,10 +30,10 @@ app.add_middleware(
 # Inclui as rotas na aplicação principal.
 app.include_router(auth.router)
 app.include_router(users.router)
-app.include_router(groups.router) # Adiciona o novo router de grupos
+app.include_router(groups.router)
+app.include_router(transactions.router) # Adiciona o novo router de transações
 
 
 @app.get("/")
 def read_root():
     return {"status": "Clarify API is running!"}
-

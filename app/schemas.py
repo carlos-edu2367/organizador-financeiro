@@ -62,9 +62,24 @@ class Meta(GoalBase):
         from_attributes = True
 
 # ==================
-# Schemas para o Dashboard
+# Schemas para Transações (Movimentações)
 # ==================
+class TransactionBase(BaseModel):
+    """ Schema base para uma transação. """
+    tipo: str
+    descricao: Optional[str] = None
+    valor: float = Field(..., gt=0)
+    data_transacao: datetime.date
+    responsavel_id: uuid.UUID
+
+class TransactionCreate(TransactionBase):
+    pass
+
+class TransactionUpdate(TransactionBase):
+    pass
+
 class Movimentacao(BaseModel):
+    """ Schema para exibir uma movimentação no histórico. """
     id: uuid.UUID
     tipo: str
     descricao: Optional[str]
@@ -75,6 +90,9 @@ class Movimentacao(BaseModel):
     class Config:
         from_attributes = True
 
+# ==================
+# Schemas para o Grupo e Dashboard
+# ==================
 class GrupoMembro(BaseModel):
     id: uuid.UUID
     nome: str
@@ -90,16 +108,15 @@ class DashboardData(BaseModel):
     movimentacoes_recentes: List[Movimentacao]
     meta_ativa: Optional[Meta] = None
     total_investido: float = 0.0
-    juros_estimados: float = 0.0
+    # ATUALIZAÇÃO: 'juros_estimados' foi substituído por 'saldo_total'.
+    saldo_total: float = 0.0
 
 # ==================
-# Schemas para o Gráfico (NOVOS)
+# Schemas para o Gráfico
 # ==================
 class ChartMonthData(BaseModel):
-    """ Schema para os dados de um único mês no gráfico. """
     mes: str
     ganhos: float
     gastos: float
     investimentos: float
-    livre: float
-
+    saldo: float
