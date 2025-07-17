@@ -2,6 +2,8 @@ const API_URL = 'http://127.0.0.1:8000';
 
 // Variável global para guardar a lista completa de metas recebida da API
 let allGoals = [];
+// Variável global para guardar a instância do gráfico
+let monthlyChart = null;
 
 // --- INICIALIZAÇÃO E EVENTOS PRINCIPAIS ---
 
@@ -65,25 +67,28 @@ async function fetchDashboardData() {
 
     try {
         // Faz as chamadas à API em paralelo para maior eficiência
-        const [dashboardResponse, goalsResponse] = await Promise.all([
+        const [dashboardResponse, goalsResponse, chartResponse] = await Promise.all([
             fetch(`${API_URL}/groups/${groupId}/dashboard`, { headers: { 'Authorization': `Bearer ${token}` } }),
-            fetch(`${API_URL}/groups/${groupId}/goals`, { headers: { 'Authorization': `Bearer ${token}` } })
+            fetch(`${API_URL}/groups/${groupId}/goals`, { headers: { 'Authorization': `Bearer ${token}` } }),
+            fetch(`${API_URL}/groups/${groupId}/chart_data`, { headers: { 'Authorization': `Bearer ${token}` } })
         ]);
 
         // Verifica se o token é válido
-        if (dashboardResponse.status === 401 || goalsResponse.status === 401) {
+        if (dashboardResponse.status === 401 || goalsResponse.status === 401 || chartResponse.status === 401) {
             logout({ preventDefault: () => {} }); // Chama a função de logout
             return;
         }
 
         if (!dashboardResponse.ok) throw new Error('Falha ao carregar dados do dashboard.');
         if (!goalsResponse.ok) throw new Error('Falha ao carregar metas.');
+        if (!chartResponse.ok) throw new Error('Falha ao carregar dados do gráfico.');
 
         const dashboardData = await dashboardResponse.json();
         allGoals = await goalsResponse.json();
+        const chartData = await chartResponse.json();
 
         // Preenche toda a interface do utilizador com os novos dados
-        populateUI(dashboardData);
+        populateUI(dashboardData, chartData);
 
     } catch (error) {
         handleApiError(error);
@@ -213,6 +218,7 @@ async function handleAddFundsSubmit(event) {
     }
 }
 
+
 /**
  * Abre o modal para retirar fundos de uma meta específica.
  */
@@ -255,12 +261,13 @@ async function handleWithdrawFormSubmit(event) {
  * Função central para preencher toda a UI com os dados recebidos.
  * @param {object} data - O objeto de dados vindo do endpoint do dashboard.
  */
-function populateUI(data) {
-    populateUserInfo(data.nome_utilizador, data.plano);
-    populateGroupInfo(data.nome_grupo, data.membros);
-    populateTransactions(data.movimentacoes_recentes);
-    populateGoalsOnDashboard(data.plano);
-    populateInvestmentInfo(data.total_investido, data.juros_estimados);
+function populateUI(dashboardData, chartData) {
+    populateUserInfo(dashboardData.nome_utilizador, dashboardData.plano);
+    populateGroupInfo(dashboardData.nome_grupo, dashboardData.membros);
+    populateTransactions(dashboardData.movimentacoes_recentes);
+    populateGoalsOnDashboard(dashboardData.plano);
+    populateInvestmentInfo(dashboardData.total_investido, dashboardData.juros_estimados);
+    renderChart(chartData);
 }
 
 /**
@@ -275,7 +282,7 @@ function populateGoalsOnDashboard(plan) {
 
     if (allGoals.length > 0) {
         allGoals.forEach(goal => {
-            const percentage = (goal.valor_atual / goal.valor_meta) * 100;
+            const percentage = (goal.valor_meta > 0) ? (goal.valor_atual / goal.valor_meta) * 100 : 0;
             const goalEl = document.createElement('div');
             goalEl.className = 'bg-background p-3 rounded-lg';
             goalEl.innerHTML = `
@@ -402,6 +409,84 @@ function populateInvestmentInfo(totalInvestido, jurosEstimados) {
     if (jurosEstimadosEl) {
         jurosEstimadosEl.textContent = `+ R$ ${Number(jurosEstimados).toFixed(2).replace('.', ',')}`;
     }
+}
+
+function renderChart(chartData) {
+    const ctx = document.getElementById('monthly-chart');
+    if (!ctx) return;
+
+    if (monthlyChart) {
+        monthlyChart.destroy();
+    }
+
+    const labels = chartData.map(d => d.mes);
+    
+    monthlyChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Ganhos',
+                    data: chartData.map(d => d.ganhos),
+                    backgroundColor: 'rgba(34, 197, 94, 0.6)',
+                    borderColor: 'rgba(34, 197, 94, 1)',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Gastos',
+                    data: chartData.map(d => d.gastos),
+                    backgroundColor: 'rgba(239, 68, 68, 0.6)',
+                    borderColor: 'rgba(239, 68, 68, 1)',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Investimentos',
+                    data: chartData.map(d => d.investimentos),
+                    backgroundColor: 'rgba(56, 189, 248, 0.6)',
+                    borderColor: 'rgba(56, 189, 248, 1)',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Livre',
+                    data: chartData.map(d => d.livre),
+                    backgroundColor: 'rgba(229, 231, 235, 0.6)',
+                    borderColor: 'rgba(229, 231, 235, 1)',
+                    borderWidth: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) { label += ': '; }
+                            if (context.parsed.y !== null) {
+                                label += new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(context.parsed.y);
+                            }
+                            return label;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { color: '#9ca3af' },
+                    grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                },
+                x: {
+                    ticks: { color: '#9ca3af' },
+                    grid: { display: false }
+                }
+            }
+        }
+    });
 }
 
 function toggleModal(modalId, show) {

@@ -1,15 +1,17 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import func
+from sqlalchemy import func, extract
 from typing import List
 from decimal import Decimal
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
 
 from .. import database, schemas, models
 from ..security import get_current_user_from_token
 
 router = APIRouter(
     prefix="/groups",
-    tags=['Groups'],
+    tags=['Groups, Goals & Charts'],
     dependencies=[Depends(get_current_user_from_token)]
 )
 
@@ -136,3 +138,57 @@ def withdraw_funds_from_goal(goal_id: str, funds: schemas.GoalWithdrawFunds, db:
     db.commit()
     db.refresh(db_goal)
     return db_goal
+
+
+
+
+@router.get("/{group_id}/chart_data", response_model=List[schemas.ChartMonthData])
+def get_chart_data(group_id: str, db: Session = Depends(database.get_db), current_user: models.Usuario = Depends(get_current_user_from_token)):
+    """
+    Calcula e retorna os dados agregados para o gráfico dos últimos 3 meses.
+    """
+    group = db.query(models.Grupo).filter(models.Grupo.id == group_id).first()
+    if not group or current_user not in group.membros:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso não permitido.")
+
+    today = datetime.now()
+    chart_data = []
+    
+    # Mapeia o número do mês para o nome em português
+    meses_pt = {
+        1: "Jan", 2: "Fev", 3: "Mar", 4: "Abr", 5: "Mai", 6: "Jun",
+        7: "Jul", 8: "Ago", 9: "Set", 10: "Out", 11: "Nov", 12: "Dez"
+    }
+
+    # Itera sobre os últimos 3 meses (incluindo o atual)
+    for i in range(3):
+        target_date = today - relativedelta(months=i)
+        year = target_date.year
+        month = target_date.month
+        
+        # Função auxiliar para calcular o total de um tipo de movimentação
+        def get_total_for_type(tipo: str) -> Decimal:
+            total = db.query(func.sum(models.Movimentacao.valor)).filter(
+                models.Movimentacao.grupo_id == group_id,
+                models.Movimentacao.tipo == tipo,
+                extract('year', models.Movimentacao.data_transacao) == year,
+                extract('month', models.Movimentacao.data_transacao) == month
+            ).scalar()
+            return total or Decimal('0.0')
+
+        ganhos = get_total_for_type('ganho')
+        gastos = get_total_for_type('gasto')
+        investimentos = get_total_for_type('investimento')
+        
+        livre = ganhos - gastos - investimentos
+
+        chart_data.append({
+            "mes": f"{meses_pt[month]}/{str(year)[2:]}",
+            "ganhos": float(ganhos),
+            "gastos": float(gastos),
+            "investimentos": float(investimentos),
+            "livre": float(livre)
+        })
+
+    # A lista é gerada do mais recente para o mais antigo, então invertemos.
+    return chart_data[::-1]

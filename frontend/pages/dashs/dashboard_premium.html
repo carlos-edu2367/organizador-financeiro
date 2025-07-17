@@ -28,6 +28,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="bg-background text-white font-sans">
 
@@ -62,7 +63,7 @@
                 <h3 class="text-xl font-bold text-gray-200">Resumo Mensal</h3>
                 <div class="hidden sm:flex items-center space-x-2 p-1 bg-background rounded-lg"><button class="px-3 py-1 text-sm bg-primary rounded-md">Visão Geral</button><button class="px-3 py-1 text-sm text-gray-400 hover:bg-gray-700 rounded-md">Categorias</button></div>
               </div>
-              <div class="flex justify-around items-end h-64 space-x-2 sm:space-x-4"></div>
+              <div class="h-64 relative"><canvas id="monthly-chart"></canvas></div>
               <div class="mt-8 pt-6 border-t border-gray-700 grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div class="bg-background p-4 rounded-lg"><h4 class="text-sm font-medium text-gray-400">Total Investido</h4><p id="total-investido" class="text-2xl font-bold text-investment">R$ 0,00</p></div>
                   <div class="bg-background p-4 rounded-lg"><h4 class="text-sm font-medium text-gray-400">Juros Estimados (Mês)</h4><p id="juros-estimados" class="text-2xl font-bold text-investment">+ R$ 0,00</p></div>
@@ -82,9 +83,7 @@
             </div>
             <div class="bg-surface p-6 rounded-xl shadow-lg">
                 <h3 class="text-xl font-bold text-gray-200 mb-4">As Nossas Metas</h3>
-                <div id="goals-list-container" class="space-y-4">
-                    <!-- A lista de metas será renderizada aqui -->
-                </div>
+                <div id="goals-list-container" class="space-y-4"></div>
                 <button id="add-goal-button" class="w-full text-center mt-4 py-2 bg-primary/80 hover:bg-primary transition text-white rounded-lg">Adicionar Nova Meta</button>
             </div>
             <div class="bg-surface p-6 rounded-xl shadow-lg">

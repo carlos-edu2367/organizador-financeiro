@@ -91,3 +91,15 @@ class DashboardData(BaseModel):
     meta_ativa: Optional[Meta] = None
     total_investido: float = 0.0
     juros_estimados: float = 0.0
+
+# ==================
+# Schemas para o Gráfico (NOVOS)
+# ==================
+class ChartMonthData(BaseModel):
+    """ Schema para os dados de um único mês no gráfico. """
+    mes: str
+    ganhos: float
+    gastos: float
+    investimentos: float
+    livre: float
+

@@ -28,6 +28,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="bg-background text-white font-sans">
 
@@ -59,7 +60,7 @@
             </div>
             <div class="bg-surface p-6 rounded-xl shadow-lg">
               <h3 class="text-xl font-bold mb-6 text-gray-200">Resumo Mensal</h3>
-              <div class="flex justify-around items-end h-64 space-x-2 sm:space-x-4"></div>
+              <div class="h-64 relative"><canvas id="monthly-chart"></canvas></div>
               <div class="mt-6 flex justify-center space-x-6 text-sm"><div class="flex items-center"><span class="w-3 h-3 rounded-full bg-expense mr-2"></span>Gastos</div><div class="flex items-center"><span class="w-3 h-3 rounded-full bg-gain mr-2"></span>Ganhos</div><div class="flex items-center"><span class="w-3 h-3 rounded-full bg-investment mr-2"></span>Investimentos</div></div>
               <div class="mt-8 pt-6 border-t border-gray-700 grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div class="bg-background p-4 rounded-lg"><h4 class="text-sm font-medium text-gray-400">Total Investido</h4><p id="total-investido" class="text-2xl font-bold text-investment">R$ 0,00</p></div>
@@ -75,9 +76,7 @@
             <div class="bg-surface p-6 rounded-xl shadow-lg"><h3 class="text-xl font-bold mb-4 text-gray-200">Adicionar Transação</h3><p class="text-sm text-gray-400 mb-4">Descreva a sua movimentação. A nossa IA fará o resto!</p><textarea placeholder="Ex: 'Recebi R$200 de um freela' ou 'gastei R$80 no mercado'" class="w-full h-24 px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary"></textarea><div class="flex space-x-2 mt-4"><button class="w-full py-2 bg-primary hover:bg-primary-dark transition rounded-lg font-medium text-white">Analisar</button><button class="py-2 px-4 bg-gray-600 hover:bg-gray-700 transition rounded-lg font-medium text-white" title="Gravar áudio">🎙️</button></div></div>
             <div class="bg-surface p-6 rounded-xl shadow-lg">
                 <h3 class="text-xl font-bold text-gray-200 mb-4">Meta do Grupo</h3>
-                <div id="goals-list-container" class="space-y-4">
-                    <!-- A lista de metas será renderizada aqui -->
-                </div>
+                <div id="goals-list-container" class="space-y-4"></div>
                 <button id="add-goal-button" class="w-full text-center mt-4 py-2 border-2 border-dashed border-gray-600 text-gray-500 rounded-lg cursor-not-allowed">Criar nova meta 💎</button>
             </div>
             <div class="bg-surface p-6 rounded-xl shadow-lg"><h3 class="text-xl font-bold mb-4 text-gray-200">As Nossas Conquistas</h3><div class="grid grid-cols-2 gap-4 text-center"><div class="flex flex-col items-center p-2 rounded-lg bg-background"><span class="text-4xl">🟤</span><p class="text-sm font-medium mt-1">Mês de Bronze</p><p class="text-xs text-gray-400">1º mês positivo</p></div><div class="flex flex-col items-center p-2 rounded-lg bg-background"><span class="text-4xl filter grayscale">🥈</span><p class="text-sm font-medium mt-1 text-gray-500">Economia de Prata</p><p class="text-xs text-gray-500">3 meses de economia</p></div></div></div>
