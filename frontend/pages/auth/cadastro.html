@@ -30,22 +30,20 @@
 <body class="bg-background text-white min-h-screen flex items-center justify-center font-sans p-4">
 
   <div class="bg-surface p-8 rounded-xl shadow-lg w-full max-w-sm">
-    <!-- Logo -->
     <div class="flex flex-col items-center justify-center mb-6">
       <div class="flex items-center space-x-3">
-        <svg class="drop-shadow-glow-primary" width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M11 19C15.4183 19 19 15.4183 19 11C19 6.58172 15.4183 3 11 3C6.58172 3 3 6.58172 3 11C3 15.4183 6.58172 19 11 19Z" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M21 21L16.65 16.65" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M9 11.5L10.5 13L13.5 10" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
+        <svg class="drop-shadow-glow-primary" width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11 19C15.4183 19 19 15.4183 19 11C19 6.58172 15.4183 3 11 3C6.58172 3 3 6.58172 3 11C3 15.4183 6.58172 19 11 19Z" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 21L16.65 16.65" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 11.5L10.5 13L13.5 10" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <span class="text-3xl font-bold text-white drop-shadow-glow-white">Clarify</span>
       </div>
       <p class="text-gray-400 mt-2">Crie sua conta para começar.</p>
     </div>
 
+    <!-- Container para mensagens de erro/sucesso -->
+    <div id="message-container" class="hidden mb-4"></div>
+
     <form id="cadastro-form" class="space-y-5">
       <div>
-        <label for="nome" class="block text-Asm font-medium text-gray-300">Nome</label>
+        <label for="nome" class="block text-sm font-medium text-gray-300">Nome</label>
         <input type="text" required id="nome" placeholder="Seu nome completo" class="mt-1 w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary" />
       </div>
       <div>
@@ -63,6 +61,8 @@
       </div>
     </form>
   </div>
-
+  
+  <!-- Adiciona o script de autenticação -->
+  <script src="../../scripts/auth.js" defer></script>
 </body>
 </html>

@@ -1,42 +1,80 @@
 import uuid
+import datetime
 from pydantic import BaseModel, EmailStr
-from typing import Optional
+from typing import Optional, List
 
 # ==================
 # Schemas para Token
 # ==================
 class Token(BaseModel):
-    """ Schema para a resposta do token de acesso. """
     access_token: str
     token_type: str
 
 class TokenData(BaseModel):
-    """ Schema para os dados contidos dentro do token JWT. """
     email: Optional[EmailStr] = None
 
 # ==================
-# Schemas para Usuário
+# Schemas para Utilizador
 # ==================
 class UserBase(BaseModel):
-    """ Schema base para o usuário, com campos comuns. """
     email: EmailStr
     nome: str
 
 class UserCreate(UserBase):
-    """
-    Schema para a criação de um novo usuário.
-    Recebe a senha que será hasheada antes de salvar.
-    """
     senha: str
 
 class User(UserBase):
-    """
-    Schema para retornar os dados de um usuário para o cliente.
-    Importante: NUNCA inclua a senha na resposta.
-    """
     id: uuid.UUID
     
     class Config:
-        # Permite que o Pydantic trabalhe com modelos do SQLAlchemy.
-        orm_mode = True
+        from_attributes = True
+
+class UserWithPlan(User):
+    plano: str
+
+# ==================
+# Schemas para o Dashboard (NOVOS)
+# ==================
+
+class Movimentacao(BaseModel):
+    """ Schema para exibir uma movimentação no histórico. """
+    id: uuid.UUID
+    tipo: str
+    descricao: Optional[str]
+    valor: float
+    data_transacao: datetime.datetime
+    responsavel_nome: str # Adicionamos o nome para fácil exibição
+
+    class Config:
+        from_attributes = True
+
+class GrupoMembro(BaseModel):
+    """ Schema para exibir um membro do grupo. """
+    id: uuid.UUID
+    nome: str
+    
+    class Config:
+        from_attributes = True
+
+class Meta(BaseModel):
+    """ Schema para exibir a meta ativa. """
+    titulo: str
+    valor_meta: float
+    valor_atual: float
+    
+    class Config:
+        from_attributes = True
+
+class DashboardData(BaseModel):
+    """
+    Schema principal que agrega todos os dados
+    necessários para renderizar o dashboard.
+    """
+    nome_utilizador: str
+    nome_grupo: str
+    plano: str
+    membros: List[GrupoMembro]
+    movimentacoes_recentes: List[Movimentacao]
+    meta_ativa: Optional[Meta] = None
+    # Futuramente, podemos adicionar conquistas, resumo mensal, etc.
 
