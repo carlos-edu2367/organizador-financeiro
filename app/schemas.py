@@ -1,6 +1,6 @@
 import uuid
 import datetime
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, List
 
 # ==================
@@ -34,19 +34,29 @@ class UserSessionData(User):
     grupo_id: Optional[uuid.UUID] = None
 
 # ==================
-# Schemas para Metas (NOVO E ATUALIZADO)
+# Schemas para Metas
 # ==================
-class GoalCreate(BaseModel):
-    """ Schema para validar os dados de criação de uma nova meta. """
+class GoalBase(BaseModel):
     titulo: str
     valor_meta: float
     data_limite: Optional[datetime.date] = None
 
-class Meta(BaseModel):
-    """ Schema para exibir a meta ativa. """
-    titulo: str
-    valor_meta: float
+class GoalCreate(GoalBase):
+    pass
+
+class GoalUpdate(GoalBase):
+    pass
+
+class GoalAddFunds(BaseModel):
+    valor: float = Field(..., gt=0)
+
+class GoalWithdrawFunds(BaseModel):
+    valor: float = Field(..., gt=0)
+
+class Meta(GoalBase):
+    id: uuid.UUID
     valor_atual: float
+    status: str
     
     class Config:
         from_attributes = True
@@ -79,3 +89,5 @@ class DashboardData(BaseModel):
     membros: List[GrupoMembro]
     movimentacoes_recentes: List[Movimentacao]
     meta_ativa: Optional[Meta] = None
+    total_investido: float = 0.0
+    juros_estimados: float = 0.0

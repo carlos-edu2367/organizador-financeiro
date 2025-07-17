@@ -14,7 +14,8 @@
             background: '#0f172a',
             surface: '#1e293b',
             expense: '#ef4444',
-            investment: '#22c55e',
+            gain: '#22c55e',
+            investment: '#38bdf8',
             free: '#e5e7eb',
             gold: '#facc15',
           },
@@ -62,7 +63,10 @@
                 <div class="hidden sm:flex items-center space-x-2 p-1 bg-background rounded-lg"><button class="px-3 py-1 text-sm bg-primary rounded-md">Visão Geral</button><button class="px-3 py-1 text-sm text-gray-400 hover:bg-gray-700 rounded-md">Categorias</button></div>
               </div>
               <div class="flex justify-around items-end h-64 space-x-2 sm:space-x-4"></div>
-              <div class="mt-8 pt-6 border-t border-gray-700 grid grid-cols-1 sm:grid-cols-2 gap-4"><div class="bg-background p-4 rounded-lg"><h4 class="text-sm font-medium text-gray-400">Total Investido</h4><p class="text-2xl font-bold text-investment">R$ 0,00</p></div><div class="bg-background p-4 rounded-lg"><h4 class="text-sm font-medium text-gray-400">Juros Estimados (Mês)</h4><p class="text-2xl font-bold text-investment">+ R$ 0,00</p></div></div>
+              <div class="mt-8 pt-6 border-t border-gray-700 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div class="bg-background p-4 rounded-lg"><h4 class="text-sm font-medium text-gray-400">Total Investido</h4><p id="total-investido" class="text-2xl font-bold text-investment">R$ 0,00</p></div>
+                  <div class="bg-background p-4 rounded-lg"><h4 class="text-sm font-medium text-gray-400">Juros Estimados (Mês)</h4><p id="juros-estimados" class="text-2xl font-bold text-investment">+ R$ 0,00</p></div>
+              </div>
             </div>
             <div class="bg-surface p-6 rounded-xl shadow-lg">
               <div class="flex justify-between items-center mb-4"><h3 class="text-xl font-bold text-gray-200">Histórico Completo</h3><button class="text-sm font-medium bg-primary hover:bg-primary-dark text-white py-2 px-3 rounded-lg flex items-center"><i class="fa-solid fa-file-export mr-2"></i>Exportar</button></div>
@@ -74,12 +78,14 @@
               <h3 class="text-xl font-bold mb-4 text-gray-200">Adicionar Transação</h3>
               <p class="text-sm text-gray-400 mb-4">Descreva a sua movimentação por texto ou áudio.</p>
               <textarea placeholder="Ex: 'Recebi R$200 de um freela' ou 'gastei R$80 no mercado'" class="w-full h-24 px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary"></textarea>
-              <div class="flex space-x-2 mt-4"><button class="w-full py-2 bg-primary hover:bg-primary-dark transition rounded-lg font-medium text-white">Analisar</button><button class="py-2 px-4 bg-gray-600 hover:bg-gray-700 transition rounded-lg font-medium text-white" title="Gravar áudio"><i class="fa-solid fa-microphone"></i></button><button class="py-2 px-4 bg-investment hover:opacity-90 transition rounded-lg font-medium text-white" title="Registar via WhatsApp"><i class="fa-brands fa-whatsapp"></i></button></div>
+              <div class="flex space-x-2 mt-4"><button class="w-full py-2 bg-primary hover:bg-primary-dark transition rounded-lg font-medium text-white">Analisar</button><button class="py-2 px-4 bg-gray-600 hover:bg-gray-700 transition rounded-lg font-medium text-white" title="Gravar áudio"><i class="fa-solid fa-microphone"></i></button><button class="py-2 px-4 bg-gain hover:opacity-90 transition rounded-lg font-medium text-white" title="Registar via WhatsApp"><i class="fa-brands fa-whatsapp"></i></button></div>
             </div>
             <div class="bg-surface p-6 rounded-xl shadow-lg">
-              <h3 class="text-xl font-bold mb-4 text-gray-200">As Nossas Metas</h3>
-              <div id="active-goal-container" class="space-y-4"></div>
-              <button id="add-goal-button" class="w-full text-center mt-4 py-2 bg-primary/80 hover:bg-primary transition text-white rounded-lg">Criar nova meta</button>
+                <h3 class="text-xl font-bold text-gray-200 mb-4">As Nossas Metas</h3>
+                <div id="goals-list-container" class="space-y-4">
+                    <!-- A lista de metas será renderizada aqui -->
+                </div>
+                <button id="add-goal-button" class="w-full text-center mt-4 py-2 bg-primary/80 hover:bg-primary transition text-white rounded-lg">Adicionar Nova Meta</button>
             </div>
             <div class="bg-surface p-6 rounded-xl shadow-lg">
                 <h3 class="text-xl font-bold mb-4 text-gray-200">As Nossas Conquistas</h3>
@@ -99,25 +105,58 @@
     </div>
   </main>
   
-  <div id="add-goal-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
+  <!-- Modal para Adicionar/Editar Meta -->
+  <div id="goal-form-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
     <div class="bg-surface rounded-xl shadow-lg w-full max-w-md p-6">
-      <div class="flex justify-between items-center mb-4"><h3 class="text-xl font-bold text-white">Criar Nova Meta</h3><button id="close-goal-modal" class="text-gray-400 hover:text-white text-2xl font-bold">&times;</button></div>
-      <form id="add-goal-form" class="space-y-4">
-        <div><label for="goal-title" class="block text-sm font-medium text-gray-300">Título da Meta</label><input type="text" id="goal-title" required placeholder="Ex: Viagem para a praia" class="mt-1 w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary"></div>
-        <div><label for="goal-value" class="block text-sm font-medium text-gray-300">Valor Total (R$)</label><input type="number" id="goal-value" required step="0.01" placeholder="10000.00" class="mt-1 w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary"></div>
-        <div><label for="goal-date" class="block text-sm font-medium text-gray-300">Data Limite (Opcional)</label><input type="date" id="goal-date" class="mt-1 w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary"></div>
+      <h3 id="goal-form-title" class="text-xl font-bold text-white mb-4"></h3>
+      <form id="goal-form" class="space-y-4">
+        <input type="hidden" id="goal-id">
+        <div><label for="goal-title" class="block text-sm font-medium text-gray-300">Título</label><input type="text" id="goal-title" required class="mt-1 w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary"></div>
+        <div><label for="goal-value" class="block text-sm font-medium text-gray-300">Valor Total (R$)</label><input type="number" id="goal-value" required step="0.01" class="mt-1 w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary"></div>
+        <div><label for="goal-date" class="block text-sm font-medium text-gray-300">Data Limite</label><input type="date" id="goal-date" class="mt-1 w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary"></div>
         <div id="goal-error-message" class="hidden text-red-400 text-sm"></div>
-        <div class="flex justify-end space-x-4 pt-4"><button type="button" id="cancel-goal-button" class="py-2 px-4 text-gray-300 hover:text-white">Cancelar</button><button type="submit" class="py-2 px-6 bg-primary hover:bg-primary-dark rounded-lg font-medium text-white">Guardar Meta</button></div>
+        <div class="flex justify-end space-x-4 pt-4"><button type="button" id="cancel-goal-button" class="py-2 px-4 text-gray-300 hover:text-white">Cancelar</button><button type="submit" class="py-2 px-6 bg-primary hover:bg-primary-dark rounded-lg font-medium text-white">Guardar</button></div>
       </form>
     </div>
   </div>
 
+  <!-- Modal para Adicionar Fundos -->
+  <div id="add-funds-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
+    <div class="bg-surface rounded-xl shadow-lg w-full max-w-md p-6">
+      <h3 class="text-xl font-bold text-white mb-4">Adicionar Fundos à Meta</h3>
+      <form id="add-funds-form" class="space-y-4">
+        <div>
+          <label for="funds-amount" class="block text-sm font-medium text-gray-300">Valor a Adicionar (R$)</label>
+          <input type="number" id="funds-amount" required step="0.01" placeholder="100.00" class="mt-1 w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary">
+        </div>
+        <div id="funds-error-message" class="hidden text-red-400 text-sm"></div>
+        <div class="flex justify-end space-x-4 pt-4">
+          <button type="button" id="cancel-funds-button" class="py-2 px-4 text-gray-300 hover:text-white">Cancelar</button>
+          <button type="submit" class="py-2 px-6 bg-primary hover:bg-primary-dark rounded-lg font-medium text-white">Guardar Dinheiro</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal para Retirar Fundos -->
+  <div id="withdraw-funds-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
+    <div class="bg-surface rounded-xl shadow-lg w-full max-w-md p-6">
+      <h3 class="text-xl font-bold text-white mb-4">Retirar Fundos da Meta</h3>
+      <form id="withdraw-funds-form" class="space-y-4">
+        <input type="hidden" id="withdraw-goal-id">
+        <div><label for="withdraw-amount" class="block text-sm font-medium text-gray-300">Valor a Retirar (R$)</label><input type="number" id="withdraw-amount" required step="0.01" class="mt-1 w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary"></div>
+        <div id="withdraw-error-message" class="hidden text-red-400 text-sm"></div>
+        <div class="flex justify-end space-x-4 pt-4"><button type="button" id="cancel-withdraw-button" class="py-2 px-4 text-gray-300 hover:text-white">Cancelar</button><button type="submit" class="py-2 px-6 bg-primary hover:bg-primary-dark rounded-lg font-medium text-white">Confirmar Retirada</button></div>
+      </form>
+    </div>
+  </div>
+
+  <script src="../../scripts/dashboard.js" defer></script>
   <script>
     const menuButton = document.getElementById('menu-button');
     const menuCard = document.getElementById('menu-card');
     menuButton.addEventListener('click', (e) => { e.stopPropagation(); menuCard.classList.toggle('hidden'); });
     window.addEventListener('click', (e) => { if (!menuCard.classList.contains('hidden')) { menuCard.classList.add('hidden'); } });
   </script>
-  <script src="../../scripts/dashboard.js" defer></script>
 </body>
 </html>
