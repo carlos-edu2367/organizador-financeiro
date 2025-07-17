@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from . import models
 from .database import engine
-from .routers import auth, users # Importa o novo router
+from .routers import auth, users, groups # Importa o novo router
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -17,7 +17,6 @@ origins = [
     "http://localhost",
     "http://localhost:8000",
     "http://127.0.0.1:5500", 
-    # Adicione aqui o endereço do seu frontend quando for para produção.
 ]
 
 app.add_middleware(
@@ -30,7 +29,8 @@ app.add_middleware(
 
 # Inclui as rotas na aplicação principal.
 app.include_router(auth.router)
-app.include_router(users.router) # Adiciona o novo router de utilizadores
+app.include_router(users.router)
+app.include_router(groups.router) # Adiciona o novo router de grupos
 
 
 @app.get("/")

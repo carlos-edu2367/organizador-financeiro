@@ -29,11 +29,14 @@ class User(UserBase):
     class Config:
         from_attributes = True
 
-class UserWithPlan(User):
+# CORREÇÃO: Esta classe estava em falta.
+# Schema para a resposta de /users/me, que inclui o plano e o ID do grupo.
+class UserSessionData(User):
     plano: str
+    grupo_id: Optional[uuid.UUID] = None
 
 # ==================
-# Schemas para o Dashboard (NOVOS)
+# Schemas para o Dashboard
 # ==================
 
 class Movimentacao(BaseModel):
@@ -76,5 +79,3 @@ class DashboardData(BaseModel):
     membros: List[GrupoMembro]
     movimentacoes_recentes: List[Movimentacao]
     meta_ativa: Optional[Meta] = None
-    # Futuramente, podemos adicionar conquistas, resumo mensal, etc.
-

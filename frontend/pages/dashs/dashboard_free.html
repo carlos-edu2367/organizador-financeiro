@@ -37,18 +37,14 @@
   <header class="bg-surface p-4 shadow-md sticky top-0 z-20">
     <div class="container mx-auto flex justify-between items-center">
       <a href="#" class="flex items-center space-x-3">
-        <svg class="drop-shadow-glow-primary" width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M11 19C15.4183 19 19 15.4183 19 11C19 6.58172 15.4183 3 11 3C6.58172 3 3 6.58172 3 11C3 15.4183 6.58172 19 11 19Z" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M21 21L16.65 16.65" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M9 11.5L10.5 13L13.5 10" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
+        <svg class="drop-shadow-glow-primary" width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11 19C15.4183 19 19 15.4183 19 11C19 6.58172 15.4183 3 11 3C6.58172 3 3 6.58172 3 11C3 15.4183 6.58172 19 11 19Z" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 21L16.65 16.65" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 11.5L10.5 13L13.5 10" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <span class="text-2xl font-bold text-white">Clarify</span>
       </a>
       <div class="flex items-center space-x-4">
-        <span class="hidden sm:block text-gray-300">Olá, Ana!</span>
+        <span id="user-name" class="hidden sm:block text-gray-300">Olá!</span>
         <div class="relative">
           <button id="menu-button" class="p-2 rounded-full hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg></button>
-          <div id="menu-card" class="hidden absolute right-0 mt-2 w-48 bg-surface rounded-lg shadow-xl py-2 z-30"><a href="#" class="block px-4 py-2 text-sm text-gray-300 hover:bg-primary hover:text-white">Minha Conta</a><a href="#" class="block px-4 py-2 text-sm text-gray-300 hover:bg-primary hover:text-white">Meu Grupo</a><div class="border-t border-gray-700 my-1"></div><a href="./login_page.html" class="block px-4 py-2 text-sm text-gray-300 hover:bg-primary hover:text-white">Sair</a></div>
+          <div id="menu-card" class="hidden absolute right-0 mt-2 w-48 bg-surface rounded-lg shadow-xl py-2 z-30"><a href="#" class="block px-4 py-2 text-sm text-gray-300 hover:bg-primary hover:text-white">Minha Conta</a><a href="#" class="block px-4 py-2 text-sm text-gray-300 hover:bg-primary hover:text-white">Meu Grupo</a><div class="border-t border-gray-700 my-1"></div><a href="#" id="logout-button" class="block px-4 py-2 text-sm text-gray-300 hover:bg-primary hover:text-white">Sair</a></div>
         </div>
       </div>
     </div>
@@ -60,47 +56,46 @@
 
         <!-- Coluna Esquerda: Dados Principais -->
         <div class="lg:col-span-2 space-y-8 order-1">
-            <!-- Situação Financeira com Mascote -->
             <div class="text-center">
               <img src="../../assets/mascote_feliz.png" alt="Mascote Clarify Feliz" class="mx-auto w-28 h-28 mb-4">
               <h2 class="text-2xl font-bold text-gray-200">Situação Financeira: Estável</h2>
-              <p class="text-gray-400 max-w-md mx-auto">Ótimo trabalho! Seus gastos estão controlados e seus investimentos estão crescendo.</p>
+              <p class="text-gray-400 max-w-md mx-auto">Ótimo trabalho! Os seus gastos estão controlados e os seus investimentos estão a crescer.</p>
             </div>
 
-            <!-- Resumo Mensal e Investimentos -->
             <div class="bg-surface p-6 rounded-xl shadow-lg">
               <h3 class="text-xl font-bold mb-6 text-gray-200">Resumo Mensal</h3>
-              <div class="flex justify-around items-end h-64 space-x-2 sm:space-x-4">
-                <!-- Gráfico de Barras -->
-                <div class="flex flex-col items-center w-1/3"><div class="flex items-end h-full w-full space-x-1"><div class="bg-expense w-1/3 rounded-t-lg hover:opacity-80 transition-opacity" style="height: 60%" title="Gastos: R$ 1200"></div><div class="bg-investment w-1/3 rounded-t-lg hover:opacity-80 transition-opacity" style="height: 30%" title="Ganhos: R$ 600"></div><div class="bg-free w-1/3 rounded-t-lg hover:opacity-80 transition-opacity" style="height: 10%" title="Livre: R$ 200"></div></div><span class="mt-2 text-sm text-gray-400">Agosto</span></div>
-                <div class="flex flex-col items-center w-1/3"><div class="flex items-end h-full w-full space-x-1"><div class="bg-expense w-1/3 rounded-t-lg hover:opacity-80 transition-opacity" style="height: 40%" title="Gastos: R$ 800"></div><div class="bg-investment w-1/3 rounded-t-lg hover:opacity-80 transition-opacity" style="height: 50%" title="Ganhos: R$ 1000"></div><div class="bg-free w-1/3 rounded-t-lg hover:opacity-80 transition-opacity" style="height: 10%" title="Livre: R$ 200"></div></div><span class="mt-2 text-sm text-gray-400">Setembro</span></div>
-                <div class="flex flex-col items-center w-1/3"><div class="flex items-end h-full w-full space-x-1"><div class="bg-expense w-1/3 rounded-t-lg hover:opacity-80 transition-opacity" style="height: 75%" title="Gastos: R$ 1500"></div><div class="bg-investment w-1/3 rounded-t-lg hover:opacity-80 transition-opacity" style="height: 20%" title="Ganhos: R$ 400"></div><div class="bg-free w-1/3 rounded-t-lg hover:opacity-80 transition-opacity" style="height: 5%" title="Livre: R$ 100"></div></div><span class="mt-2 text-sm text-gray-400">Outubro</span></div>
-              </div>
+              <div class="flex justify-around items-end h-64 space-x-2 sm:space-x-4"><!-- Gráfico de Barras --></div>
               <div class="mt-6 flex justify-center space-x-6 text-sm"><div class="flex items-center"><span class="w-3 h-3 rounded-full bg-expense mr-2"></span>Gastos</div><div class="flex items-center"><span class="w-3 h-3 rounded-full bg-investment mr-2"></span>Ganhos</div><div class="flex items-center"><span class="w-3 h-3 rounded-full bg-free mr-2"></span>Livre</div></div>
-              <!-- Cards de Investimento -->
               <div class="mt-8 pt-6 border-t border-gray-700 grid grid-cols-1 sm:grid-cols-2 gap-4"><div class="bg-background p-4 rounded-lg"><h4 class="text-sm font-medium text-gray-400">Total Investido</h4><p class="text-2xl font-bold text-investment">R$ 1.600,00</p><p class="text-xs text-gray-500">Soma de todos os aportes do grupo.</p></div><div class="bg-background p-4 rounded-lg"><h4 class="text-sm font-medium text-gray-400">Juros Estimados (Mês)</h4><p class="text-2xl font-bold text-investment">+ R$ 16,00</p><p class="text-xs text-gray-500">Estimativa de 1% sobre o total.</p></div></div>
             </div>
 
-            <!-- Histórico de Transações -->
             <div class="bg-surface p-6 rounded-xl shadow-lg">
               <div class="flex justify-between items-center mb-4"><h3 class="text-xl font-bold text-gray-200">Histórico (Últimos 30 dias)</h3><a href="#" class="text-sm font-medium text-primary-light hover:underline flex items-center">Ver histórico completo <span class="ml-2 text-xs bg-gold/20 text-gold font-bold py-0.5 px-2 rounded-full">💎 PREMIUM</span></a></div>
-              <div class="overflow-x-auto"><table class="w-full text-left"><thead><tr class="border-b border-gray-700"><th class="py-2 px-2">Título</th><th class="py-2 px-2">Valor</th><th class="py-2 px-2">Responsável</th><th class="py-2 px-2">Data</th></tr></thead><tbody><tr class="border-b border-gray-800 hover:bg-gray-800/50"><td class="py-3 px-2">Recebimento Freelance</td><td class="py-3 px-2 text-investment">+ R$ 200,00</td><td class="py-3 px-2">Ana</td><td class="py-3 px-2">16/10/2025</td></tr><tr class="border-b border-gray-800 hover:bg-gray-800/50"><td class="py-3 px-2">Supermercado</td><td class="py-3 px-2 text-expense">- R$ 450,75</td><td class="py-3 px-2">Ana</td><td class="py-3 px-2">15/10/2025</td></tr></tbody></table></div>
+              <div class="overflow-x-auto"><table class="w-full text-left"><thead><tr class="border-b border-gray-700"><th class="py-2 px-2">Título</th><th class="py-2 px-2">Valor</th><th class="py-2 px-2">Responsável</th><th class="py-2 px-2">Data</th></tr></thead><tbody id="transactions-table-body"></tbody></table></div>
             </div>
         </div>
 
         <!-- Coluna Direita: Ações e Motivação -->
         <div class="space-y-8 order-2">
-            <!-- Adicionar Transação (IA) -->
-            <div class="bg-surface p-6 rounded-xl shadow-lg"><h3 class="text-xl font-bold mb-4 text-gray-200">Adicionar Transação</h3><p class="text-sm text-gray-400 mb-4">Descreva sua movimentação. Nossa IA fará o resto!</p><textarea placeholder="Ex: 'Recebi R$200 de um freela' ou 'gastei R$80 no mercado'" class="w-full h-24 px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary"></textarea><div class="flex space-x-2 mt-4"><button class="w-full py-2 bg-primary hover:bg-primary-dark transition rounded-lg font-medium text-white">Analisar</button><button class="py-2 px-4 bg-gray-600 hover:bg-gray-700 transition rounded-lg font-medium text-white" title="Gravar áudio">🎙️</button></div></div>
+            <div class="bg-surface p-6 rounded-xl shadow-lg"><h3 class="text-xl font-bold mb-4 text-gray-200">Adicionar Transação</h3><p class="text-sm text-gray-400 mb-4">Descreva a sua movimentação. A nossa IA fará o resto!</p><textarea placeholder="Ex: 'Recebi R$200 de um freela' ou 'gastei R$80 no mercado'" class="w-full h-24 px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary"></textarea><div class="flex space-x-2 mt-4"><button class="w-full py-2 bg-primary hover:bg-primary-dark transition rounded-lg font-medium text-white">Analisar</button><button class="py-2 px-4 bg-gray-600 hover:bg-gray-700 transition rounded-lg font-medium text-white" title="Gravar áudio">🎙️</button></div></div>
 
-            <!-- Meta Financeira do Grupo -->
-            <div class="bg-surface p-6 rounded-xl shadow-lg"><h3 class="text-xl font-bold mb-4 text-gray-200">Meta do Grupo</h3><p class="text-sm font-medium text-primary-light">Viagem de Fim de Ano</p><div class="mt-2"><div class="flex justify-between text-sm text-gray-300 mb-1"><span>Progresso</span><span>50%</span></div><div class="w-full bg-background rounded-full h-2.5"><div class="bg-primary h-2.5 rounded-full" style="width: 50%"></div></div><p class="text-right text-xs text-gray-400 mt-1">R$ 5.000 / R$ 10.000</p></div><button disabled class="w-full text-center mt-4 py-2 border-2 border-dashed border-gray-600 text-gray-500 rounded-lg cursor-not-allowed">Criar nova meta 💎</button></div>
+            <div class="bg-surface p-6 rounded-xl shadow-lg">
+                <h3 class="text-xl font-bold mb-4 text-gray-200">Meta do Grupo</h3>
+                <div id="active-goal-container">
+                    <!-- O conteúdo da meta será inserido aqui pelo JavaScript -->
+                </div>
+                <button disabled class="w-full text-center mt-4 py-2 border-2 border-dashed border-gray-600 text-gray-500 rounded-lg cursor-not-allowed">Criar nova meta 💎</button>
+            </div>
 
-            <!-- Gamificação / Conquistas -->
-            <div class="bg-surface p-6 rounded-xl shadow-lg"><h3 class="text-xl font-bold mb-4 text-gray-200">Nossas Conquistas</h3><div class="grid grid-cols-2 gap-4 text-center"><div class="flex flex-col items-center p-2 rounded-lg bg-background"><span class="text-4xl">🟤</span><p class="text-sm font-medium mt-1">Mês de Bronze</p><p class="text-xs text-gray-400">1º mês positivo</p></div><div class="flex flex-col items-center p-2 rounded-lg bg-background"><span class="text-4xl filter grayscale">🥈</span><p class="text-sm font-medium mt-1 text-gray-500">Economia de Prata</p><p class="text-xs text-gray-500">3 meses de economia</p></div></div></div>
+            <div class="bg-surface p-6 rounded-xl shadow-lg"><h3 class="text-xl font-bold mb-4 text-gray-200">As Nossas Conquistas</h3><div class="grid grid-cols-2 gap-4 text-center"><div class="flex flex-col items-center p-2 rounded-lg bg-background"><span class="text-4xl">🟤</span><p class="text-sm font-medium mt-1">Mês de Bronze</p><p class="text-xs text-gray-400">1º mês positivo</p></div><div class="flex flex-col items-center p-2 rounded-lg bg-background"><span class="text-4xl filter grayscale">🥈</span><p class="text-sm font-medium mt-1 text-gray-500">Economia de Prata</p><p class="text-xs text-gray-500">3 meses de economia</p></div></div></div>
 
-            <!-- Gerenciamento do Grupo -->
-            <div class="bg-surface p-6 rounded-xl shadow-lg"><h3 class="text-xl font-bold mb-4 text-gray-200">Meu Grupo (2/2)</h3><div class="space-y-3"><div class="flex items-center justify-between"><div class="flex items-center"><div class="w-10 h-10 rounded-full bg-blue-400 flex items-center justify-center font-bold text-black mr-3">A</div><span>Ana (Você)</span></div></div><div class="flex items-center justify-between"><div class="flex items-center"><div class="w-10 h-10 rounded-full bg-purple-400 flex items-center justify-center font-bold text-black mr-3">J</div><span>Carlos</span></div></div></div><div class="mt-6 p-4 bg-background rounded-lg text-center"><p class="text-sm text-gray-300">Adicione mais membros e tenha relatórios avançados.</p><button class="w-full mt-3 py-2 bg-gold/80 hover:bg-gold text-black rounded-lg font-bold transition">Fazer Upgrade para Premium 💎</button></div></div>
+            <div class="bg-surface p-6 rounded-xl shadow-lg">
+                <h3 id="group-name" class="text-xl font-bold mb-4 text-gray-200">O Meu Grupo (2/2)</h3>
+                <div id="members-list" class="space-y-3">
+                    <!-- A lista de membros será inserida aqui pelo JavaScript -->
+                </div>
+                <div class="mt-6 p-4 bg-background rounded-lg text-center"><p class="text-sm text-gray-300">Adicione mais membros e tenha relatórios avançados.</p><button class="w-full mt-3 py-2 bg-gold/80 hover:bg-gold text-black rounded-lg font-bold transition">Fazer Upgrade para Premium 💎</button></div>
+            </div>
         </div>
     </div>
   </main>
@@ -111,6 +106,7 @@
     menuButton.addEventListener('click', (e) => { e.stopPropagation(); menuCard.classList.toggle('hidden'); });
     window.addEventListener('click', (e) => { if (!menuCard.classList.contains('hidden')) { menuCard.classList.add('hidden'); } });
   </script>
-
+  <!-- CORREÇÃO: Conecta o ficheiro JavaScript ao HTML -->
+  <script src="../../scripts/dashboard.js" defer></script>
 </body>
 </html>
