@@ -3,8 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from . import models
 from .database import engine
-# (NOVO) Importa o novo router de tarefas
-from .routers import auth, users, groups, transactions, tasks
+# (ALTERADO) Garante que todos os routers, incluindo o da IA, são importados.
+from .routers import auth, users, groups, transactions, tasks, ai
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -33,8 +33,9 @@ app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(groups.router)
 app.include_router(transactions.router)
-# (NOVO) Adiciona o router de tarefas
 app.include_router(tasks.router)
+# (NOVO) Adiciona o router de IA à aplicação.
+app.include_router(ai.router)
 
 
 @app.get("/")

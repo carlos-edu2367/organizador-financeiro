@@ -14,7 +14,6 @@ class TipoMedalhaEnum(str, enum.Enum):
     bronze = "Bronze"
     prata = "Prata"
     ouro = "Ouro"
-    # CORREÇÃO: Havia um 'a' extra no final da linha.
     platina = "Platina"
     diamante = "Diamante"
 
@@ -48,8 +47,6 @@ class Grupo(Base):
     nome = Column(String(100), nullable=False)
     plano = Column(String(20), nullable=False, default='gratuito')
     criado_em = Column(DateTime(timezone=True), server_default=func.now())
-    
-    # (NOVO) Coluna para rastrear a medalha de Prata.
     meses_positivos_consecutivos = Column(Integer, nullable=False, default=0)
 
     associacoes_membros = relationship("GrupoMembro", back_populates="grupo", cascade="all, delete-orphan")
@@ -58,6 +55,8 @@ class Grupo(Base):
     metas = relationship("Meta", back_populates="grupo", cascade="all, delete-orphan")
     convites = relationship("Convite", back_populates="grupo", cascade="all, delete-orphan")
     conquistas = relationship("Conquista", back_populates="grupo", cascade="all, delete-orphan", order_by="desc(Conquista.data_conquista)")
+    
+    ai_usages = relationship("AIUsage", back_populates="grupo", cascade="all, delete-orphan")
     
     @property
     def membros(self):
@@ -116,10 +115,17 @@ class Convite(Base):
 
 class Conquista(Base):
     __tablename__ = 'conquistas'
-
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     grupo_id = Column(UUID(as_uuid=True), ForeignKey('grupos.id', ondelete="CASCADE"), nullable=False)
     tipo_medalha = Column(SQLAlchemyEnum(TipoMedalhaEnum, name="tipomedalhaenum"), nullable=False)
     descricao = Column(Text, nullable=False)
     data_conquista = Column(DateTime(timezone=True), server_default=func.now())
     grupo = relationship("Grupo", back_populates="conquistas")
+
+class AIUsage(Base):
+    __tablename__ = 'ai_usage'
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    grupo_id = Column(UUID(as_uuid=True), ForeignKey('grupos.id', ondelete="CASCADE"), nullable=False)
+    timestamp = Column(DateTime(timezone=True), server_default=func.now())
+
+    grupo = relationship("Grupo", back_populates="ai_usages")

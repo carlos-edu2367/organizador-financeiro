@@ -34,7 +34,7 @@ if (loginForm) {
 }
 
 /**
- * (NOVO) Tenta fazer o login com lógica de nova tentativa.
+ * (CORRIGIDO) Tenta fazer o login com lógica de nova tentativa aprimorada.
  * @param {URLSearchParams} formData - Os dados do formulário de login.
  * @param {number} retries - O número de tentativas restantes.
  */
@@ -44,24 +44,38 @@ async function attemptLogin(formData, retries = 3) {
             method: 'POST',
             body: formData,
         });
+
+        // Trata erros de aplicação (como senha errada) separadamente.
+        if (response.status === 401) {
+            const data = await response.json();
+            showMessage(data.detail || 'E-mail ou senha incorretos.');
+            return; // Para a execução, não tenta novamente.
+        }
+
+        // Se for outro erro HTTP, trata como um erro de servidor.
+        if (!response.ok) {
+            const data = await response.json().catch(() => ({}));
+            throw new Error(data.detail || `Erro do servidor: ${response.status}`);
+        }
+
         const data = await response.json();
-        if (!response.ok) throw new Error(data.detail || 'Erro ao fazer login.');
-        
         localStorage.setItem('accessToken', data.access_token);
         await fetchUserSessionAndRedirect();
-    } catch (error) {
+
+    } catch (error) { // Agora, o catch lida principalmente com erros de rede.
         if (retries > 0) {
             console.warn(`Falha no login, tentando novamente em 3 segundos... (${retries} tentativas restantes)`);
             showMessage('Conexão instável. Tentando reconectar...', true);
             await new Promise(res => setTimeout(res, 3000));
             await attemptLogin(formData, retries - 1);
         } else {
-            showMessage(error.message);
+            const finalMessage = error.message.includes('Failed to fetch') ? 'Não foi possível conectar ao servidor.' : error.message;
+            showMessage(finalMessage);
         }
     }
 }
 
-async function fetchUserSessionAndRedirect(retries = 3) {
+async function fetchUserSessionAndRedirect() {
     const token = localStorage.getItem('accessToken');
     if (!token) return;
 
@@ -90,15 +104,8 @@ async function fetchUserSessionAndRedirect(retries = 3) {
             window.location.href = '../dashs/dashboard_free.html';
         }
     } catch (error) {
-         if (retries > 0) {
-            console.warn(`Falha ao buscar sessão, tentando novamente em 3 segundos... (${retries} tentativas restantes)`);
-            showMessage('Verificando sessão...', false);
-            await new Promise(res => setTimeout(res, 3000));
-            await fetchUserSessionAndRedirect(retries - 1);
-        } else {
-            showMessage(error.message);
-            localStorage.removeItem('accessToken');
-        }
+        showMessage(error.message);
+        localStorage.removeItem('accessToken');
     }
 }
 
@@ -115,7 +122,7 @@ if (registerForm) {
 }
 
 /**
- * (NOVO) Tenta registrar um novo usuário com lógica de nova tentativa.
+ * (CORRIGIDO) Tenta registrar um novo usuário com lógica de nova tentativa aprimorada.
  * @param {object} userData - Os dados do usuário.
  * @param {number} retries - O número de tentativas restantes.
  */
@@ -126,8 +133,18 @@ async function attemptRegistration(userData, retries = 3) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(userData),
         });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.detail || 'Erro ao criar conta.');
+
+        // Trata erros de aplicação (como e-mail já existente) separadamente.
+        if (response.status === 400) {
+            const data = await response.json();
+            showMessage(data.detail || 'Erro nos dados fornecidos.');
+            return;
+        }
+        
+        if (!response.ok) {
+            const data = await response.json().catch(() => ({}));
+            throw new Error(data.detail || `Erro do servidor: ${response.status}`);
+        }
 
         showMessage('Conta criada com sucesso! Redirecionando para o login...', false);
         setTimeout(() => { window.location.href = './login_page.html'; }, 2000);
@@ -138,7 +155,8 @@ async function attemptRegistration(userData, retries = 3) {
             await new Promise(res => setTimeout(res, 3000));
             await attemptRegistration(userData, retries - 1);
         } else {
-            showMessage(error.message);
+            const finalMessage = error.message.includes('Failed to fetch') ? 'Não foi possível conectar ao servidor.' : error.message;
+            showMessage(finalMessage);
         }
     }
 }

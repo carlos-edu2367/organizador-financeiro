@@ -66,6 +66,7 @@ class Meta(GoalBase):
 # Schemas para Transações (Movimentações)
 # ==================
 class TransactionBase(BaseModel):
+    """ Schema base para uma transação. """
     tipo: str
     descricao: Optional[str] = None
     valor: Decimal = Field(..., max_digits=10, decimal_places=2, gt=0)
@@ -75,10 +76,15 @@ class TransactionBase(BaseModel):
 class TransactionCreate(TransactionBase):
     pass
 
-class TransactionUpdate(TransactionBase):
-    pass
+class TransactionUpdate(BaseModel):
+    tipo: Optional[str] = None
+    descricao: Optional[str] = None
+    valor: Optional[Decimal] = Field(None, max_digits=10, decimal_places=2, gt=0)
+    data_transacao: Optional[datetime.date] = None
+
 
 class Movimentacao(BaseModel):
+    """ Schema para exibir uma movimentação no histórico. """
     id: uuid.UUID
     tipo: str
     descricao: Optional[str]
@@ -100,6 +106,17 @@ class Conquista(BaseModel):
 
     class Config:
         from_attributes = True
+        
+# ==================
+# Schemas para a IA
+# ==================
+class ParsedTransaction(BaseModel):
+    tipo: str
+    valor: float
+    descricao: str
+
+class ParsedTransactionResponse(BaseModel):
+    transactions: List[ParsedTransaction]
 
 # ==================
 # Schemas para o Grupo e Dashboard
@@ -123,9 +140,11 @@ class DashboardData(BaseModel):
     total_investido: Decimal = Field(default=0.0, max_digits=10, decimal_places=2)
     saldo_total: Decimal = Field(default=0.0, max_digits=10, decimal_places=2)
     conquistas_recentes: List[Conquista] = []
-    # (NOVO) Campos para a lógica do mascote
     ganhos_mes_atual: Decimal = Field(default=0.0, max_digits=10, decimal_places=2)
     gastos_mes_atual: Decimal = Field(default=0.0, max_digits=10, decimal_places=2)
+    # (ALTERADO) Novos campos para a lógica do cronômetro da IA
+    ai_usage_count_today: int = 0
+    ai_first_usage_timestamp_today: Optional[datetime.datetime] = None
 
 
 class InviteLink(BaseModel):

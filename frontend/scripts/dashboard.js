@@ -1,13 +1,13 @@
 const API_URL = 'http://127.0.0.1:8000';
 
-// Variáveis globais para guardar os dados recebidos da API
+// Variáveis globais
 let allGoals = [];
 let groupMembers = [];
 let allTransactions = [];
 let monthlyChart = null;
 let currentUserId = null;
+let aiUsageTimer = null; // Variável para controlar o timer do setInterval
 
-// Mapeia o tipo de medalha para um emoji e uma cor do Tailwind CSS
 const medalInfo = {
     'Bronze':   { emoji: '🥉', color: 'text-bronze' },
     'Prata':    { emoji: '🥈', color: 'text-silver' },
@@ -38,6 +38,10 @@ function setupEventListeners() {
     document.getElementById('invite-button')?.addEventListener('click', handleInviteClick);
     document.getElementById('close-invite-modal')?.addEventListener('click', () => toggleModal('invite-modal', false));
     document.getElementById('copy-invite-link-button')?.addEventListener('click', copyInviteLink);
+    document.getElementById('analyze-ai-button')?.addEventListener('click', handleAITransactionParse);
+    document.getElementById('close-ai-results-modal')?.addEventListener('click', () => toggleModal('ai-results-modal', false));
+    document.getElementById('cancel-ai-results-button')?.addEventListener('click', () => toggleModal('ai-results-modal', false));
+    document.getElementById('save-ai-results-button')?.addEventListener('click', handleSaveAITransactions);
 }
 
 function logout(event) {
@@ -50,10 +54,6 @@ function logout(event) {
 
 // --- LÓGICA DE DADOS (API) ---
 
-/**
- * (ALTERADO) Função principal que busca todos os dados com lógica de nova tentativa.
- * @param {number} retries - O número de tentativas restantes.
- */
 async function fetchDashboardData(retries = 3) {
     const token = localStorage.getItem('accessToken');
     const groupId = localStorage.getItem('activeGroupId');
@@ -64,24 +64,17 @@ async function fetchDashboardData(retries = 3) {
     }
 
     try {
-        const [dashboardResponse, goalsResponse, chartResponse] = await Promise.all([
-            fetch(`${API_URL}/groups/${groupId}/dashboard`, { headers: { 'Authorization': `Bearer ${token}` } }),
-            fetch(`${API_URL}/groups/${groupId}/goals`, { headers: { 'Authorization': `Bearer ${token}` } }),
-            fetch(`${API_URL}/groups/${groupId}/chart_data`, { headers: { 'Authorization': `Bearer ${token}` } })
-        ]);
-
-        if (dashboardResponse.status === 401) {
-            logout({ preventDefault: () => {} });
-            return;
-        }
-
-        if (!dashboardResponse.ok || !goalsResponse.ok || !chartResponse.ok) {
-            // Lança um erro genérico para acionar a lógica de nova tentativa
-            throw new Error('Falha na requisição de dados.');
-        }
-
+        const dashboardResponse = await fetch(`${API_URL}/groups/${groupId}/dashboard`, { headers: { 'Authorization': `Bearer ${token}` } });
+        if (dashboardResponse.status === 401) { logout({ preventDefault: () => {} }); return; }
+        if (!dashboardResponse.ok) throw new Error('Falha ao carregar dados do dashboard.');
         const dashboardData = await dashboardResponse.json();
+
+        const goalsResponse = await fetch(`${API_URL}/groups/${groupId}/goals`, { headers: { 'Authorization': `Bearer ${token}` } });
+        if (!goalsResponse.ok) throw new Error('Falha ao carregar metas.');
         allGoals = await goalsResponse.json();
+
+        const chartResponse = await fetch(`${API_URL}/groups/${groupId}/chart_data`, { headers: { 'Authorization': `Bearer ${token}` } });
+        if (!chartResponse.ok) throw new Error('Falha ao carregar dados do gráfico.');
         const chartData = await chartResponse.json();
         
         groupMembers = dashboardData.membros;
@@ -93,16 +86,11 @@ async function fetchDashboardData(retries = 3) {
     } catch (error) {
         if (retries > 0) {
             console.warn(`Falha na conexão, tentando novamente em 3 segundos... (${retries} tentativas restantes)`);
-            
-            // Exibe uma mensagem para o usuário informando a tentativa de reconexão
             const mainContent = document.querySelector('main');
-            if (mainContent) {
+            if (mainContent && !mainContent.innerHTML.includes('Tentando reconectar')) {
                 mainContent.innerHTML = `<div class="text-center text-amber-400 p-8"><strong>Conexão instável.</strong> Tentando reconectar...</div>`;
             }
-            
-            // Espera 3 segundos
             await new Promise(res => setTimeout(res, 3000));
-            // Tenta novamente com uma tentativa a menos
             await fetchDashboardData(retries - 1);
         } else {
             console.error('Falha ao carregar dados do dashboard após várias tentativas.', error);
@@ -399,14 +387,156 @@ async function handleWithdrawFormSubmit(event) {
 }
 
 
+// --- LÓGICA DA IA ---
+
+async function handleAITransactionParse() {
+    const token = localStorage.getItem('accessToken');
+    const textArea = document.getElementById('ai-textarea');
+    const button = document.getElementById('analyze-ai-button');
+    if (!textArea || !button) return;
+
+    const userText = textArea.value.trim();
+    if (userText.length < 3) {
+        alert("Por favor, digite uma descrição mais longa para a análise.");
+        return;
+    }
+
+    const originalButtonText = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Analisando...';
+    
+    try {
+        const response = await fetch(`${API_URL}/ai/parse-transaction`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: userText })
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+            if (response.status === 429) {
+                alert(data.detail);
+            } else {
+                throw new Error(data.detail || "Não foi possível analisar o texto.");
+            }
+        } else {
+            populateAIResultsModal(data.transactions);
+            textArea.value = '';
+        }
+
+    } catch (error) {
+        alert(`Erro na análise: ${error.message}`);
+    } finally {
+        button.disabled = false;
+        button.innerHTML = originalButtonText;
+        await fetchDashboardData();
+    }
+}
+
+function populateAIResultsModal(transactions) {
+    const container = document.getElementById('ai-results-container');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    if (transactions.length === 0) {
+        container.innerHTML = '<p class="text-center text-gray-400">Nenhuma transação foi encontrada no texto.</p>';
+    } else {
+        transactions.forEach((tx, index) => {
+            const transactionFormHtml = `
+                <div class="ai-transaction-form bg-background p-4 rounded-lg border border-gray-700" data-index="${index}">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-400">Tipo</label>
+                            <select class="ai-form-type mt-1 w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-600 text-white text-sm">
+                                <option value="gasto" ${tx.tipo === 'gasto' ? 'selected' : ''}>Gasto</option>
+                                <option value="ganho" ${tx.tipo === 'ganho' ? 'selected' : ''}>Ganho</option>
+                                <option value="investimento" ${tx.tipo === 'investimento' ? 'selected' : ''}>Investimento</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-400">Valor (R$)</label>
+                            <input type="number" step="0.01" value="${tx.valor.toFixed(2)}" class="ai-form-value mt-1 w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-600 text-white text-sm">
+                        </div>
+                        <div class="md:col-span-3">
+                            <label class="block text-xs font-medium text-gray-400">Descrição</label>
+                            <input type="text" value="${tx.descricao}" class="ai-form-description mt-1 w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-600 text-white text-sm">
+                        </div>
+                    </div>
+                </div>
+            `;
+            container.innerHTML += transactionFormHtml;
+        });
+    }
+    
+    toggleModal('ai-results-modal', true);
+}
+
+async function handleSaveAITransactions() {
+    const token = localStorage.getItem('accessToken');
+    const groupId = localStorage.getItem('activeGroupId');
+    const button = document.getElementById('save-ai-results-button');
+    const forms = document.querySelectorAll('.ai-transaction-form');
+    
+    if (forms.length === 0) {
+        toggleModal('ai-results-modal', false);
+        return;
+    }
+
+    const originalButtonText = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Salvando...';
+
+    const transactionPromises = [];
+    const today = new Date().toISOString().split('T')[0];
+
+    forms.forEach(form => {
+        const transactionData = {
+            tipo: form.querySelector('.ai-form-type').value,
+            valor: parseFloat(form.querySelector('.ai-form-value').value),
+            descricao: form.querySelector('.ai-form-description').value,
+            responsavel_id: currentUserId,
+            data_transacao: today,
+        };
+
+        if (transactionData.valor > 0 && transactionData.descricao) {
+            const promise = fetch(`${API_URL}/transactions/group/${groupId}`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify(transactionData),
+            });
+            transactionPromises.push(promise);
+        }
+    });
+
+    try {
+        const responses = await Promise.all(transactionPromises);
+        for (const response of responses) {
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || "Ocorreu um erro ao salvar uma das transações.");
+            }
+        }
+        
+        toggleModal('ai-results-modal', false);
+        await fetchDashboardData();
+
+    } catch (error) {
+        document.getElementById('ai-error-message').textContent = error.message;
+        document.getElementById('ai-error-message').classList.remove('hidden');
+    } finally {
+        button.disabled = false;
+        button.innerHTML = originalButtonText;
+    }
+}
+
+
 // --- FUNÇÕES DE RENDERIZAÇÃO E UTILITÁRIOS ---
 
 function populateUI(dashboardData, chartData) {
-    // Recarrega o HTML original do main para o caso de ter sido substituído pela mensagem de erro
-    // Esta é uma forma simples de restaurar a UI. Em apps maiores, usaríamos um framework.
     const mainContent = document.querySelector('main');
-    if (!mainContent.classList.contains('container')) {
-        window.location.reload(); // Recarrega a página se a UI estiver corrompida
+    if (mainContent.innerHTML.includes('Tentando reconectar')) {
+        window.location.reload();
         return;
     }
 
@@ -417,6 +547,7 @@ function populateUI(dashboardData, chartData) {
     populateGoalsOnDashboard(dashboardData.plano);
     populateSummaryCards(dashboardData.total_investido, dashboardData.saldo_total);
     populateRecentAchievements(dashboardData.conquistas_recentes);
+    updateAIUsageStatus(dashboardData.plano, dashboardData.ai_usage_count_today, dashboardData.ai_first_usage_timestamp_today);
     renderChart(chartData);
 }
 
@@ -424,19 +555,15 @@ function updateMascot(ganhos, gastos) {
     const mascoteImg = document.getElementById('mascote-img');
     const mascoteTitle = document.getElementById('mascote-title');
     const mascoteText = document.getElementById('mascote-text');
-
     if (!mascoteImg || !mascoteTitle || !mascoteText) return;
-
     const ganhosNum = Number(ganhos);
     const gastosNum = Number(gastos);
-
     let ratio = 0;
     if (ganhosNum > 0) {
         ratio = (gastosNum / ganhosNum) * 100;
     } else if (gastosNum > 0) {
         ratio = 101;
     }
-
     if (ratio >= 100) {
         mascoteImg.src = '../../assets/mascote_desesperado.png';
         mascoteImg.alt = 'Mascote Clarify Desesperado';
@@ -458,14 +585,11 @@ function updateMascot(ganhos, gastos) {
 function populateRecentAchievements(achievements) {
     const container = document.getElementById('achievements-list-container');
     if (!container) return;
-
     container.innerHTML = '';
-
     if (achievements.length === 0) {
         container.innerHTML = '<p class="text-center text-sm text-gray-500">Nenhuma medalha ganha ainda. Continuem assim!</p>';
         return;
     }
-
     achievements.forEach(ach => {
         const info = medalInfo[ach.tipo_medalha] || { emoji: '⭐', color: 'text-white' };
         const achievementEl = document.createElement('div');
@@ -485,22 +609,17 @@ function populateGoalsOnDashboard(plan) {
     const goalContainer = document.getElementById('goals-list-container');
     const addGoalButton = document.getElementById('add-goal-button');
     if (!goalContainer || !addGoalButton) return;
-    
     goalContainer.innerHTML = '';
-
     if (allGoals.length > 0) {
         allGoals.forEach(goal => {
             const percentage = (goal.valor_meta > 0) ? (goal.valor_atual / goal.valor_meta) * 100 : 0;
-            
             let deadlineHtml = '';
             if (goal.data_limite) {
                 const today = new Date();
                 const deadlineDate = new Date(goal.data_limite + 'T00:00:00');
                 today.setHours(0, 0, 0, 0);
-
                 const diffTime = deadlineDate - today;
                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
                 let colorClass = 'text-gray-400';
                 if (diffDays < 0) {
                     colorClass = 'text-red-500';
@@ -511,7 +630,6 @@ function populateGoalsOnDashboard(plan) {
                 } else if (diffDays <= 30) {
                     colorClass = 'text-yellow-300';
                 }
-                
                 const formattedDate = deadlineDate.toLocaleDateString('pt-BR');
                 deadlineHtml = `
                     <div class="flex items-center text-xs mt-2 ${colorClass}">
@@ -520,7 +638,6 @@ function populateGoalsOnDashboard(plan) {
                     </div>
                 `;
             }
-
             const goalEl = document.createElement('div');
             goalEl.className = 'bg-background p-3 rounded-lg';
             goalEl.innerHTML = `
@@ -546,7 +663,6 @@ function populateGoalsOnDashboard(plan) {
     } else {
         goalContainer.innerHTML = '<p class="text-center text-gray-400">Nenhuma meta criada ainda.</p>';
     }
-
     if (plan === 'gratuito' && allGoals.some(g => g.status === 'ativa')) {
         addGoalButton.disabled = true;
         addGoalButton.className = 'w-full text-center mt-4 py-2 border-2 border-dashed border-gray-600 text-gray-500 rounded-lg cursor-not-allowed';
@@ -573,25 +689,20 @@ function populateGroupInfo(groupName, members, plan) {
     const membersListElement = document.getElementById('members-list');
     const inviteButton = document.getElementById('invite-button');
     const upgradeCard = document.getElementById('upgrade-card');
-    
     const limit = (plan === 'premium') ? 4 : 2;
     if (groupNameElement) {
         groupNameElement.textContent = `${groupName} (${members.length}/${limit})`;
     }
-    
     if (membersListElement) {
         membersListElement.innerHTML = '';
         const currentUserIsOwner = members.find(m => m.id === currentUserId)?.papel === 'dono';
-
         members.forEach(member => {
             const memberDiv = document.createElement('div');
             memberDiv.className = 'flex items-center justify-between';
-            
             let removeButtonHtml = '';
             if (currentUserIsOwner && member.papel !== 'dono') {
                 removeButtonHtml = `<button onclick="handleRemoveMember('${member.id}')" class="text-gray-500 hover:text-expense" title="Remover membro"><i class="fas fa-trash"></i></button>`;
             }
-
             memberDiv.innerHTML = `
                 <div class="flex items-center">
                     <div class="w-10 h-10 rounded-full bg-blue-400 flex items-center justify-center font-bold text-black mr-3">${member.nome.charAt(0)}</div>
@@ -602,7 +713,6 @@ function populateGroupInfo(groupName, members, plan) {
             membersListElement.appendChild(memberDiv);
         });
     }
-
     if (inviteButton && upgradeCard) {
         if (plan === 'gratuito' && members.length >= 2) {
             inviteButton.classList.add('hidden');
@@ -617,7 +727,6 @@ function populateGroupInfo(groupName, members, plan) {
 function populateTransactions(transactions) {
     const tableBody = document.getElementById('transactions-table-body');
     if (!tableBody) return;
-
     tableBody.innerHTML = '';
     if (transactions.length === 0) {
         const row = tableBody.insertRow();
@@ -630,7 +739,6 @@ function populateTransactions(transactions) {
     transactions.forEach(tx => {
         const row = tableBody.insertRow();
         row.className = 'border-b border-gray-800 hover:bg-gray-800/50';
-        
         let valorClass = '', valorSignal = '';
         switch (tx.tipo) {
             case 'gasto': valorClass = 'text-expense'; valorSignal = '-'; break;
@@ -638,7 +746,6 @@ function populateTransactions(transactions) {
             case 'investimento': valorClass = 'text-investment'; valorSignal = '';
             default: valorClass = 'text-gray-400';
         }
-        
         row.innerHTML = `
             <td class="py-3 px-2">${tx.descricao || 'N/A'}</td>
             <td class="py-3 px-2 ${valorClass}">${valorSignal} R$ ${Number(tx.valor).toFixed(2)}</td>
@@ -656,7 +763,6 @@ function populateTransactions(transactions) {
 function populateSummaryCards(totalInvestido, saldoTotal) {
     const totalInvestidoEl = document.getElementById('total-investido');
     const saldoTotalEl = document.getElementById('saldo-total');
-
     if (totalInvestidoEl) {
         totalInvestidoEl.textContent = `R$ ${Number(totalInvestido).toFixed(2).replace('.', ',')}`;
     }
@@ -713,5 +819,53 @@ function handleApiError(error) {
     const mainContent = document.querySelector('main');
     if (mainContent) {
         mainContent.innerHTML = `<div class="text-center text-red-400 p-8"><strong>Erro:</strong> ${error.message}</div>`;
+    }
+}
+
+function updateAIUsageStatus(plan, usageCount, firstUsageTimestamp) {
+    const statusEl = document.getElementById('ai-usage-status');
+    const analyzeButton = document.getElementById('analyze-ai-button');
+    const textArea = document.getElementById('ai-textarea');
+    if (!statusEl || !analyzeButton || !textArea) return;
+
+    if (aiUsageTimer) clearInterval(aiUsageTimer);
+
+    if (plan !== 'gratuito') {
+        statusEl.innerHTML = `<span class="text-green-400">Uso da IA ilimitado! 💎</span>`;
+        analyzeButton.disabled = false;
+        textArea.disabled = false;
+        return;
+    }
+
+    const dailyLimit = 2;
+    if (usageCount < dailyLimit) {
+        statusEl.innerHTML = `<span class="text-green-400">Uso diário disponível: ${dailyLimit - usageCount}/${dailyLimit}</span>`;
+        analyzeButton.disabled = false;
+        textArea.disabled = false;
+    } else {
+        const unlockTime = new Date(firstUsageTimestamp).getTime() + 24 * 60 * 60 * 1000;
+        
+        const updateTimer = () => {
+            const now = new Date().getTime();
+            const remainingTime = unlockTime - now;
+
+            if (remainingTime <= 0) {
+                clearInterval(aiUsageTimer);
+                statusEl.innerHTML = `<span class="text-green-400">Uso diário disponível: ${dailyLimit}/${dailyLimit}</span>`;
+                analyzeButton.disabled = false;
+                textArea.disabled = false;
+            } else {
+                const hours = Math.floor((remainingTime % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((remainingTime % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((remainingTime % (1000 * 60)) / 1000);
+                
+                statusEl.innerHTML = `<span>Limite diário atingido. Próximo uso em: <span class="font-bold text-amber-400">${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}</span></span>`;
+                analyzeButton.disabled = true;
+                textArea.disabled = true;
+            }
+        };
+        
+        updateTimer();
+        aiUsageTimer = setInterval(updateTimer, 1000);
     }
 }

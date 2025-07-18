@@ -1,5 +1,6 @@
 import sys
-from sqlalchemy.exc import OperationalError
+from sqlalchemy.exc import OperationalError, ProgrammingError
+from sqlalchemy import text
 
 # Adiciona a pasta raiz do projeto ao path do Python.
 # Isto permite que o script encontre e importe os módulos da pasta 'app'.
@@ -10,19 +11,31 @@ sys.path.append('.')
 from app.database import engine
 from app.models import Base
 
-
-
-
-def drop_tables():
-    """Apaga todas as tabelas definidas nos seus modelos (Base.metadata)."""
-    print("A tentar apagar todas as tabelas...")
+def reset_schema():
+    """
+    Apaga todo o schema 'public' em cascata e o recria.
+    Esta é a forma mais robusta de garantir um reset completo.
+    """
+    print("A tentar apagar o schema 'public' em cascata...")
     try:
-        Base.metadata.drop_all(bind=engine)
-        print("✅ Tabelas apagadas com sucesso.")
-    except OperationalError as e:
-        print(f"⚠️  Não foi possível apagar as tabelas. Pode ser que não existam. Erro: {e}")
+        # Conecta-se à base de dados para executar comandos SQL diretos.
+        with engine.connect() as connection:
+            # Inicia uma transação.
+            trans = connection.begin()
+            try:
+                # Executa os comandos SQL para apagar e recriar o schema.
+                connection.execute(text("DROP SCHEMA public CASCADE;"))
+                connection.execute(text("CREATE SCHEMA public;"))
+                # Confirma a transação.
+                trans.commit()
+                print("✅ Schema 'public' reiniciado com sucesso.")
+            except (OperationalError, ProgrammingError) as e:
+                # Se der erro, desfaz a transação.
+                trans.rollback()
+                print(f"⚠️  Não foi possível reiniciar o schema. Erro: {e}")
+
     except Exception as e:
-        print(f"❌ Ocorreu um erro inesperado ao apagar as tabelas: {e}")
+        print(f"❌ Ocorreu um erro inesperado ao conectar-se à base de dados: {e}")
 
 def create_tables():
     """Cria todas as tabelas de novo, com a estrutura mais recente dos seus modelos."""
@@ -38,16 +51,18 @@ if __name__ == "__main__":
     print("  SCRIPT PARA REINICIAR A BASE DE DADOS CLARIFY   ")
     print("--------------------------------------------------")
     print("\n⚠️  ATENÇÃO: Este script irá apagar TODOS os dados")
-    print("   da sua base de dados (utilizadores, grupos, transações, etc.).")
+    print("   da sua base de dados (usuários, grupos, transações, etc.).")
     print("   Esta ação é IRREVERSÍVEL.\n")
     
     # Pede a confirmação do utilizador para continuar.
-    choice = input("Tem a certeza absoluta que quer continuar? (digite 'sim' para confirmar): ")
+    choice = input("Você tem certeza absoluta que quer continuar? (digite 'sim' para confirmar): ")
     
     if choice.lower() == 'sim':
-        print("\n--- A iniciar processo de reinicialização ---")
-        drop_tables()
+        print("\n--- Iniciando processo de reinicialização ---")
+        # Chama a nova função de reset.
+        reset_schema()
+        # A função de criar tabelas continua a ser necessária para recriá-las no schema limpo.
+        create_tables()
         print("\n🎉 Base de dados reiniciada com sucesso!")
     else:
-        print("\n❌ Operação cancelada pelo utilizador.")
-
+        print("\n❌ Operação cancelada pelo usuário.")
