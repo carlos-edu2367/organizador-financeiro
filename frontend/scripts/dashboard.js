@@ -134,7 +134,7 @@ function copyInviteLink() {
 }
 
 async function handleRemoveMember(memberId) {
-    if (!confirm('Tem a certeza que quer remover este membro do grupo?')) return;
+    if (!confirm('Você tem certeza que quer remover este membro do grupo?')) return;
 
     const token = localStorage.getItem('accessToken');
     const groupId = localStorage.getItem('activeGroupId');
@@ -230,7 +230,7 @@ async function handleTransactionFormSubmit(event) {
 }
 
 async function handleDeleteTransaction(transactionId) {
-    if (!confirm('Tem a certeza que quer apagar esta movimentação?')) return;
+    if (!confirm('Você tem certeza que quer apagar esta movimentação?')) return;
     
     const token = localStorage.getItem('accessToken');
     try {
@@ -306,7 +306,7 @@ async function handleGoalFormSubmit(event) {
 }
 
 async function handleDeleteGoal(goalId) {
-    if (!confirm('Tem a certeza que quer apagar esta meta? Esta ação não pode ser desfeita.')) return;
+    if (!confirm('Você tem certeza que quer apagar esta meta? Esta ação não pode ser desfeita.')) return;
     
     const token = localStorage.getItem('accessToken');
     try {
@@ -397,7 +397,6 @@ function populateUI(dashboardData, chartData) {
     renderChart(chartData);
 }
 
-// (NOVA FUNÇÃO) para a lógica do mascote
 function updateMascot(ganhos, gastos) {
     const mascoteImg = document.getElementById('mascote-img');
     const mascoteTitle = document.getElementById('mascote-title');
@@ -405,7 +404,6 @@ function updateMascot(ganhos, gastos) {
 
     if (!mascoteImg || !mascoteTitle || !mascoteText) return;
 
-    // Converte os valores para número para garantir a segurança dos cálculos
     const ganhosNum = Number(ganhos);
     const gastosNum = Number(gastos);
 
@@ -413,27 +411,24 @@ function updateMascot(ganhos, gastos) {
     if (ganhosNum > 0) {
         ratio = (gastosNum / ganhosNum) * 100;
     } else if (gastosNum > 0) {
-        ratio = 101; // Se não houve ganhos mas houve gastos, a situação é crítica
+        ratio = 101;
     }
 
     if (ratio >= 100) {
-        // Desesperado
         mascoteImg.src = '../../assets/mascote_desesperado.png';
         mascoteImg.alt = 'Mascote Clarify Desesperado';
         mascoteTitle.textContent = 'Situação Financeira: Crítica!';
         mascoteText.textContent = 'Atenção! Os gastos deste mês ultrapassaram os ganhos. É hora de rever o orçamento.';
     } else if (ratio >= 80) {
-        // Neutro
         mascoteImg.src = '../../assets/mascote_neutro.png';
         mascoteImg.alt = 'Mascote Clarify Neutro';
         mascoteTitle.textContent = 'Situação Financeira: Alerta';
-        mascoteText.textContent = 'Cuidado, os gastos estão a aproximar-se dos ganhos. Mantenham o controlo para fechar o mês no verde.';
+        mascoteText.textContent = 'Cuidado, os gastos estão se aproximando dos ganhos. Mantenham o controle para fechar o mês no verde.';
     } else {
-        // Feliz
         mascoteImg.src = '../../assets/mascote_feliz.png';
         mascoteImg.alt = 'Mascote Clarify Feliz';
         mascoteTitle.textContent = 'Situação Financeira: Estável';
-        mascoteText.textContent = 'Ótimo trabalho! Os seus gastos estão controlados e a saúde financeira do grupo está boa.';
+        mascoteText.textContent = 'Ótimo trabalho! Seus gastos estão controlados e a saúde financeira do grupo está boa.';
     }
 }
 
@@ -463,7 +458,6 @@ function populateRecentAchievements(achievements) {
     });
 }
 
-
 function populateGoalsOnDashboard(plan) {
     const goalContainer = document.getElementById('goals-list-container');
     const addGoalButton = document.getElementById('add-goal-button');
@@ -474,6 +468,36 @@ function populateGoalsOnDashboard(plan) {
     if (allGoals.length > 0) {
         allGoals.forEach(goal => {
             const percentage = (goal.valor_meta > 0) ? (goal.valor_atual / goal.valor_meta) * 100 : 0;
+            
+            let deadlineHtml = '';
+            if (goal.data_limite) {
+                const today = new Date();
+                const deadlineDate = new Date(goal.data_limite + 'T00:00:00');
+                today.setHours(0, 0, 0, 0);
+
+                const diffTime = deadlineDate - today;
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                let colorClass = 'text-gray-400';
+                if (diffDays < 0) {
+                    colorClass = 'text-red-500';
+                } else if (diffDays <= 7) {
+                    colorClass = 'text-amber-500';
+                } else if (diffDays <= 14) {
+                    colorClass = 'text-yellow-400';
+                } else if (diffDays <= 30) {
+                    colorClass = 'text-yellow-300';
+                }
+                
+                const formattedDate = deadlineDate.toLocaleDateString('pt-BR');
+                deadlineHtml = `
+                    <div class="flex items-center text-xs mt-2 ${colorClass}">
+                        <i class="fas fa-clock mr-1.5"></i>
+                        <span>${formattedDate}</span>
+                    </div>
+                `;
+            }
+
             const goalEl = document.createElement('div');
             goalEl.className = 'bg-background p-3 rounded-lg';
             goalEl.innerHTML = `
@@ -492,6 +516,7 @@ function populateGoalsOnDashboard(plan) {
                 <div class="w-full bg-gray-700 rounded-full h-2.5 mt-2">
                     <div class="bg-primary h-2.5 rounded-full" style="width: ${percentage.toFixed(2)}%"></div>
                 </div>
+                ${deadlineHtml}
             `;
             goalContainer.appendChild(goalEl);
         });
@@ -575,7 +600,7 @@ function populateTransactions(transactions) {
         const row = tableBody.insertRow();
         const cell = row.insertCell();
         cell.colSpan = 5;
-        cell.textContent = 'Ainda não há transações registadas.';
+        cell.textContent = 'Ainda não há transações registradas.';
         cell.className = 'text-center text-gray-400 py-4';
         return;
     }

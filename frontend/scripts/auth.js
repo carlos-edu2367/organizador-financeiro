@@ -59,8 +59,7 @@ async function fetchUserSessionAndRedirect() {
         if (userData.grupo_id) {
             localStorage.setItem('activeGroupId', userData.grupo_id);
         } else {
-            // Este caso agora é menos provável, mas é bom ter.
-            showMessage('Não foi possível encontrar o seu grupo. Contacte o suporte.');
+            showMessage('Não foi possível encontrar o seu grupo. Contate o suporte.');
             return;
         }
 
@@ -91,7 +90,7 @@ if (registerForm) {
             const data = await response.json();
             if (!response.ok) throw new Error(data.detail || 'Erro ao criar conta.');
 
-            showMessage('Conta criada com sucesso! A redirecionar para o login...', false);
+            showMessage('Conta criada com sucesso! Redirecionando para o login...', false);
             setTimeout(() => { window.location.href = './login_page.html'; }, 2000);
         } catch (error) {
             showMessage(error.message);

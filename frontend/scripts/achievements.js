@@ -5,8 +5,8 @@ const medalInfo = {
     'Bronze':   { emoji: '🥉', color: 'text-bronze' },
     'Prata':    { emoji: '🥈', color: 'text-silver' },
     'Ouro':     { emoji: '🥇', color: 'text-gold' },
-    'Platina':  { emoji: '💎', color: 'text-platinum' }, // Usando um ícone diferente para Platina
-    'Diamante': { emoji: '🏆', color: 'text-diamond' }  // Usando um ícone diferente para Diamante
+    'Platina':  { emoji: '💎', color: 'text-platinum' },
+    'Diamante': { emoji: '🏆', color: 'text-diamond' }
 };
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -45,20 +45,18 @@ async function fetchAllAchievements() {
 
         const achievements = await response.json();
         
-        // Limpa o estado de carregamento
         loadingState.remove();
 
         if (achievements.length === 0) {
             container.innerHTML = `
                 <div class="col-span-full text-center bg-surface p-8 rounded-lg">
-                    <p class="text-gray-400">Seu grupo ainda não ganhou nenhuma medalha.</p>
+                    <p class="text-gray-400">O seu grupo ainda não ganhou nenhuma medalha.</p>
                     <p class="text-gray-500 text-sm mt-2">Continuem a usar o Clarify para começar a colecionar!</p>
                 </div>
             `;
             return;
         }
 
-        // Renderiza cada conquista
         achievements.forEach(achievement => {
             const info = medalInfo[achievement.tipo_medalha] || { emoji: '⭐', color: 'text-white' };
             const achievementCard = document.createElement('div');
