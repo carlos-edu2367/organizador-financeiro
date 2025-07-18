@@ -50,7 +50,11 @@ function logout(event) {
 
 // --- LÓGICA DE DADOS (API) ---
 
-async function fetchDashboardData() {
+/**
+ * (ALTERADO) Função principal que busca todos os dados com lógica de nova tentativa.
+ * @param {number} retries - O número de tentativas restantes.
+ */
+async function fetchDashboardData(retries = 3) {
     const token = localStorage.getItem('accessToken');
     const groupId = localStorage.getItem('activeGroupId');
 
@@ -71,9 +75,10 @@ async function fetchDashboardData() {
             return;
         }
 
-        if (!dashboardResponse.ok) throw new Error('Falha ao carregar dados do dashboard.');
-        if (!goalsResponse.ok) throw new Error('Falha ao carregar metas.');
-        if (!chartResponse.ok) throw new Error('Falha ao carregar dados do gráfico.');
+        if (!dashboardResponse.ok || !goalsResponse.ok || !chartResponse.ok) {
+            // Lança um erro genérico para acionar a lógica de nova tentativa
+            throw new Error('Falha na requisição de dados.');
+        }
 
         const dashboardData = await dashboardResponse.json();
         allGoals = await goalsResponse.json();
@@ -86,7 +91,23 @@ async function fetchDashboardData() {
         populateUI(dashboardData, chartData);
 
     } catch (error) {
-        handleApiError(error);
+        if (retries > 0) {
+            console.warn(`Falha na conexão, tentando novamente em 3 segundos... (${retries} tentativas restantes)`);
+            
+            // Exibe uma mensagem para o usuário informando a tentativa de reconexão
+            const mainContent = document.querySelector('main');
+            if (mainContent) {
+                mainContent.innerHTML = `<div class="text-center text-amber-400 p-8"><strong>Conexão instável.</strong> Tentando reconectar...</div>`;
+            }
+            
+            // Espera 3 segundos
+            await new Promise(res => setTimeout(res, 3000));
+            // Tenta novamente com uma tentativa a menos
+            await fetchDashboardData(retries - 1);
+        } else {
+            console.error('Falha ao carregar dados do dashboard após várias tentativas.', error);
+            handleApiError(new Error('Não foi possível conectar ao servidor. Verifique sua conexão com a internet e tente recarregar a página.'));
+        }
     }
 }
 
@@ -167,15 +188,6 @@ function openTransactionFormModal(transactionId = null) {
     document.getElementById('transaction-id').value = '';
     document.getElementById('transaction-error-message').classList.add('hidden');
 
-    const responsibleSelect = document.getElementById('transaction-responsible');
-    responsibleSelect.innerHTML = '';
-    groupMembers.forEach(member => {
-        const option = document.createElement('option');
-        option.value = member.id;
-        option.textContent = member.nome;
-        responsibleSelect.appendChild(option);
-    });
-
     if (transactionId) {
         const tx = allTransactions.find(t => t.id === transactionId);
         if (tx) {
@@ -184,7 +196,6 @@ function openTransactionFormModal(transactionId = null) {
             document.getElementById('transaction-type').value = tx.tipo;
             document.getElementById('transaction-description').value = tx.descricao || '';
             document.getElementById('transaction-value').value = tx.valor;
-            document.getElementById('transaction-responsible').value = groupMembers.find(m => m.nome === tx.responsavel_nome)?.id;
             document.getElementById('transaction-date').value = new Date(tx.data_transacao).toISOString().split('T')[0];
         }
     } else {
@@ -204,13 +215,17 @@ async function handleTransactionFormSubmit(event) {
         tipo: document.getElementById('transaction-type').value,
         descricao: document.getElementById('transaction-description').value,
         valor: parseFloat(document.getElementById('transaction-value').value),
-        responsavel_id: document.getElementById('transaction-responsible').value,
+        responsavel_id: currentUserId,
         data_transacao: document.getElementById('transaction-date').value,
     };
 
     const isEditing = !!transactionId;
     const url = isEditing ? `${API_URL}/transactions/${transactionId}` : `${API_URL}/transactions/group/${groupId}`;
     const method = isEditing ? 'PUT' : 'POST';
+
+    if (isEditing) {
+        delete transactionData.responsavel_id;
+    }
 
     try {
         const response = await fetch(url, {
@@ -387,6 +402,14 @@ async function handleWithdrawFormSubmit(event) {
 // --- FUNÇÕES DE RENDERIZAÇÃO E UTILITÁRIOS ---
 
 function populateUI(dashboardData, chartData) {
+    // Recarrega o HTML original do main para o caso de ter sido substituído pela mensagem de erro
+    // Esta é uma forma simples de restaurar a UI. Em apps maiores, usaríamos um framework.
+    const mainContent = document.querySelector('main');
+    if (!mainContent.classList.contains('container')) {
+        window.location.reload(); // Recarrega a página se a UI estiver corrompida
+        return;
+    }
+
     updateMascot(dashboardData.ganhos_mes_atual, dashboardData.gastos_mes_atual);
     populateUserInfo(dashboardData.nome_utilizador, dashboardData.plano);
     populateGroupInfo(dashboardData.nome_grupo, dashboardData.membros, dashboardData.plano);
@@ -689,6 +712,6 @@ function handleApiError(error) {
     console.error('Erro de API:', error);
     const mainContent = document.querySelector('main');
     if (mainContent) {
-        mainContent.innerHTML = `<div class="text-center text-red-400 p-8"><strong>Erro:</strong> ${error.message}. Por favor, tente recarregar a página.</div>`;
+        mainContent.innerHTML = `<div class="text-center text-red-400 p-8"><strong>Erro:</strong> ${error.message}</div>`;
     }
 }

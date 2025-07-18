@@ -30,6 +30,26 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- (NOVO) Estilo para a barra de rolagem -->
+  <style>
+    /* Para navegadores baseados em WebKit (Chrome, Safari, Edge) */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f172a; /* Cor de fundo da trilha (background) */
+    }
+    ::-webkit-scrollbar-thumb {
+      background-color: #3b82f6; /* Cor da barra (primary) */
+      border-radius: 10px;
+      border: 2px solid #0f172a; /* Espaçamento ao redor da barra */
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background-color: #2563eb; /* Cor da barra ao passar o mouse (primary-dark) */
+    }
+  </style>
 </head>
 <body class="bg-background text-white font-sans">
 
@@ -54,13 +74,11 @@
   <main class="container mx-auto p-4 lg:p-8">
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div class="lg:col-span-2 space-y-8 order-1">
-            <!-- (ALTERADO) Card do Mascote com IDs -->
             <div class="text-center">
               <img id="mascote-img" src="../../assets/mascote_feliz.png" alt="Mascote Clarify" class="mx-auto w-28 h-28 mb-4">
               <h2 id="mascote-title" class="text-2xl font-bold text-gray-200">Situação Financeira: Estável</h2>
-              <p id="mascote-text" class="text-gray-400 max-w-md mx-auto">Ótimo trabalho! Os seus gastos estão controlados.</p>
+              <p id="mascote-text" class="text-gray-400 max-w-md mx-auto">Ótimo trabalho! Seus gastos estão controlados.</p>
             </div>
-            <!-- Card do Resumo Mensal -->
             <div class="bg-surface p-6 rounded-xl shadow-lg">
               <h3 class="text-xl font-bold mb-6 text-gray-200">Resumo Mensal</h3>
               <div class="h-64 relative"><canvas id="monthly-chart"></canvas></div>
@@ -69,7 +87,6 @@
                   <div class="bg-background p-4 rounded-lg"><h4 class="text-sm font-medium text-gray-400">Saldo Total</h4><p id="saldo-total" class="text-2xl font-bold">R$ 0,00</p></div>
               </div>
             </div>
-            <!-- Card do Histórico -->
             <div class="bg-surface p-6 rounded-xl shadow-lg">
               <div class="flex justify-between items-center mb-4">
                   <h3 class="text-xl font-bold text-gray-200">Histórico (Últimos 30 dias)</h3>
@@ -82,10 +99,9 @@
             </div>
         </div>
         <div class="space-y-8 order-2">
-            <!-- Card de Transação IA -->
             <div class="bg-surface p-6 rounded-xl shadow-lg">
                 <h3 class="text-xl font-bold mb-4 text-gray-200">Adicionar Transação (IA)</h3>
-                <p class="text-sm text-gray-400 mb-4">Descreva a sua movimentação. A nossa IA fará o resto!</p>
+                <p class="text-sm text-gray-400 mb-4">Descreva sua movimentação. Nossa IA fará o resto!</p>
                 <textarea placeholder="Ex: 'Recebi R$200 de um freela' ou 'gastei R$80 no mercado'" class="w-full h-24 px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary"></textarea>
                 <div class="flex space-x-2 mt-4">
                     <button class="w-full py-2 bg-primary hover:bg-primary-dark transition rounded-lg font-medium text-white">Analisar</button>
@@ -94,22 +110,19 @@
                     </button>
                 </div>
             </div>
-            <!-- Card de Metas -->
             <div class="bg-surface p-6 rounded-xl shadow-lg">
                 <h3 class="text-xl font-bold text-gray-200 mb-4">Meta do Grupo</h3>
                 <div id="goals-list-container" class="space-y-4"></div>
                 <button id="add-goal-button" class="w-full text-center mt-4 py-2 bg-primary/80 hover:bg-primary transition text-white rounded-lg">Adicionar Nova Meta</button>
             </div>
-            <!-- Card de Conquistas -->
             <div class="bg-surface p-6 rounded-xl shadow-lg">
                 <h3 class="text-xl font-bold text-gray-200 mb-4">Conquistas Recentes</h3>
                 <div id="achievements-list-container" class="space-y-3">
                 </div>
                 <a href="./achievements.html" class="block w-full text-center mt-4 py-2 bg-primary/80 hover:bg-primary transition text-white rounded-lg">Ver todas as conquistas</a>
             </div>
-            <!-- Card do Grupo -->
             <div class="bg-surface p-6 rounded-xl shadow-lg">
-                <h3 id="group-name" class="text-xl font-bold mb-4 text-gray-200">O Meu Grupo (0/2)</h3>
+                <h3 id="group-name" class="text-xl font-bold mb-4 text-gray-200">Meu Grupo (0/2)</h3>
                 <div id="members-list" class="space-y-3"></div>
                 <div class="mt-6">
                     <button id="invite-button" class="w-full py-2 bg-primary/80 hover:bg-primary transition rounded-lg font-medium text-white">
@@ -132,7 +145,7 @@
             <h3 class="text-xl font-bold text-white">Link de Convite</h3>
             <button id="close-invite-modal" class="text-gray-400 hover:text-white text-2xl font-bold">&times;</button>
         </div>
-        <p class="text-gray-300 text-sm mb-3">Partilhe este link para convidar alguém para o seu grupo. O link só pode ser usado uma vez.</p>
+        <p class="text-gray-300 text-sm mb-3">Compartilhe este link para convidar alguém para o seu grupo. O link só pode ser usado uma vez.</p>
         <div class="flex space-x-2">
             <input id="invite-link-input" type="text" readonly class="flex-grow px-4 py-2 rounded-lg bg-background border border-gray-700 text-gray-300">
             <button id="copy-invite-link-button" class="py-2 px-4 bg-primary hover:bg-primary-dark transition rounded-lg font-medium text-white" title="Copiar link">
@@ -150,10 +163,9 @@
         <div><label for="transaction-type" class="block text-sm font-medium text-gray-300">Tipo</label><select id="transaction-type" required class="mt-1 w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary"><option value="gasto">Gasto</option><option value="ganho">Ganho</option><option value="investimento">Investimento</option></select></div>
         <div><label for="transaction-description" class="block text-sm font-medium text-gray-300">Descrição</label><input type="text" id="transaction-description" required class="mt-1 w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary"></div>
         <div><label for="transaction-value" class="block text-sm font-medium text-gray-300">Valor (R$)</label><input type="number" id="transaction-value" required step="0.01" class="mt-1 w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary"></div>
-        <div><label for="transaction-responsible" class="block text-sm font-medium text-gray-300">Responsável</label><select id="transaction-responsible" required class="mt-1 w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary"></select></div>
         <div><label for="transaction-date" class="block text-sm font-medium text-gray-300">Data</label><input type="date" id="transaction-date" required class="mt-1 w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary"></div>
         <div id="transaction-error-message" class="hidden text-red-400 text-sm"></div>
-        <div class="flex justify-end space-x-4 pt-4"><button type="button" id="cancel-transaction-button" class="py-2 px-4 text-gray-300 hover:text-white">Cancelar</button><button type="submit" class="py-2 px-6 bg-primary hover:bg-primary-dark rounded-lg font-medium text-white">Guardar</button></div>
+        <div class="flex justify-end space-x-4 pt-4"><button type="button" id="cancel-transaction-button" class="py-2 px-4 text-gray-300 hover:text-white">Cancelar</button><button type="submit" class="py-2 px-6 bg-primary hover:bg-primary-dark rounded-lg font-medium text-white">Salvar</button></div>
       </form>
     </div>
   </div>
@@ -166,7 +178,7 @@
         <div><label for="goal-value" class="block text-sm font-medium text-gray-300">Valor Total (R$)</label><input type="number" id="goal-value" required step="0.01" class="mt-1 w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary"></div>
         <div><label for="goal-date" class="block text-sm font-medium text-gray-300">Data Limite</label><input type="date" id="goal-date" class="mt-1 w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary"></div>
         <div id="goal-error-message" class="hidden text-red-400 text-sm"></div>
-        <div class="flex justify-end space-x-4 pt-4"><button type="button" id="cancel-goal-button" class="py-2 px-4 text-gray-300 hover:text-white">Cancelar</button><button type="submit" class="py-2 px-6 bg-primary hover:bg-primary-dark rounded-lg font-medium text-white">Guardar</button></div>
+        <div class="flex justify-end space-x-4 pt-4"><button type="button" id="cancel-goal-button" class="py-2 px-4 text-gray-300 hover:text-white">Cancelar</button><button type="submit" class="py-2 px-6 bg-primary hover:bg-primary-dark rounded-lg font-medium text-white">Salvar</button></div>
       </form>
     </div>
   </div>
