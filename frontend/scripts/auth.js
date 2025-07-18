@@ -34,7 +34,7 @@ if (loginForm) {
 }
 
 /**
- * (CORRIGIDO) Tenta fazer o login com lógica de nova tentativa aprimorada.
+ * Tenta fazer o login com lógica de nova tentativa aprimorada.
  * @param {URLSearchParams} formData - Os dados do formulário de login.
  * @param {number} retries - O número de tentativas restantes.
  */
@@ -45,14 +45,12 @@ async function attemptLogin(formData, retries = 3) {
             body: formData,
         });
 
-        // Trata erros de aplicação (como senha errada) separadamente.
         if (response.status === 401) {
             const data = await response.json();
             showMessage(data.detail || 'E-mail ou senha incorretos.');
-            return; // Para a execução, não tenta novamente.
+            return;
         }
 
-        // Se for outro erro HTTP, trata como um erro de servidor.
         if (!response.ok) {
             const data = await response.json().catch(() => ({}));
             throw new Error(data.detail || `Erro do servidor: ${response.status}`);
@@ -62,7 +60,7 @@ async function attemptLogin(formData, retries = 3) {
         localStorage.setItem('accessToken', data.access_token);
         await fetchUserSessionAndRedirect();
 
-    } catch (error) { // Agora, o catch lida principalmente com erros de rede.
+    } catch (error) {
         if (retries > 0) {
             console.warn(`Falha no login, tentando novamente em 3 segundos... (${retries} tentativas restantes)`);
             showMessage('Conexão instável. Tentando reconectar...', true);
@@ -115,14 +113,52 @@ if (registerForm) {
         const nome = document.getElementById('nome').value;
         const email = document.getElementById('email').value;
         const senha = document.getElementById('senha').value;
-        const userData = { nome, email, senha };
 
+        // (NOVO) Validação da senha antes de enviar
+        const passwordValidation = validatePassword(senha);
+        if (!passwordValidation.isValid) {
+            showMessage(passwordValidation.message);
+            return;
+        }
+
+        const userData = { nome, email, senha };
         await attemptRegistration(userData);
     });
 }
 
 /**
- * (CORRIGIDO) Tenta registrar um novo usuário com lógica de nova tentativa aprimorada.
+ * (NOVO) Valida a senha de acordo com as regras definidas.
+ * @param {string} password - A senha a ser validada.
+ * @returns {{isValid: boolean, message: string}} - Objeto com o resultado da validação.
+ */
+function validatePassword(password) {
+    if (password.length < 6) {
+        return { isValid: false, message: "A senha deve ter no mínimo 6 caracteres." };
+    }
+    if (!/[a-zA-Z]/.test(password)) {
+        return { isValid: false, message: "A senha deve conter pelo menos uma letra." };
+    }
+    if (!/\d/.test(password)) {
+        return { isValid: false, message: "A senha deve conter pelo menos um número." };
+    }
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+        return { isValid: false, message: "A senha deve conter pelo menos um caractere especial." };
+    }
+    // Verifica números sequenciais (ex: 123, 456)
+    for (let i = 0; i < password.length - 2; i++) {
+        const first = password.charCodeAt(i);
+        if (password.charCodeAt(i + 1) === first + 1 && password.charCodeAt(i + 2) === first + 2) {
+            if (!isNaN(parseInt(password[i]))) { // Garante que são números
+                 return { isValid: false, message: "A senha não pode conter números sequenciais (ex: 123)." };
+            }
+        }
+    }
+    return { isValid: true, message: "Senha válida." };
+}
+
+
+/**
+ * Tenta registrar um novo usuário com lógica de nova tentativa aprimorada.
  * @param {object} userData - Os dados do usuário.
  * @param {number} retries - O número de tentativas restantes.
  */
@@ -134,7 +170,6 @@ async function attemptRegistration(userData, retries = 3) {
             body: JSON.stringify(userData),
         });
 
-        // Trata erros de aplicação (como e-mail já existente) separadamente.
         if (response.status === 400) {
             const data = await response.json();
             showMessage(data.detail || 'Erro nos dados fornecidos.');
