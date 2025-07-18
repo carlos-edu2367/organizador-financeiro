@@ -122,28 +122,26 @@ async function handleInviteClick() {
         toggleModal('invite-modal', true);
 
     } catch (error) {
-        inviteError.textContent = error.message;
-        inviteError.classList.remove('hidden');
-        toggleModal('invite-modal', true);
+        await showCustomAlert('Erro', error.message);
     }
 }
 
-function copyInviteLink() {
+async function copyInviteLink() {
     const inviteLinkInput = document.getElementById('invite-link-input');
     inviteLinkInput.select();
     inviteLinkInput.setSelectionRange(0, 99999);
     try {
-        navigator.clipboard.writeText(inviteLinkInput.value).then(() => {
-            alert('Link copiado para a área de transferência!');
-        });
+        await navigator.clipboard.writeText(inviteLinkInput.value);
+        await showCustomAlert('Copiado!', 'O link de convite foi copiado para a área de transferência.');
     } catch (err) {
         document.execCommand('copy');
-        alert('Link copiado para a área de transferência!');
+        await showCustomAlert('Copiado!', 'O link de convite foi copiado para a área de transferência.');
     }
 }
 
 async function handleRemoveMember(memberId) {
-    if (!confirm('Você tem certeza que quer remover este membro do grupo?')) return;
+    const confirmed = await showCustomAlert('Confirmar Remoção', 'Você tem certeza que quer remover este membro do grupo?', 'confirm');
+    if (!confirmed) return;
 
     const token = localStorage.getItem('accessToken');
     const groupId = localStorage.getItem('activeGroupId');
@@ -162,7 +160,7 @@ async function handleRemoveMember(memberId) {
         await fetchDashboardData();
 
     } catch (error) {
-        alert(`Erro: ${error.message}`);
+        await showCustomAlert('Erro', error.message);
     }
 }
 
@@ -233,7 +231,8 @@ async function handleTransactionFormSubmit(event) {
 }
 
 async function handleDeleteTransaction(transactionId) {
-    if (!confirm('Você tem certeza que quer apagar esta movimentação?')) return;
+    const confirmed = await showCustomAlert('Confirmar Exclusão', 'Você tem certeza que quer apagar esta movimentação?', 'confirm');
+    if (!confirmed) return;
     
     const token = localStorage.getItem('accessToken');
     try {
@@ -247,7 +246,7 @@ async function handleDeleteTransaction(transactionId) {
         }
         await fetchDashboardData();
     } catch (error) {
-        alert(`Erro ao apagar movimentação: ${error.message}`);
+        await showCustomAlert('Erro', `Erro ao apagar movimentação: ${error.message}`);
     }
 }
 
@@ -309,7 +308,8 @@ async function handleGoalFormSubmit(event) {
 }
 
 async function handleDeleteGoal(goalId) {
-    if (!confirm('Você tem certeza que quer apagar esta meta? Esta ação não pode ser desfeita.')) return;
+    const confirmed = await showCustomAlert('Confirmar Exclusão', 'Você tem certeza que quer apagar esta meta? Esta ação não pode ser desfeita.', 'confirm');
+    if (!confirmed) return;
     
     const token = localStorage.getItem('accessToken');
     try {
@@ -323,7 +323,7 @@ async function handleDeleteGoal(goalId) {
         }
         await fetchDashboardData();
     } catch (error) {
-        alert(`Erro ao apagar meta: ${error.message}`);
+        await showCustomAlert('Erro', `Erro ao apagar meta: ${error.message}`);
     }
 }
 
@@ -397,7 +397,7 @@ async function handleAITransactionParse() {
 
     const userText = textArea.value.trim();
     if (userText.length < 3) {
-        alert("Por favor, digite uma descrição mais longa para a análise.");
+        await showCustomAlert('Atenção', "Por favor, digite uma descrição mais longa para a análise.");
         return;
     }
 
@@ -415,7 +415,7 @@ async function handleAITransactionParse() {
         const data = await response.json();
         if (!response.ok) {
             if (response.status === 429) {
-                alert(data.detail);
+                await showCustomAlert('Limite Atingido', data.detail);
             } else {
                 throw new Error(data.detail || "Não foi possível analisar o texto.");
             }
@@ -425,7 +425,7 @@ async function handleAITransactionParse() {
         }
 
     } catch (error) {
-        alert(`Erro na análise: ${error.message}`);
+        await showCustomAlert('Erro na Análise', error.message);
     } finally {
         button.disabled = false;
         button.innerHTML = originalButtonText;
@@ -868,4 +868,60 @@ function updateAIUsageStatus(plan, usageCount, firstUsageTimestamp) {
         updateTimer();
         aiUsageTimer = setInterval(updateTimer, 1000);
     }
+}
+
+// (NOVO) Modal Genérico para Alertas e Confirmações
+function showCustomAlert(title, message, type = 'alert') {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('generic-modal');
+        const modalTitle = document.getElementById('generic-modal-title');
+        const modalText = document.getElementById('generic-modal-text');
+        const modalButtons = document.getElementById('generic-modal-buttons');
+
+        if (!modal || !modalTitle || !modalText || !modalButtons) {
+            if (type === 'confirm') {
+                resolve(confirm(message));
+            } else {
+                alert(message);
+                resolve(true);
+            }
+            return;
+        }
+
+        modalTitle.textContent = title;
+        modalText.textContent = message;
+        modalButtons.innerHTML = '';
+
+        if (type === 'confirm') {
+            const confirmButton = document.createElement('button');
+            confirmButton.className = 'py-2 px-6 bg-primary hover:bg-primary-dark rounded-lg font-medium text-white';
+            confirmButton.textContent = 'Confirmar';
+            confirmButton.onclick = () => {
+                toggleModal('generic-modal', false);
+                resolve(true);
+            };
+
+            const cancelButton = document.createElement('button');
+            cancelButton.className = 'py-2 px-4 text-gray-300 hover:text-white';
+            cancelButton.textContent = 'Cancelar';
+            cancelButton.onclick = () => {
+                toggleModal('generic-modal', false);
+                resolve(false);
+            };
+
+            modalButtons.appendChild(cancelButton);
+            modalButtons.appendChild(confirmButton);
+        } else {
+            const okButton = document.createElement('button');
+            okButton.className = 'py-2 px-6 bg-primary hover:bg-primary-dark rounded-lg font-medium text-white';
+            okButton.textContent = 'OK';
+            okButton.onclick = () => {
+                toggleModal('generic-modal', false);
+                resolve(true);
+            };
+            modalButtons.appendChild(okButton);
+        }
+        
+        toggleModal('generic-modal', true);
+    });
 }

@@ -91,11 +91,7 @@
               <h3 class="text-xl font-bold mb-4 text-gray-200">Adicionar Transação (IA)</h3>
               <p class="text-sm text-gray-400 mb-4">Descreva sua movimentação por texto ou áudio.</p>
               <textarea id="ai-textarea" placeholder="Ex: 'gastei 30 reais de uber e investi 50 reais hoje'" class="w-full h-24 px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary"></textarea>
-              <div class="flex space-x-2 mt-4">
-                <button id="analyze-ai-button" class="w-full py-2 bg-primary hover:bg-primary-dark transition rounded-lg font-medium text-white">Analisar</button>
-                <button class="py-2 px-4 bg-gray-600 hover:bg-gray-700 transition rounded-lg font-medium text-white" title="Gravar áudio"><i class="fa-solid fa-microphone"></i></button>
-                <button class="py-2 px-4 bg-gain hover:opacity-90 transition rounded-lg font-medium text-white" title="Registrar via WhatsApp"><i class="fa-brands fa-whatsapp"></i></button>
-              </div>
+              <div class="flex space-x-2 mt-4"><button id="analyze-ai-button" class="w-full py-2 bg-primary hover:bg-primary-dark transition rounded-lg font-medium text-white">Analisar</button><button class="py-2 px-4 bg-gray-600 hover:bg-gray-700 transition rounded-lg font-medium text-white" title="Gravar áudio"><i class="fa-solid fa-microphone"></i></button><button class="py-2 px-4 bg-gain hover:opacity-90 transition rounded-lg font-medium text-white" title="Registrar via WhatsApp"><i class="fa-brands fa-whatsapp"></i></button></div>
             </div>
             <div class="bg-surface p-6 rounded-xl shadow-lg">
                 <h3 class="text-xl font-bold text-gray-200 mb-4">Nossas Metas</h3>
@@ -151,7 +147,6 @@
       </form>
     </div>
   </div>
-  <!-- (NOVO) Modal para Resultados da IA -->
   <div id="ai-results-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
     <div class="bg-surface rounded-xl shadow-lg w-full max-w-lg p-6">
         <div class="flex justify-between items-center mb-4">
@@ -160,7 +155,6 @@
         </div>
         <p class="text-gray-300 text-sm mb-4">Nossa IA encontrou as seguintes movimentações. Verifique, edite se necessário e salve.</p>
         <div id="ai-results-container" class="space-y-4 max-h-96 overflow-y-auto pr-2">
-            <!-- Os formulários das transações sugeridas serão inseridos aqui -->
         </div>
         <div id="ai-error-message" class="hidden text-red-400 text-sm mt-3"></div>
         <div class="flex justify-end space-x-4 pt-4 mt-4 border-t border-gray-700">
@@ -201,6 +195,17 @@
         <div id="withdraw-error-message" class="hidden text-red-400 text-sm"></div>
         <div class="flex justify-end space-x-4 pt-4"><button type="button" id="cancel-withdraw-button" class="py-2 px-4 text-gray-300 hover:text-white">Cancelar</button><button type="submit" class="py-2 px-6 bg-primary hover:bg-primary-dark rounded-lg font-medium text-white">Confirmar Retirada</button></div>
       </form>
+    </div>
+  </div>
+
+  <!-- (NOVO) Modal Genérico para Alertas e Confirmações -->
+  <div id="generic-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
+    <div class="bg-surface rounded-xl shadow-lg w-full max-w-sm p-6 text-center">
+        <h3 id="generic-modal-title" class="text-xl font-bold text-white mb-4"></h3>
+        <p id="generic-modal-text" class="text-gray-300 mb-6"></p>
+        <div id="generic-modal-buttons" class="flex justify-center space-x-4">
+            <!-- Botões serão inseridos aqui pelo JavaScript -->
+        </div>
     </div>
   </div>
 
