@@ -78,25 +78,46 @@
             </div>
         </div>
         <div class="space-y-8 order-2">
-            <div class="bg-surface p-6 rounded-xl shadow-lg">
-              <h3 class="text-xl font-bold mb-4 text-gray-200">Adicionar Transação (IA)</h3>
-              <p class="text-sm text-gray-400 mb-4">Descreva a sua movimentação. A nossa IA fará o resto!</p>
-              <textarea placeholder="Ex: 'Recebi R$200 de um freela' ou 'gastei R$80 no mercado'" class="w-full h-24 px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary"></textarea><div class="flex space-x-2 mt-4"><button class="w-full py-2 bg-primary hover:bg-primary-dark transition rounded-lg font-medium text-white">Analisar</button><button class="py-2 px-4 bg-gray-600 hover:bg-gray-700 transition rounded-lg font-medium text-white" title="Gravar áudio">🎙️</button></div></div>
+            <div class="bg-surface p-6 rounded-xl shadow-lg"><h3 class="text-xl font-bold mb-4 text-gray-200">Adicionar Transação (IA)</h3><p class="text-sm text-gray-400 mb-4">Descreva a sua movimentação. A nossa IA fará o resto!</p><textarea placeholder="Ex: 'Recebi R$200 de um freela' ou 'gastei R$80 no mercado'" class="w-full h-24 px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary"></textarea><div class="flex space-x-2 mt-4"><button class="w-full py-2 bg-primary hover:bg-primary-dark transition rounded-lg font-medium text-white">Analisar</button><button class="py-2 px-4 bg-gray-600 hover:bg-gray-700 transition rounded-lg font-medium text-white" title="Gravar áudio">🎙️</button></div></div>
             <div class="bg-surface p-6 rounded-xl shadow-lg">
                 <h3 class="text-xl font-bold text-gray-200 mb-4">Meta do Grupo</h3>
                 <div id="goals-list-container" class="space-y-4"></div>
                 <button id="add-goal-button" class="w-full text-center mt-4 py-2 border-2 border-dashed border-gray-600 text-gray-500 rounded-lg cursor-not-allowed">Criar nova meta 💎</button>
             </div>
             <div class="bg-surface p-6 rounded-xl shadow-lg">
-                <h3 id="group-name" class="text-xl font-bold mb-4 text-gray-200">O Meu Grupo (2/2)</h3>
+                <h3 id="group-name" class="text-xl font-bold mb-4 text-gray-200">O Meu Grupo (0/2)</h3>
                 <div id="members-list" class="space-y-3"></div>
-                <div class="mt-6 p-4 bg-background rounded-lg text-center"><p class="text-sm text-gray-300">Adicione mais membros e tenha relatórios avançados.</p><button class="w-full mt-3 py-2 bg-gold/80 hover:bg-gold text-black rounded-lg font-bold transition">Fazer Upgrade para Premium 💎</button></div>
+                <div class="mt-6">
+                    <button id="invite-button" class="w-full py-2 bg-primary/80 hover:bg-primary transition rounded-lg font-medium text-white">
+                        <i class="fas fa-user-plus mr-2"></i>Convidar Membro
+                    </button>
+                    <div id="upgrade-card" class="hidden mt-4 p-4 bg-background rounded-lg text-center">
+                        <p class="text-sm text-gray-300">Adicione mais membros e tenha relatórios avançados.</p>
+                        <button class="w-full mt-3 py-2 bg-gold/80 hover:bg-gold text-black rounded-lg font-bold transition">Fazer Upgrade para Premium 💎</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
   </main>
   
   <!-- Modais -->
+  <div id="invite-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
+    <div class="bg-surface rounded-xl shadow-lg w-full max-w-md p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold text-white">Link de Convite</h3>
+            <button id="close-invite-modal" class="text-gray-400 hover:text-white text-2xl font-bold">&times;</button>
+        </div>
+        <p class="text-gray-300 text-sm mb-3">Partilhe este link para convidar alguém para o seu grupo. O link só pode ser usado uma vez.</p>
+        <div class="flex space-x-2">
+            <input id="invite-link-input" type="text" readonly class="flex-grow px-4 py-2 rounded-lg bg-background border border-gray-700 text-gray-300">
+            <button id="copy-invite-link-button" class="py-2 px-4 bg-primary hover:bg-primary-dark transition rounded-lg font-medium text-white" title="Copiar link">
+                <i class="fas fa-copy"></i>
+            </button>
+        </div>
+        <div id="invite-error" class="hidden text-red-400 text-sm mt-3"></div>
+    </div>
+  </div>
   <div id="transaction-form-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
     <div class="bg-surface rounded-xl shadow-lg w-full max-w-md p-6">
       <h3 id="transaction-form-title" class="text-xl font-bold text-white mb-4"></h3>

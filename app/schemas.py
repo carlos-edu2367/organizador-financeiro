@@ -96,11 +96,13 @@ class Movimentacao(BaseModel):
 class GrupoMembro(BaseModel):
     id: uuid.UUID
     nome: str
+    papel: str
     
     class Config:
         from_attributes = True
 
 class DashboardData(BaseModel):
+    current_user_id: uuid.UUID
     nome_utilizador: str
     nome_grupo: str
     plano: str
@@ -108,8 +110,11 @@ class DashboardData(BaseModel):
     movimentacoes_recentes: List[Movimentacao]
     meta_ativa: Optional[Meta] = None
     total_investido: float = 0.0
-    # ATUALIZAÇÃO: 'juros_estimados' foi substituído por 'saldo_total'.
     saldo_total: float = 0.0
+
+# CORREÇÃO: Esta classe estava em falta no seu ficheiro.
+class InviteLink(BaseModel):
+    invite_link: str
 
 # ==================
 # Schemas para o Gráfico

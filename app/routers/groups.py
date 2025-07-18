@@ -27,6 +27,15 @@ def get_dashboard_data(group_id: str, db: Session = Depends(database.get_db), cu
     if current_user not in group.membros:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso não permitido a este grupo.")
 
+    # Prepara a lista de membros com os seus papéis
+    membros_com_papel = []
+    for assoc in group.associacoes_membros:
+        membros_com_papel.append({
+            "id": assoc.usuario.id,
+            "nome": assoc.usuario.nome,
+            "papel": assoc.papel
+        })
+
     movimentacoes = db.query(models.Movimentacao).filter(models.Movimentacao.grupo_id == group_id).order_by(models.Movimentacao.data_transacao.desc()).limit(30).all()
     movimentacoes_com_responsavel = []
     for mov in movimentacoes:
@@ -50,8 +59,9 @@ def get_dashboard_data(group_id: str, db: Session = Depends(database.get_db), cu
     saldo_total = total_ganhos - total_gastos - total_investido
 
     dashboard_data = {
+        "current_user_id": current_user.id,
         "nome_utilizador": current_user.nome, "nome_grupo": group.nome, "plano": group.plano,
-        "membros": group.membros, "movimentacoes_recentes": movimentacoes_com_responsavel,
+        "membros": membros_com_papel, "movimentacoes_recentes": movimentacoes_com_responsavel,
         "meta_ativa": meta_ativa,
         "total_investido": total_investido,
         "saldo_total": saldo_total
@@ -179,3 +189,72 @@ def withdraw_funds_from_goal(goal_id: str, funds: schemas.GoalWithdrawFunds, db:
     db.commit()
     db.refresh(db_goal)
     return db_goal
+
+@router.post("/{group_id}/invites", response_model=schemas.InviteLink)
+def create_invite_link(group_id: str, db: Session = Depends(database.get_db), current_user: models.Usuario = Depends(get_current_user_from_token)):
+    """Gera um novo link de convite de uso único para um grupo."""
+    group = db.query(models.Grupo).options(joinedload(models.Grupo.associacoes_membros)).filter(models.Grupo.id == group_id).first()
+    if not group:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Grupo não encontrado.")
+    
+    user_role = next((assoc.papel for assoc in group.associacoes_membros if assoc.usuario_id == current_user.id), None)
+    if user_role != 'dono':
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas o dono do grupo pode gerar convites.")
+    
+    if len(group.membros) >= 4 or (group.plano == 'gratuito' and len(group.membros) >= 2):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="O grupo atingiu o limite máximo de membros.")
+
+    new_invite = models.Convite(grupo_id=group.id)
+    db.add(new_invite)
+    db.commit()
+    db.refresh(new_invite)
+
+    invite_link = f"/frontend/pages/auth/accept_invite.html?token={new_invite.token}"
+    
+    return {"invite_link": invite_link}
+
+@router.post("/invites/{invite_token}/accept")
+def accept_invite(invite_token: str, db: Session = Depends(database.get_db), current_user: models.Usuario = Depends(get_current_user_from_token)):
+    """Permite que um utilizador autenticado aceite um convite."""
+    invite = db.query(models.Convite).filter(models.Convite.token == invite_token, models.Convite.status == 'pendente').first()
+    if not invite:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Convite inválido, expirado ou já utilizado.")
+    
+    group = invite.grupo
+    if current_user in group.membros:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Você já é membro deste grupo.")
+        
+    association = models.GrupoMembro(usuario_id=current_user.id, grupo_id=group.id, papel='membro')
+    db.add(association)
+    
+    invite.status = 'aceito'
+    
+    db.commit()
+    
+    return {"message": "Convite aceite com sucesso! Você foi adicionado ao grupo.", "group_id": group.id}
+
+@router.delete("/{group_id}/members/{member_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remove_group_member(group_id: str, member_id: str, db: Session = Depends(database.get_db), current_user: models.Usuario = Depends(get_current_user_from_token)):
+    """Remove um membro de um grupo. Apenas o dono pode fazer isso."""
+    group = db.query(models.Grupo).options(joinedload(models.Grupo.associacoes_membros)).filter(models.Grupo.id == group_id).first()
+    if not group:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Grupo não encontrado.")
+
+    user_role = next((assoc.papel for assoc in group.associacoes_membros if assoc.usuario_id == current_user.id), None)
+    if user_role != 'dono':
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas o dono do grupo pode remover membros.")
+    
+    if str(current_user.id) == member_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="O dono não pode sair do grupo.")
+
+    association_to_delete = db.query(models.GrupoMembro).filter(
+        models.GrupoMembro.grupo_id == group_id,
+        models.GrupoMembro.usuario_id == member_id
+    ).first()
+
+    if not association_to_delete:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Membro não encontrado no grupo.")
+
+    db.delete(association_to_delete)
+    db.commit()
+    return

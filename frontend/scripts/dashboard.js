@@ -5,6 +5,7 @@ let allGoals = [];
 let groupMembers = [];
 let allTransactions = [];
 let monthlyChart = null;
+let currentUserId = null;
 
 // --- INICIALIZAÇÃO E EVENTOS PRINCIPAIS ---
 
@@ -45,6 +46,11 @@ function setupEventListeners() {
     document.getElementById('withdraw-funds-form')?.addEventListener('submit', handleWithdrawFormSubmit);
     document.getElementById('cancel-withdraw-button')?.addEventListener('click', () => toggleModal('withdraw-funds-modal', false));
     document.getElementById('close-withdraw-modal')?.addEventListener('click', () => toggleModal('withdraw-funds-modal', false));
+    
+    // Botões e formulário do modal de Convite
+    document.getElementById('invite-button')?.addEventListener('click', handleInviteClick);
+    document.getElementById('close-invite-modal')?.addEventListener('click', () => toggleModal('invite-modal', false));
+    document.getElementById('copy-invite-link-button')?.addEventListener('click', copyInviteLink);
 }
 
 /**
@@ -97,12 +103,80 @@ async function fetchDashboardData() {
         
         groupMembers = dashboardData.membros;
         allTransactions = dashboardData.movimentacoes_recentes;
+        currentUserId = dashboardData.current_user_id;
 
         // Preenche toda a interface do utilizador com os novos dados
         populateUI(dashboardData, chartData);
 
     } catch (error) {
         handleApiError(error);
+    }
+}
+
+
+// --- LÓGICA DE GESTÃO DE GRUPO ---
+async function handleInviteClick() {
+    const token = localStorage.getItem('accessToken');
+    const groupId = localStorage.getItem('activeGroupId');
+    const inviteLinkInput = document.getElementById('invite-link-input');
+    const inviteError = document.getElementById('invite-error');
+    
+    inviteError.classList.add('hidden');
+
+    try {
+        const response = await fetch(`${API_URL}/groups/${groupId}/invites`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.detail);
+
+        const fullLink = `${window.location.origin}${data.invite_link}`;
+        inviteLinkInput.value = fullLink;
+        toggleModal('invite-modal', true);
+
+    } catch (error) {
+        inviteError.textContent = error.message;
+        inviteError.classList.remove('hidden');
+        toggleModal('invite-modal', true);
+    }
+}
+
+function copyInviteLink() {
+    const inviteLinkInput = document.getElementById('invite-link-input');
+    inviteLinkInput.select();
+    inviteLinkInput.setSelectionRange(0, 99999);
+    try {
+        navigator.clipboard.writeText(inviteLinkInput.value).then(() => {
+            alert('Link copiado para a área de transferência!');
+        });
+    } catch (err) {
+        document.execCommand('copy');
+        alert('Link copiado para a área de transferência!');
+    }
+}
+
+async function handleRemoveMember(memberId) {
+    if (!confirm('Tem a certeza que quer remover este membro do grupo?')) return;
+
+    const token = localStorage.getItem('accessToken');
+    const groupId = localStorage.getItem('activeGroupId');
+
+    try {
+        const response = await fetch(`${API_URL}/groups/${groupId}/members/${memberId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+            const data = await response.json();
+            throw new Error(data.detail || 'Não foi possível remover o membro.');
+        }
+
+        await fetchDashboardData();
+
+    } catch (error) {
+        alert(`Erro: ${error.message}`);
     }
 }
 
@@ -116,7 +190,6 @@ function openTransactionFormModal(transactionId = null) {
     document.getElementById('transaction-id').value = '';
     document.getElementById('transaction-error-message').classList.add('hidden');
 
-    // Preenche o dropdown de responsáveis
     const responsibleSelect = document.getElementById('transaction-responsible');
     responsibleSelect.innerHTML = '';
     groupMembers.forEach(member => {
@@ -338,7 +411,7 @@ async function handleWithdrawFormSubmit(event) {
 
 function populateUI(dashboardData, chartData) {
     populateUserInfo(dashboardData.nome_utilizador, dashboardData.plano);
-    populateGroupInfo(dashboardData.nome_grupo, dashboardData.membros);
+    populateGroupInfo(dashboardData.nome_grupo, dashboardData.membros, dashboardData.plano);
     populateTransactions(dashboardData.movimentacoes_recentes);
     populateGoalsOnDashboard(dashboardData.plano);
     populateSummaryCards(dashboardData.total_investido, dashboardData.saldo_total);
@@ -401,25 +474,47 @@ function populateUserInfo(userName, plan) {
     }
 }
 
-function populateGroupInfo(groupName, members) {
+function populateGroupInfo(groupName, members, plan) {
     const groupNameElement = document.getElementById('group-name');
     const membersListElement = document.getElementById('members-list');
+    const inviteButton = document.getElementById('invite-button');
+    const upgradeCard = document.getElementById('upgrade-card');
     
-    if (groupNameElement) groupNameElement.textContent = groupName;
+    const limit = (plan === 'premium') ? 4 : 2;
+    if (groupNameElement) {
+        groupNameElement.textContent = `${groupName} (${members.length}/${limit})`;
+    }
     
     if (membersListElement) {
         membersListElement.innerHTML = '';
+        const currentUserIsOwner = members.find(m => m.id === currentUserId)?.papel === 'dono';
+
         members.forEach(member => {
             const memberDiv = document.createElement('div');
             memberDiv.className = 'flex items-center justify-between';
+            
+            let removeButtonHtml = '';
+            if (currentUserIsOwner && member.papel !== 'dono') {
+                removeButtonHtml = `<button onclick="handleRemoveMember('${member.id}')" class="text-gray-500 hover:text-expense" title="Remover membro"><i class="fas fa-trash"></i></button>`;
+            }
+
             memberDiv.innerHTML = `
                 <div class="flex items-center">
                     <div class="w-10 h-10 rounded-full bg-blue-400 flex items-center justify-center font-bold text-black mr-3">${member.nome.charAt(0)}</div>
-                    <span>${member.nome}</span>
+                    <span>${member.nome} ${member.papel === 'dono' ? '<span class="text-xs text-gold">(Dono)</span>' : ''}</span>
                 </div>
+                ${removeButtonHtml}
             `;
             membersListElement.appendChild(memberDiv);
         });
+    }
+
+    if (plan === 'gratuito' && members.length >= 2) {
+        if (inviteButton) inviteButton.classList.add('hidden');
+        if (upgradeCard) upgradeCard.classList.remove('hidden');
+    } else {
+        if (inviteButton) inviteButton.classList.remove('hidden');
+        if (upgradeCard) upgradeCard.classList.add('hidden');
     }
 }
 

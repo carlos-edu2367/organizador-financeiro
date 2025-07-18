@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aceitar Convite - Clarify</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: { DEFAULT: '#3b82f6' },
+            background: '#0f172a',
+            surface: '#1e293b',
+          },
+          fontFamily: { sans: ['Inter', 'sans-serif'] },
+        }
+      }
+    };
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-background text-white min-h-screen flex items-center justify-center font-sans p-4">
+
+  <div id="loading-state" class="text-center">
+    <p class="text-lg">Validando o convite...</p>
+  </div>
+
+  <div id="result-state" class="hidden bg-surface p-8 rounded-xl shadow-lg w-full max-w-sm text-center">
+    <h2 id="result-title" class="text-2xl font-bold mb-4"></h2>
+    <p id="result-message" class="text-gray-300 mb-6"></p>
+    <a id="redirect-button" href="../dashs/dashboard_free.html" class="w-full block py-2.5 bg-primary hover:bg-primary-dark transition rounded-lg font-medium text-white">Ir para o meu Dashboard</a>
+  </div>
+
+  <script>
+    const API_URL = 'http://127.0.0.1:8000';
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        const loadingState = document.getElementById('loading-state');
+        const resultState = document.getElementById('result-state');
+        const resultTitle = document.getElementById('result-title');
+        const resultMessage = document.getElementById('result-message');
+        const redirectButton = document.getElementById('redirect-button');
+
+        const token = localStorage.getItem('accessToken');
+        const params = new URLSearchParams(window.location.search);
+        const inviteToken = params.get('token');
+
+        if (!token) {
+            // Se o utilizador não estiver logado, guarda o convite e redireciona para o login
+            localStorage.setItem('pendingInviteToken', inviteToken);
+            window.location.href = './login_page.html';
+            return;
+        }
+
+        if (!inviteToken) {
+            resultTitle.textContent = 'Erro';
+            resultMessage.textContent = 'Link de convite inválido ou em falta.';
+            loadingState.classList.add('hidden');
+            resultState.classList.remove('hidden');
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_URL}/groups/invites/${inviteToken}/accept`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.detail || 'Não foi possível aceitar o convite.');
+            }
+
+            // Sucesso!
+            resultTitle.textContent = 'Convite Aceite!';
+            resultMessage.textContent = data.message;
+            // Atualiza o grupo ativo para o novo grupo
+            localStorage.setItem('activeGroupId', data.group_id);
+
+        } catch (error) {
+            resultTitle.textContent = 'Erro ao Aceitar Convite';
+            resultMessage.textContent = error.message;
+        } finally {
+            loadingState.classList.add('hidden');
+            resultState.classList.remove('hidden');
+        }
+    });
+  </script>
+</body>
+</html>
