@@ -19,50 +19,27 @@ const medalInfo = {
 // --- INICIALIZAÇÃO E EVENTOS PRINCIPAIS ---
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Garante que o script só é executado após o carregamento completo da página
     setupEventListeners();
     fetchDashboardData();
 });
 
-/**
- * Configura todos os "ouvintes" de eventos da página para botões e formulários.
- */
 function setupEventListeners() {
-    // Logout
     document.getElementById('logout-button')?.addEventListener('click', logout);
-    
-    // Botão para adicionar transação manualmente
     document.getElementById('add-transaction-button')?.addEventListener('click', () => openTransactionFormModal());
-
-    // Modal de Transação (Adicionar/Editar)
     document.getElementById('transaction-form')?.addEventListener('submit', handleTransactionFormSubmit);
     document.getElementById('cancel-transaction-button')?.addEventListener('click', () => toggleModal('transaction-form-modal', false));
-
-    // Botão principal para adicionar uma nova meta (no card de metas)
     document.getElementById('add-goal-button')?.addEventListener('click', () => openGoalFormModal());
-
-    // Botões e formulário do modal de Adicionar/Editar Meta
     document.getElementById('goal-form')?.addEventListener('submit', handleGoalFormSubmit);
     document.getElementById('cancel-goal-button')?.addEventListener('click', () => toggleModal('goal-form-modal', false));
-
-    // Botões e formulário do modal de Adicionar Fundos
     document.getElementById('add-funds-form')?.addEventListener('submit', handleAddFundsSubmit);
     document.getElementById('cancel-funds-button')?.addEventListener('click', () => toggleModal('add-funds-modal', false));
-
-    // Botões e formulário do modal de Retirar Fundos
     document.getElementById('withdraw-funds-form')?.addEventListener('submit', handleWithdrawFormSubmit);
     document.getElementById('cancel-withdraw-button')?.addEventListener('click', () => toggleModal('withdraw-funds-modal', false));
-    
-    // Botões e formulário do modal de Convite
     document.getElementById('invite-button')?.addEventListener('click', handleInviteClick);
     document.getElementById('close-invite-modal')?.addEventListener('click', () => toggleModal('invite-modal', false));
     document.getElementById('copy-invite-link-button')?.addEventListener('click', copyInviteLink);
 }
 
-/**
- * Faz o logout do utilizador, limpando o localStorage e redirecionando para o login.
- * @param {Event} event - O evento de clique.
- */
 function logout(event) {
     event.preventDefault();
     localStorage.removeItem('accessToken');
@@ -73,9 +50,6 @@ function logout(event) {
 
 // --- LÓGICA DE DADOS (API) ---
 
-/**
- * Função principal que busca todos os dados necessários para a página.
- */
 async function fetchDashboardData() {
     const token = localStorage.getItem('accessToken');
     const groupId = localStorage.getItem('activeGroupId');
@@ -86,29 +60,22 @@ async function fetchDashboardData() {
     }
 
     try {
-        // A chamada ao dashboard já inclui as conquistas, então não precisamos de mais chamadas.
-        const response = await fetch(`${API_URL}/groups/${groupId}/dashboard`, { 
-            headers: { 'Authorization': `Bearer ${token}` } 
-        });
-
-        if (response.status === 401) {
-            logout({ preventDefault: () => {} });
-            return;
-        }
-
-        if (!response.ok) throw new Error('Falha ao carregar dados do dashboard.');
-        
-        const dashboardData = await response.json();
-        
-        // As outras chamadas podem ser feitas em paralelo
-        const [goalsResponse, chartResponse] = await Promise.all([
+        const [dashboardResponse, goalsResponse, chartResponse] = await Promise.all([
+            fetch(`${API_URL}/groups/${groupId}/dashboard`, { headers: { 'Authorization': `Bearer ${token}` } }),
             fetch(`${API_URL}/groups/${groupId}/goals`, { headers: { 'Authorization': `Bearer ${token}` } }),
             fetch(`${API_URL}/groups/${groupId}/chart_data`, { headers: { 'Authorization': `Bearer ${token}` } })
         ]);
 
+        if (dashboardResponse.status === 401) {
+            logout({ preventDefault: () => {} });
+            return;
+        }
+
+        if (!dashboardResponse.ok) throw new Error('Falha ao carregar dados do dashboard.');
         if (!goalsResponse.ok) throw new Error('Falha ao carregar metas.');
         if (!chartResponse.ok) throw new Error('Falha ao carregar dados do gráfico.');
-        
+
+        const dashboardData = await dashboardResponse.json();
         allGoals = await goalsResponse.json();
         const chartData = await chartResponse.json();
         
@@ -116,7 +83,6 @@ async function fetchDashboardData() {
         allTransactions = dashboardData.movimentacoes_recentes;
         currentUserId = dashboardData.current_user_id;
 
-        // Preenche toda a interface do utilizador com os novos dados
         populateUI(dashboardData, chartData);
 
     } catch (error) {
@@ -421,22 +387,61 @@ async function handleWithdrawFormSubmit(event) {
 // --- FUNÇÕES DE RENDERIZAÇÃO E UTILITÁRIOS ---
 
 function populateUI(dashboardData, chartData) {
+    updateMascot(dashboardData.ganhos_mes_atual, dashboardData.gastos_mes_atual);
     populateUserInfo(dashboardData.nome_utilizador, dashboardData.plano);
     populateGroupInfo(dashboardData.nome_grupo, dashboardData.membros, dashboardData.plano);
     populateTransactions(dashboardData.movimentacoes_recentes);
     populateGoalsOnDashboard(dashboardData.plano);
     populateSummaryCards(dashboardData.total_investido, dashboardData.saldo_total);
-    // (NOVO) Chama a função para popular as conquistas
     populateRecentAchievements(dashboardData.conquistas_recentes);
     renderChart(chartData);
 }
 
-// (NOVA FUNÇÃO) para popular o card de conquistas recentes
+// (NOVA FUNÇÃO) para a lógica do mascote
+function updateMascot(ganhos, gastos) {
+    const mascoteImg = document.getElementById('mascote-img');
+    const mascoteTitle = document.getElementById('mascote-title');
+    const mascoteText = document.getElementById('mascote-text');
+
+    if (!mascoteImg || !mascoteTitle || !mascoteText) return;
+
+    // Converte os valores para número para garantir a segurança dos cálculos
+    const ganhosNum = Number(ganhos);
+    const gastosNum = Number(gastos);
+
+    let ratio = 0;
+    if (ganhosNum > 0) {
+        ratio = (gastosNum / ganhosNum) * 100;
+    } else if (gastosNum > 0) {
+        ratio = 101; // Se não houve ganhos mas houve gastos, a situação é crítica
+    }
+
+    if (ratio >= 100) {
+        // Desesperado
+        mascoteImg.src = '../../assets/mascote_desesperado.png';
+        mascoteImg.alt = 'Mascote Clarify Desesperado';
+        mascoteTitle.textContent = 'Situação Financeira: Crítica!';
+        mascoteText.textContent = 'Atenção! Os gastos deste mês ultrapassaram os ganhos. É hora de rever o orçamento.';
+    } else if (ratio >= 80) {
+        // Neutro
+        mascoteImg.src = '../../assets/mascote_neutro.png';
+        mascoteImg.alt = 'Mascote Clarify Neutro';
+        mascoteTitle.textContent = 'Situação Financeira: Alerta';
+        mascoteText.textContent = 'Cuidado, os gastos estão a aproximar-se dos ganhos. Mantenham o controlo para fechar o mês no verde.';
+    } else {
+        // Feliz
+        mascoteImg.src = '../../assets/mascote_feliz.png';
+        mascoteImg.alt = 'Mascote Clarify Feliz';
+        mascoteTitle.textContent = 'Situação Financeira: Estável';
+        mascoteText.textContent = 'Ótimo trabalho! Os seus gastos estão controlados e a saúde financeira do grupo está boa.';
+    }
+}
+
 function populateRecentAchievements(achievements) {
     const container = document.getElementById('achievements-list-container');
     if (!container) return;
 
-    container.innerHTML = ''; // Limpa o conteúdo anterior
+    container.innerHTML = '';
 
     if (achievements.length === 0) {
         container.innerHTML = '<p class="text-center text-sm text-gray-500">Nenhuma medalha ganha ainda. Continuem assim!</p>';
@@ -494,11 +499,11 @@ function populateGoalsOnDashboard(plan) {
         goalContainer.innerHTML = '<p class="text-center text-gray-400">Nenhuma meta criada ainda.</p>';
     }
 
-    if (plan === 'gratuito' && allGoals.length > 0) {
+    if (plan === 'gratuito' && allGoals.some(g => g.status === 'ativa')) {
         addGoalButton.disabled = true;
         addGoalButton.className = 'w-full text-center mt-4 py-2 border-2 border-dashed border-gray-600 text-gray-500 rounded-lg cursor-not-allowed';
         addGoalButton.innerHTML = 'Criar nova meta 💎';
-    } else if (plan !== 'gratuito') { // Garante que no premium o botão esteja sempre correto
+    } else if (plan === 'gratuito') {
         addGoalButton.disabled = false;
         addGoalButton.className = 'w-full text-center mt-4 py-2 bg-primary/80 hover:bg-primary transition text-white rounded-lg';
         addGoalButton.textContent = 'Adicionar Nova Meta';
@@ -582,7 +587,7 @@ function populateTransactions(transactions) {
         switch (tx.tipo) {
             case 'gasto': valorClass = 'text-expense'; valorSignal = '-'; break;
             case 'ganho': valorClass = 'text-gain'; valorSignal = '+'; break;
-            case 'investimento': valorClass = 'text-investment'; valorSignal = ''; break; // Investimento não subtrai do saldo visível
+            case 'investimento': valorClass = 'text-investment'; valorSignal = '';
             default: valorClass = 'text-gray-400';
         }
         

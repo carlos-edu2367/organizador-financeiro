@@ -54,11 +54,11 @@
   <main class="container mx-auto p-4 lg:p-8">
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div class="lg:col-span-2 space-y-8 order-1">
-            <!-- Card do Mascote -->
+            <!-- (ALTERADO) Card do Mascote com IDs -->
             <div class="text-center">
-              <img src="../../assets/mascote_feliz.png" alt="Mascote Clarify Feliz" class="mx-auto w-28 h-28 mb-4">
-              <h2 class="text-2xl font-bold text-gray-200">Situação Financeira: Estável</h2>
-              <p class="text-gray-400 max-w-md mx-auto">Ótimo trabalho! Os seus gastos estão controlados e os seus investimentos estão a crescer.</p>
+              <img id="mascote-img" src="../../assets/mascote_feliz.png" alt="Mascote Clarify" class="mx-auto w-28 h-28 mb-4">
+              <h2 id="mascote-title" class="text-2xl font-bold text-gray-200">Situação Financeira: Estável</h2>
+              <p id="mascote-text" class="text-gray-400 max-w-md mx-auto">Ótimo trabalho! Os seus gastos estão controlados.</p>
             </div>
             <!-- Card do Resumo Mensal -->
             <div class="bg-surface p-6 rounded-xl shadow-lg">
@@ -98,14 +98,12 @@
             <div class="bg-surface p-6 rounded-xl shadow-lg">
                 <h3 class="text-xl font-bold text-gray-200 mb-4">Meta do Grupo</h3>
                 <div id="goals-list-container" class="space-y-4"></div>
-                <!-- CORREÇÃO: O botão agora começa no estado "ativado". O JS irá desativá-lo se necessário. -->
                 <button id="add-goal-button" class="w-full text-center mt-4 py-2 bg-primary/80 hover:bg-primary transition text-white rounded-lg">Adicionar Nova Meta</button>
             </div>
             <!-- Card de Conquistas -->
             <div class="bg-surface p-6 rounded-xl shadow-lg">
                 <h3 class="text-xl font-bold text-gray-200 mb-4">Conquistas Recentes</h3>
                 <div id="achievements-list-container" class="space-y-3">
-                    <!-- Conquistas serão inseridas aqui pelo JS -->
                 </div>
                 <a href="./achievements.html" class="block w-full text-center mt-4 py-2 bg-primary/80 hover:bg-primary transition text-white rounded-lg">Ver todas as conquistas</a>
             </div>
@@ -127,7 +125,7 @@
     </div>
   </main>
   
-  <!-- Modais (sem alterações) -->
+  <!-- Modais -->
   <div id="invite-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
     <div class="bg-surface rounded-xl shadow-lg w-full max-w-md p-6">
         <div class="flex justify-between items-center mb-4">

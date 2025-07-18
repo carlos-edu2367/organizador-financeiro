@@ -2,7 +2,7 @@ import uuid
 import datetime
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, List
-from decimal import Decimal # Adicionado
+from decimal import Decimal
 
 # ==================
 # Schemas para Token
@@ -39,7 +39,6 @@ class UserSessionData(User):
 # ==================
 class GoalBase(BaseModel):
     titulo: str
-    # CORREÇÃO: Usando Decimal para precisão financeira.
     valor_meta: Decimal = Field(..., max_digits=10, decimal_places=2, gt=0)
     data_limite: Optional[datetime.date] = None
 
@@ -50,16 +49,13 @@ class GoalUpdate(GoalBase):
     pass
 
 class GoalAddFunds(BaseModel):
-    # CORREÇÃO: Usando Decimal para precisão financeira.
     valor: Decimal = Field(..., max_digits=10, decimal_places=2, gt=0)
 
 class GoalWithdrawFunds(BaseModel):
-    # CORREÇÃO: Usando Decimal para precisão financeira.
     valor: Decimal = Field(..., max_digits=10, decimal_places=2, gt=0)
 
 class Meta(GoalBase):
     id: uuid.UUID
-    # CORREÇÃO: Usando Decimal para precisão financeira.
     valor_atual: Decimal
     status: str
     
@@ -70,10 +66,8 @@ class Meta(GoalBase):
 # Schemas para Transações (Movimentações)
 # ==================
 class TransactionBase(BaseModel):
-    """ Schema base para uma transação. """
     tipo: str
     descricao: Optional[str] = None
-    # CORREÇÃO: Usando Decimal para precisão financeira.
     valor: Decimal = Field(..., max_digits=10, decimal_places=2, gt=0)
     data_transacao: datetime.date
     responsavel_id: uuid.UUID
@@ -85,11 +79,9 @@ class TransactionUpdate(TransactionBase):
     pass
 
 class Movimentacao(BaseModel):
-    """ Schema para exibir uma movimentação no histórico. """
     id: uuid.UUID
     tipo: str
     descricao: Optional[str]
-    # CORREÇÃO: Usando Decimal para precisão financeira.
     valor: Decimal
     data_transacao: datetime.datetime
     responsavel_nome: str
@@ -98,7 +90,7 @@ class Movimentacao(BaseModel):
         from_attributes = True
 
 # ==================
-# (NOVO) Schema para Conquistas
+# Schema para Conquistas
 # ==================
 class Conquista(BaseModel):
     id: uuid.UUID
@@ -128,11 +120,13 @@ class DashboardData(BaseModel):
     membros: List[GrupoMembro]
     movimentacoes_recentes: List[Movimentacao]
     meta_ativa: Optional[Meta] = None
-    # CORREÇÃO: Usando Decimal para precisão financeira.
     total_investido: Decimal = Field(default=0.0, max_digits=10, decimal_places=2)
     saldo_total: Decimal = Field(default=0.0, max_digits=10, decimal_places=2)
-    # (NOVO) Adiciona a lista de conquistas recentes ao dashboard.
     conquistas_recentes: List[Conquista] = []
+    # (NOVO) Campos para a lógica do mascote
+    ganhos_mes_atual: Decimal = Field(default=0.0, max_digits=10, decimal_places=2)
+    gastos_mes_atual: Decimal = Field(default=0.0, max_digits=10, decimal_places=2)
+
 
 class InviteLink(BaseModel):
     invite_link: str
@@ -142,7 +136,6 @@ class InviteLink(BaseModel):
 # ==================
 class ChartMonthData(BaseModel):
     mes: str
-    # CORREÇÃO: Usando float aqui é aceitável, pois é apenas para exibição no gráfico.
     ganhos: float
     gastos: float
     investimentos: float

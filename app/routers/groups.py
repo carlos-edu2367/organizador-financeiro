@@ -3,11 +3,10 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, extract
 from typing import List
 from decimal import Decimal
-from datetime import datetime, timezone # Adicionado timezone
+from datetime import datetime, timezone
 from dateutil.relativedelta import relativedelta
 
 from .. import database, schemas, models
-# (NOVO) Importa os novos modelos e enums
 from ..models import Conquista, TipoMedalhaEnum
 from ..security import get_current_user_from_token
 
@@ -21,11 +20,11 @@ router = APIRouter(
 def get_dashboard_data(group_id: str, db: Session = Depends(database.get_db), current_user: models.Usuario = Depends(get_current_user_from_token)):
     """
     Endpoint principal para obter todos os dados necessários para o dashboard.
-    Agora também inclui as 3 conquistas mais recentes.
+    Agora também inclui os totais do mês atual para a lógica do mascote.
     """
     group = db.query(models.Grupo).options(
         joinedload(models.Grupo.associacoes_membros).joinedload(models.GrupoMembro.usuario),
-        joinedload(models.Grupo.conquistas) # Carrega as conquistas
+        joinedload(models.Grupo.conquistas)
     ).filter(models.Grupo.id == group_id).first()
 
     if not group:
@@ -41,6 +40,7 @@ def get_dashboard_data(group_id: str, db: Session = Depends(database.get_db), cu
     
     meta_ativa = db.query(models.Meta).filter(models.Meta.grupo_id == group_id, models.Meta.status == 'ativa').first()
 
+    # --- Lógica de cálculo total ---
     def get_total_for_type(tipo: str) -> Decimal:
         total = db.query(func.sum(models.Movimentacao.valor)).filter(models.Movimentacao.grupo_id == group_id, models.Movimentacao.tipo == tipo).scalar()
         return total or Decimal('0.0')
@@ -50,7 +50,22 @@ def get_dashboard_data(group_id: str, db: Session = Depends(database.get_db), cu
     total_investido = get_total_for_type('investimento')
     saldo_total = total_ganhos - total_gastos
 
-    # (NOVO) Busca as 3 conquistas mais recentes. A ordenação já foi feita no modelo.
+    # --- (NOVO) Lógica para o mascote ---
+    today = datetime.now(timezone.utc)
+    
+    def get_total_for_current_month(tipo: str) -> Decimal:
+        total = db.query(func.sum(models.Movimentacao.valor)).filter(
+            models.Movimentacao.grupo_id == group_id,
+            models.Movimentacao.tipo == tipo,
+            extract('year', models.Movimentacao.data_transacao) == today.year,
+            extract('month', models.Movimentacao.data_transacao) == today.month
+        ).scalar()
+        return total or Decimal('0.0')
+
+    ganhos_mes_atual = get_total_for_current_month('ganho')
+    gastos_mes_atual = get_total_for_current_month('gasto')
+    # --- Fim da lógica do mascote ---
+
     conquistas_recentes = group.conquistas[:3]
 
     dashboard_data = {
@@ -60,7 +75,9 @@ def get_dashboard_data(group_id: str, db: Session = Depends(database.get_db), cu
         "meta_ativa": meta_ativa,
         "total_investido": total_investido,
         "saldo_total": saldo_total,
-        "conquistas_recentes": conquistas_recentes # Adiciona ao payload
+        "conquistas_recentes": conquistas_recentes,
+        "ganhos_mes_atual": ganhos_mes_atual, # Adicionado
+        "gastos_mes_atual": gastos_mes_atual  # Adicionado
     }
     return dashboard_data
 
