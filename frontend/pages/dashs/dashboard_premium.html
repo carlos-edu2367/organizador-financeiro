@@ -16,8 +16,9 @@
             expense: '#ef4444',
             gain: '#22c55e',
             investment: '#38bdf8',
-            free: '#e5e7eb',
             gold: '#facc15',
+            silver: '#d1d5db',
+            bronze: '#f59e0b',
           },
           fontFamily: { sans: ['Inter', 'sans-serif'] },
         }
@@ -36,7 +37,7 @@
   <header class="bg-surface p-4 shadow-md sticky top-0 z-20">
     <div class="container mx-auto flex justify-between items-center">
       <a href="#" class="flex items-center space-x-3">
-        <svg class="drop-shadow-glow-primary" width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11 19C15.4183 19 19 15.4183 19 11C19 6.58172 15.4183 3 11 3C6.58172 3 3 6.58172 3 11C3 15.4183 6.58172 19 11 19Z" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 21L16.65 16.65" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 11.5L10.5 13L13.5 10" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11 19C15.4183 19 19 15.4183 19 11C19 6.58172 15.4183 3 11 3C6.58172 3 3 6.58172 3 11C3 15.4183 6.58172 19 11 19Z" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 21L16.65 16.65" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 11.5L10.5 13L13.5 10" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <span class="text-2xl font-bold text-white">Clarify</span>
       </a>
       <div class="flex items-center space-x-4">
@@ -53,15 +54,16 @@
   <main class="container mx-auto p-4 lg:p-8">
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div class="lg:col-span-2 space-y-8 order-1">
+            <!-- Card do Mascote -->
             <div class="text-center">
               <img src="../../assets/mascote_feliz.png" alt="Mascote Clarify Feliz" class="mx-auto w-28 h-28 mb-4">
               <h2 class="text-2xl font-bold text-gray-200">Situação Financeira: Excelente</h2>
               <p class="text-gray-400 max-w-md mx-auto">Vocês estão no caminho certo! Continuem assim para bater todas as metas.</p>
             </div>
+            <!-- Card do Resumo Mensal -->
             <div class="bg-surface p-6 rounded-xl shadow-lg">
               <div class="flex justify-between items-center mb-4">
                 <h3 class="text-xl font-bold text-gray-200">Resumo Mensal</h3>
-                <div class="hidden sm:flex items-center space-x-2 p-1 bg-background rounded-lg"><button class="px-3 py-1 text-sm bg-primary rounded-md">Visão Geral</button><button class="px-3 py-1 text-sm text-gray-400 hover:bg-gray-700 rounded-md">Categorias</button></div>
               </div>
               <div class="h-64 relative"><canvas id="monthly-chart"></canvas></div>
               <div class="mt-8 pt-6 border-t border-gray-700 grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -69,6 +71,7 @@
                   <div class="bg-background p-4 rounded-lg"><h4 class="text-sm font-medium text-gray-400">Saldo Total</h4><p id="saldo-total" class="text-2xl font-bold">R$ 0,00</p></div>
               </div>
             </div>
+            <!-- Card do Histórico -->
             <div class="bg-surface p-6 rounded-xl shadow-lg">
               <div class="flex justify-between items-center mb-4">
                   <h3 class="text-xl font-bold text-gray-200">Histórico Completo</h3>
@@ -81,26 +84,28 @@
             </div>
         </div>
         <div class="space-y-8 order-2">
+            <!-- Card de Transação IA -->
             <div class="bg-surface p-6 rounded-xl shadow-lg">
               <h3 class="text-xl font-bold mb-4 text-gray-200">Adicionar Transação (IA)</h3>
               <p class="text-sm text-gray-400 mb-4">Descreva a sua movimentação por texto ou áudio.</p>
               <textarea placeholder="Ex: 'Recebi R$200 de um freela' ou 'gastei R$80 no mercado'" class="w-full h-24 px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary"></textarea>
               <div class="flex space-x-2 mt-4"><button class="w-full py-2 bg-primary hover:bg-primary-dark transition rounded-lg font-medium text-white">Analisar</button><button class="py-2 px-4 bg-gray-600 hover:bg-gray-700 transition rounded-lg font-medium text-white" title="Gravar áudio"><i class="fa-solid fa-microphone"></i></button><button class="py-2 px-4 bg-gain hover:opacity-90 transition rounded-lg font-medium text-white" title="Registar via WhatsApp"><i class="fa-brands fa-whatsapp"></i></button></div>
             </div>
+            <!-- Card de Metas -->
             <div class="bg-surface p-6 rounded-xl shadow-lg">
                 <h3 class="text-xl font-bold text-gray-200 mb-4">As Nossas Metas</h3>
                 <div id="goals-list-container" class="space-y-4"></div>
                 <button id="add-goal-button" class="w-full text-center mt-4 py-2 bg-primary/80 hover:bg-primary transition text-white rounded-lg">Adicionar Nova Meta</button>
             </div>
+            <!-- (NOVO) Card de Conquistas -->
             <div class="bg-surface p-6 rounded-xl shadow-lg">
-                <h3 class="text-xl font-bold mb-4 text-gray-200">As Nossas Conquistas</h3>
-                <div class="grid grid-cols-3 gap-4 text-center">
-                    <div class="flex flex-col items-center p-2 rounded-lg bg-background"><span class="text-4xl">🟤</span><p class="text-sm font-medium mt-1">Mês de Bronze</p></div>
-                    <div class="flex flex-col items-center p-2 rounded-lg bg-background"><span class="text-4xl">🥈</span><p class="text-sm font-medium mt-1">Economia de Prata</p></div>
-                    <div class="flex flex-col items-center p-2 rounded-lg bg-background"><span class="text-4xl">🥇</span><p class="text-sm font-medium mt-1">Meta de Ouro</p></div>
-                    <div class="flex flex-col items-center p-2 rounded-lg bg-background"><span class="text-4xl">💎</span><p class="text-sm font-medium mt-1">Ano de Platina</p></div>
+                <h3 class="text-xl font-bold text-gray-200 mb-4">Conquistas Recentes</h3>
+                <div id="achievements-list-container" class="space-y-3">
+                    <!-- Conquistas serão inseridas aqui pelo JS -->
                 </div>
+                <a href="./achievements.html" class="block w-full text-center mt-4 py-2 bg-primary/80 hover:bg-primary transition text-white rounded-lg">Ver todas as conquistas</a>
             </div>
+            <!-- Card do Grupo -->
             <div class="bg-surface p-6 rounded-xl shadow-lg">
               <h3 id="group-name" class="text-xl font-bold mb-4 text-gray-200">O Meu Grupo (0/4)</h3>
               <div id="members-list" class="space-y-3"></div>
@@ -114,7 +119,7 @@
     </div>
   </main>
   
-  <!-- Modais -->
+  <!-- Modais (sem alterações) -->
   <div id="invite-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
     <div class="bg-surface rounded-xl shadow-lg w-full max-w-md p-6">
         <div class="flex justify-between items-center mb-4">

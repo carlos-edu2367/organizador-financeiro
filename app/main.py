@@ -3,7 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from . import models
 from .database import engine
-from .routers import auth, users, groups, transactions # Importa o novo router
+# (NOVO) Importa o novo router de tarefas
+from .routers import auth, users, groups, transactions, tasks
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -31,7 +32,9 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(groups.router)
-app.include_router(transactions.router) # Adiciona o novo router de transações
+app.include_router(transactions.router)
+# (NOVO) Adiciona o router de tarefas
+app.include_router(tasks.router)
 
 
 @app.get("/")

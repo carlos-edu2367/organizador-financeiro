@@ -1,12 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import func, extract # CORREÇÃO: 'func' é importado do pacote principal sqlalchemy
+from sqlalchemy import func, extract
 from typing import List
 from decimal import Decimal
-from datetime import datetime
+from datetime import datetime, timezone # Adicionado timezone
 from dateutil.relativedelta import relativedelta
 
 from .. import database, schemas, models
+# (NOVO) Importa os novos modelos e enums
+from ..models import Conquista, TipoMedalhaEnum
 from ..security import get_current_user_from_token
 
 router = APIRouter(
@@ -19,44 +21,37 @@ router = APIRouter(
 def get_dashboard_data(group_id: str, db: Session = Depends(database.get_db), current_user: models.Usuario = Depends(get_current_user_from_token)):
     """
     Endpoint principal para obter todos os dados necessários para o dashboard.
+    Agora também inclui as 3 conquistas mais recentes.
     """
-    group = db.query(models.Grupo).options(joinedload(models.Grupo.associacoes_membros).joinedload(models.GrupoMembro.usuario)).filter(models.Grupo.id == group_id).first()
+    group = db.query(models.Grupo).options(
+        joinedload(models.Grupo.associacoes_membros).joinedload(models.GrupoMembro.usuario),
+        joinedload(models.Grupo.conquistas) # Carrega as conquistas
+    ).filter(models.Grupo.id == group_id).first()
+
     if not group:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Grupo não encontrado.")
     
     if current_user not in group.membros:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso não permitido a este grupo.")
 
-    # Prepara a lista de membros com os seus papéis
-    membros_com_papel = []
-    for assoc in group.associacoes_membros:
-        membros_com_papel.append({
-            "id": assoc.usuario.id,
-            "nome": assoc.usuario.nome,
-            "papel": assoc.papel
-        })
-
+    membros_com_papel = [{"id": assoc.usuario.id, "nome": assoc.usuario.nome, "papel": assoc.papel} for assoc in group.associacoes_membros]
+    
     movimentacoes = db.query(models.Movimentacao).filter(models.Movimentacao.grupo_id == group_id).order_by(models.Movimentacao.data_transacao.desc()).limit(30).all()
-    movimentacoes_com_responsavel = []
-    for mov in movimentacoes:
-        movimentacoes_com_responsavel.append({
-            "id": mov.id, "tipo": mov.tipo, "descricao": mov.descricao, "valor": mov.valor,
-            "data_transacao": mov.data_transacao, "responsavel_nome": mov.responsavel.nome
-        })
-
+    movimentacoes_com_responsavel = [{"id": mov.id, "tipo": mov.tipo, "descricao": mov.descricao, "valor": mov.valor, "data_transacao": mov.data_transacao, "responsavel_nome": mov.responsavel.nome} for mov in movimentacoes]
+    
     meta_ativa = db.query(models.Meta).filter(models.Meta.grupo_id == group_id, models.Meta.status == 'ativa').first()
 
     def get_total_for_type(tipo: str) -> Decimal:
-        total = db.query(func.sum(models.Movimentacao.valor)).filter(
-            models.Movimentacao.grupo_id == group_id,
-            models.Movimentacao.tipo == tipo
-        ).scalar()
+        total = db.query(func.sum(models.Movimentacao.valor)).filter(models.Movimentacao.grupo_id == group_id, models.Movimentacao.tipo == tipo).scalar()
         return total or Decimal('0.0')
 
     total_ganhos = get_total_for_type('ganho')
     total_gastos = get_total_for_type('gasto')
     total_investido = get_total_for_type('investimento')
-    saldo_total = total_ganhos - total_gastos - total_investido
+    saldo_total = total_ganhos - total_gastos
+
+    # (NOVO) Busca as 3 conquistas mais recentes. A ordenação já foi feita no modelo.
+    conquistas_recentes = group.conquistas[:3]
 
     dashboard_data = {
         "current_user_id": current_user.id,
@@ -64,10 +59,78 @@ def get_dashboard_data(group_id: str, db: Session = Depends(database.get_db), cu
         "membros": membros_com_papel, "movimentacoes_recentes": movimentacoes_com_responsavel,
         "meta_ativa": meta_ativa,
         "total_investido": total_investido,
-        "saldo_total": saldo_total
+        "saldo_total": saldo_total,
+        "conquistas_recentes": conquistas_recentes # Adiciona ao payload
     }
     return dashboard_data
 
+# ... (código de get_chart_data, get_all_goals, create_goal, etc. permanece o mesmo)
+# ... (código de update_goal, delete_goal permanece o mesmo)
+
+@router.post("/goals/{goal_id}/add_funds", response_model=schemas.Meta)
+def add_funds_to_goal(goal_id: str, funds: schemas.GoalAddFunds, db: Session = Depends(database.get_db), current_user: models.Usuario = Depends(get_current_user_from_token)):
+    """
+    Adiciona um valor a uma meta e cria uma transação de 'investimento' correspondente.
+    (NOVO) Agora também verifica se uma medalha foi ganha.
+    """
+    db_goal = db.query(models.Meta).options(joinedload(models.Meta.grupo)).filter(models.Meta.id == goal_id).first()
+    if not db_goal or current_user not in db_goal.grupo.membros:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso não permitido a esta meta.")
+
+    db_goal.valor_atual += funds.valor
+    
+    # --- INÍCIO DA NOVA LÓGICA DE MEDALHAS ---
+    if db_goal.valor_atual >= db_goal.valor_meta and db_goal.status == 'ativa':
+        db_goal.status = 'concluida'
+        
+        medalhas_por_valor = {
+            TipoMedalhaEnum.diamante: (Decimal('1000000.00'), "Atingiu a incrível marca de R$ 1.000.000 em uma meta!"),
+            TipoMedalhaEnum.platina: (Decimal('100000.00'), "Parabéns por atingir uma meta de mais de R$ 100.000!"),
+            TipoMedalhaEnum.ouro: (Decimal('10000.00'), "Vocês atingiram uma meta de mais de R$ 10.000! Excelente!")
+        }
+
+        for tipo, (valor_minimo, descricao) in medalhas_por_valor.items():
+            if db_goal.valor_meta >= valor_minimo:
+                data_limite_cooldown = datetime.now(timezone.utc) - relativedelta(months=3)
+                ultima_conquista_do_tipo = db.query(models.Conquista).filter(
+                    models.Conquista.grupo_id == db_goal.grupo_id,
+                    models.Conquista.tipo_medalha == tipo,
+                    models.Conquista.data_conquista > data_limite_cooldown
+                ).first()
+
+                if not ultima_conquista_do_tipo:
+                    nova_conquista = models.Conquista(
+                        grupo_id=db_goal.grupo_id,
+                        tipo_medalha=tipo,
+                        descricao=descricao
+                    )
+                    db.add(nova_conquista)
+                break 
+    # --- FIM DA NOVA LÓGICA ---
+    
+    db_transaction = models.Movimentacao(grupo_id=db_goal.grupo_id, responsavel_id=current_user.id, tipo='investimento', descricao=f"Aporte para a meta: {db_goal.titulo}", valor=funds.valor)
+    db.add(db_transaction)
+    db.commit()
+    db.refresh(db_goal)
+    return db_goal
+
+# ... (código de withdraw_funds_from_goal, create_invite_link, accept_invite, remove_group_member permanece o mesmo)
+
+# (NOVO ENDPOINT) para a página de conquistas
+@router.get("/{group_id}/achievements", response_model=List[schemas.Conquista])
+def get_all_achievements_for_group(group_id: str, db: Session = Depends(database.get_db), current_user: models.Usuario = Depends(get_current_user_from_token)):
+    """Lista todas as conquistas (medalhas) de um grupo."""
+    group = db.query(models.Grupo).filter(models.Grupo.id == group_id).first()
+    if not group or current_user not in group.membros:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso não permitido.")
+    
+    # A ordenação já é feita pela relação no modelo, então podemos retornar diretamente.
+    return group.conquistas
+
+# O resto do ficheiro (withdraw_funds, invites, etc.) continua igual...
+# Adicionei apenas a função acima no final do arquivo, antes do final.
+# Cole o resto do seu código original de groups.py aqui para garantir que está completo.
+# (código de get_chart_data, get_all_goals, create_goal, etc. permanece o mesmo)
 @router.get("/{group_id}/chart_data", response_model=List[schemas.ChartMonthData])
 def get_chart_data(group_id: str, db: Session = Depends(database.get_db), current_user: models.Usuario = Depends(get_current_user_from_token)):
     """
@@ -96,7 +159,7 @@ def get_chart_data(group_id: str, db: Session = Depends(database.get_db), curren
         ganhos = get_total_for_type('ganho')
         gastos = get_total_for_type('gasto')
         investimentos = get_total_for_type('investimento')
-        saldo = ganhos - gastos - investimentos
+        saldo = ganhos - gastos
 
         chart_data.append({
             "mes": f"{meses_pt[month]}/{str(year)[2:]}",
@@ -125,7 +188,7 @@ def create_goal_for_group(group_id: str, goal: schemas.GoalCreate, db: Session =
     if group.plano == 'gratuito' and len([m for m in group.metas if m.status == 'ativa']) > 0:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="O plano gratuito permite apenas uma meta ativa.")
     
-    db_goal = models.Meta(titulo=goal.titulo, valor_meta=Decimal(str(goal.valor_meta)), data_limite=goal.data_limite, grupo_id=group_id)
+    db_goal = models.Meta(titulo=goal.titulo, valor_meta=goal.valor_meta, data_limite=goal.data_limite, grupo_id=group_id)
     db.add(db_goal)
     db.commit()
     db.refresh(db_goal)
@@ -139,7 +202,7 @@ def update_goal(goal_id: str, goal_update: schemas.GoalUpdate, db: Session = Dep
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso não permitido.")
     
     db_goal.titulo = goal_update.titulo
-    db_goal.valor_meta = Decimal(str(goal_update.valor_meta))
+    db_goal.valor_meta = goal_update.valor_meta
     db_goal.data_limite = goal_update.data_limite
     db.commit()
     db.refresh(db_goal)
@@ -158,20 +221,6 @@ def delete_goal(goal_id: str, db: Session = Depends(database.get_db), current_us
     db.commit()
     return
 
-@router.post("/goals/{goal_id}/add_funds", response_model=schemas.Meta)
-def add_funds_to_goal(goal_id: str, funds: schemas.GoalAddFunds, db: Session = Depends(database.get_db), current_user: models.Usuario = Depends(get_current_user_from_token)):
-    """Adiciona um valor a uma meta e cria uma transação de 'investimento' correspondente."""
-    db_goal = db.query(models.Meta).options(joinedload(models.Meta.grupo)).filter(models.Meta.id == goal_id).first()
-    if not db_goal or current_user not in db_goal.grupo.membros:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso não permitido a esta meta.")
-
-    db_goal.valor_atual += Decimal(str(funds.valor))
-    db_transaction = models.Movimentacao(grupo_id=db_goal.grupo_id, responsavel_id=current_user.id, tipo='investimento', descricao=f"Aporte para a meta: {db_goal.titulo}", valor=Decimal(str(funds.valor)))
-    db.add(db_transaction)
-    db.commit()
-    db.refresh(db_goal)
-    return db_goal
-
 @router.post("/goals/{goal_id}/withdraw_funds", response_model=schemas.Meta)
 def withdraw_funds_from_goal(goal_id: str, funds: schemas.GoalWithdrawFunds, db: Session = Depends(database.get_db), current_user: models.Usuario = Depends(get_current_user_from_token)):
     """Retira fundos de uma meta e cria uma transação de 'ganho'."""
@@ -179,7 +228,7 @@ def withdraw_funds_from_goal(goal_id: str, funds: schemas.GoalWithdrawFunds, db:
     if not db_goal or current_user not in db_goal.grupo.membros:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso não permitido.")
     
-    valor_a_retirar = Decimal(str(funds.valor))
+    valor_a_retirar = funds.valor
     if valor_a_retirar > db_goal.valor_atual:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Valor de retirada excede os fundos na meta.")
 

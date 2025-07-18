@@ -1,26 +1,30 @@
 import uuid
+import enum
 from sqlalchemy import (
     Column, String, Text, DateTime, ForeignKey,
-    DECIMAL, Date
+    DECIMAL, Date, Enum as SQLAlchemyEnum, Integer
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship, declarative_base
 from sqlalchemy.sql import func
 
-# Base declarativa do SQLAlchemy.
 Base = declarative_base()
 
+class TipoMedalhaEnum(str, enum.Enum):
+    bronze = "Bronze"
+    prata = "Prata"
+    ouro = "Ouro"
+    # CORREÇÃO: Havia um 'a' extra no final da linha.
+    platina = "Platina"
+    diamante = "Diamante"
+
+
 class GrupoMembro(Base):
-    """
-    Modelo de Associação (Association Object).
-    Conecta Usuarios e Grupos, e armazena dados extras sobre essa relação,
-    como o 'papel' do membro no grupo.
-    """
     __tablename__ = 'grupo_membros'
     
     usuario_id = Column(UUID(as_uuid=True), ForeignKey('usuarios.id', ondelete="CASCADE"), primary_key=True)
     grupo_id = Column(UUID(as_uuid=True), ForeignKey('grupos.id', ondelete="CASCADE"), primary_key=True)
-    papel = Column(String(20), nullable=False, default='membro') # Ex: 'dono', 'membro'
+    papel = Column(String(20), nullable=False, default='membro')
     data_entrada = Column(DateTime(timezone=True), server_default=func.now())
 
     usuario = relationship("Usuario", back_populates="associacoes_grupo")
@@ -44,11 +48,16 @@ class Grupo(Base):
     nome = Column(String(100), nullable=False)
     plano = Column(String(20), nullable=False, default='gratuito')
     criado_em = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # (NOVO) Coluna para rastrear a medalha de Prata.
+    meses_positivos_consecutivos = Column(Integer, nullable=False, default=0)
+
     associacoes_membros = relationship("GrupoMembro", back_populates="grupo", cascade="all, delete-orphan")
     assinatura = relationship("Assinatura", back_populates="grupo", uselist=False, cascade="all, delete-orphan")
     movimentacoes = relationship("Movimentacao", back_populates="grupo", cascade="all, delete-orphan")
     metas = relationship("Meta", back_populates="grupo", cascade="all, delete-orphan")
     convites = relationship("Convite", back_populates="grupo", cascade="all, delete-orphan")
+    conquistas = relationship("Conquista", back_populates="grupo", cascade="all, delete-orphan", order_by="desc(Conquista.data_conquista)")
     
     @property
     def membros(self):
@@ -94,15 +103,23 @@ class Meta(Base):
     criado_em = Column(DateTime(timezone=True), server_default=func.now())
     grupo = relationship("Grupo", back_populates="metas")
 
-# NOVA TABELA para gerir os convites
+
 class Convite(Base):
     __tablename__ = 'convites'
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     grupo_id = Column(UUID(as_uuid=True), ForeignKey('grupos.id', ondelete="CASCADE"), nullable=False)
-    # Token único que fará parte do link de convite
     token = Column(String, unique=True, index=True, default=lambda: str(uuid.uuid4()))
-    # Status do convite: 'pendente', 'aceito', 'expirado'
     status = Column(String(20), nullable=False, default='pendente')
     criado_em = Column(DateTime(timezone=True), server_default=func.now())
-    
     grupo = relationship("Grupo", back_populates="convites")
+
+
+class Conquista(Base):
+    __tablename__ = 'conquistas'
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    grupo_id = Column(UUID(as_uuid=True), ForeignKey('grupos.id', ondelete="CASCADE"), nullable=False)
+    tipo_medalha = Column(SQLAlchemyEnum(TipoMedalhaEnum, name="tipomedalhaenum"), nullable=False)
+    descricao = Column(Text, nullable=False)
+    data_conquista = Column(DateTime(timezone=True), server_default=func.now())
+    grupo = relationship("Grupo", back_populates="conquistas")

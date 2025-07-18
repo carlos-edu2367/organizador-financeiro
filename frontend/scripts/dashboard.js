@@ -7,6 +7,15 @@ let allTransactions = [];
 let monthlyChart = null;
 let currentUserId = null;
 
+// Mapeia o tipo de medalha para um emoji e uma cor do Tailwind CSS
+const medalInfo = {
+    'Bronze':   { emoji: '🥉', color: 'text-bronze' },
+    'Prata':    { emoji: '🥈', color: 'text-silver' },
+    'Ouro':     { emoji: '🥇', color: 'text-gold' },
+    'Platina':  { emoji: '💎', color: 'text-white' },
+    'Diamante': { emoji: '🏆', color: 'text-yellow-200' }
+};
+
 // --- INICIALIZAÇÃO E EVENTOS PRINCIPAIS ---
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -35,17 +44,14 @@ function setupEventListeners() {
     // Botões e formulário do modal de Adicionar/Editar Meta
     document.getElementById('goal-form')?.addEventListener('submit', handleGoalFormSubmit);
     document.getElementById('cancel-goal-button')?.addEventListener('click', () => toggleModal('goal-form-modal', false));
-    document.getElementById('close-goal-modal')?.addEventListener('click', () => toggleModal('goal-form-modal', false));
 
     // Botões e formulário do modal de Adicionar Fundos
     document.getElementById('add-funds-form')?.addEventListener('submit', handleAddFundsSubmit);
     document.getElementById('cancel-funds-button')?.addEventListener('click', () => toggleModal('add-funds-modal', false));
-    document.getElementById('close-funds-modal')?.addEventListener('click', () => toggleModal('add-funds-modal', false));
 
     // Botões e formulário do modal de Retirar Fundos
     document.getElementById('withdraw-funds-form')?.addEventListener('submit', handleWithdrawFormSubmit);
     document.getElementById('cancel-withdraw-button')?.addEventListener('click', () => toggleModal('withdraw-funds-modal', false));
-    document.getElementById('close-withdraw-modal')?.addEventListener('click', () => toggleModal('withdraw-funds-modal', false));
     
     // Botões e formulário do modal de Convite
     document.getElementById('invite-button')?.addEventListener('click', handleInviteClick);
@@ -80,24 +86,29 @@ async function fetchDashboardData() {
     }
 
     try {
-        // Faz as chamadas à API em paralelo para maior eficiência
-        const [dashboardResponse, goalsResponse, chartResponse] = await Promise.all([
-            fetch(`${API_URL}/groups/${groupId}/dashboard`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        // A chamada ao dashboard já inclui as conquistas, então não precisamos de mais chamadas.
+        const response = await fetch(`${API_URL}/groups/${groupId}/dashboard`, { 
+            headers: { 'Authorization': `Bearer ${token}` } 
+        });
+
+        if (response.status === 401) {
+            logout({ preventDefault: () => {} });
+            return;
+        }
+
+        if (!response.ok) throw new Error('Falha ao carregar dados do dashboard.');
+        
+        const dashboardData = await response.json();
+        
+        // As outras chamadas podem ser feitas em paralelo
+        const [goalsResponse, chartResponse] = await Promise.all([
             fetch(`${API_URL}/groups/${groupId}/goals`, { headers: { 'Authorization': `Bearer ${token}` } }),
             fetch(`${API_URL}/groups/${groupId}/chart_data`, { headers: { 'Authorization': `Bearer ${token}` } })
         ]);
 
-        // Verifica se o token é válido
-        if (dashboardResponse.status === 401 || goalsResponse.status === 401 || chartResponse.status === 401) {
-            logout({ preventDefault: () => {} }); // Chama a função de logout
-            return;
-        }
-
-        if (!dashboardResponse.ok) throw new Error('Falha ao carregar dados do dashboard.');
         if (!goalsResponse.ok) throw new Error('Falha ao carregar metas.');
         if (!chartResponse.ok) throw new Error('Falha ao carregar dados do gráfico.');
-
-        const dashboardData = await dashboardResponse.json();
+        
         allGoals = await goalsResponse.json();
         const chartData = await chartResponse.json();
         
@@ -415,8 +426,38 @@ function populateUI(dashboardData, chartData) {
     populateTransactions(dashboardData.movimentacoes_recentes);
     populateGoalsOnDashboard(dashboardData.plano);
     populateSummaryCards(dashboardData.total_investido, dashboardData.saldo_total);
+    // (NOVO) Chama a função para popular as conquistas
+    populateRecentAchievements(dashboardData.conquistas_recentes);
     renderChart(chartData);
 }
+
+// (NOVA FUNÇÃO) para popular o card de conquistas recentes
+function populateRecentAchievements(achievements) {
+    const container = document.getElementById('achievements-list-container');
+    if (!container) return;
+
+    container.innerHTML = ''; // Limpa o conteúdo anterior
+
+    if (achievements.length === 0) {
+        container.innerHTML = '<p class="text-center text-sm text-gray-500">Nenhuma medalha ganha ainda. Continuem assim!</p>';
+        return;
+    }
+
+    achievements.forEach(ach => {
+        const info = medalInfo[ach.tipo_medalha] || { emoji: '⭐', color: 'text-white' };
+        const achievementEl = document.createElement('div');
+        achievementEl.className = 'flex items-center space-x-4';
+        achievementEl.innerHTML = `
+            <span class="text-4xl">${info.emoji}</span>
+            <div>
+                <p class="font-bold ${info.color}">${ach.tipo_medalha}</p>
+                <p class="text-sm text-gray-400">${ach.descricao}</p>
+            </div>
+        `;
+        container.appendChild(achievementEl);
+    });
+}
+
 
 function populateGoalsOnDashboard(plan) {
     const goalContainer = document.getElementById('goals-list-container');
@@ -457,7 +498,7 @@ function populateGoalsOnDashboard(plan) {
         addGoalButton.disabled = true;
         addGoalButton.className = 'w-full text-center mt-4 py-2 border-2 border-dashed border-gray-600 text-gray-500 rounded-lg cursor-not-allowed';
         addGoalButton.innerHTML = 'Criar nova meta 💎';
-    } else {
+    } else if (plan !== 'gratuito') { // Garante que no premium o botão esteja sempre correto
         addGoalButton.disabled = false;
         addGoalButton.className = 'w-full text-center mt-4 py-2 bg-primary/80 hover:bg-primary transition text-white rounded-lg';
         addGoalButton.textContent = 'Adicionar Nova Meta';
@@ -509,12 +550,14 @@ function populateGroupInfo(groupName, members, plan) {
         });
     }
 
-    if (plan === 'gratuito' && members.length >= 2) {
-        if (inviteButton) inviteButton.classList.add('hidden');
-        if (upgradeCard) upgradeCard.classList.remove('hidden');
-    } else {
-        if (inviteButton) inviteButton.classList.remove('hidden');
-        if (upgradeCard) upgradeCard.classList.add('hidden');
+    if (inviteButton && upgradeCard) {
+        if (plan === 'gratuito' && members.length >= 2) {
+            inviteButton.classList.add('hidden');
+            upgradeCard.classList.remove('hidden');
+        } else {
+            inviteButton.classList.remove('hidden');
+            upgradeCard.classList.add('hidden');
+        }
     }
 }
 
@@ -539,7 +582,7 @@ function populateTransactions(transactions) {
         switch (tx.tipo) {
             case 'gasto': valorClass = 'text-expense'; valorSignal = '-'; break;
             case 'ganho': valorClass = 'text-gain'; valorSignal = '+'; break;
-            case 'investimento': valorClass = 'text-investment'; valorSignal = '-'; break;
+            case 'investimento': valorClass = 'text-investment'; valorSignal = ''; break; // Investimento não subtrai do saldo visível
             default: valorClass = 'text-gray-400';
         }
         

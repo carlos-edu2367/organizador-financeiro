@@ -27,14 +27,12 @@ class Settings:
     # Tempo de expiração do token de acesso em minutos.
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 # 24 horas
 
+    # Chave para resetar o banco
+
+
 # Instancia as configurações para que possam ser importadas em outros arquivos.
 # Ex: from .config import settings
 settings = Settings()
 
-# Verificação simples para garantir que a DATABASE_URL foi carregada.
-# Em uma aplicação real, Pydantic (ou outra biblioteca) faria essa validação de forma mais robusta.
-if settings.DATABASE_URL is None:
-    print("⚠️  Atenção: A variável de ambiente DATABASE_URL não foi definida.")
-    print("Crie um arquivo .env na raiz do projeto e adicione a linha:")
-    print('DATABASE_URL="postgresql://user:password@host:port/database_name"')
+
 
