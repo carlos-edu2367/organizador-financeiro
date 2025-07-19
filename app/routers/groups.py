@@ -224,7 +224,7 @@ def create_invite_link(group_id: str, db: Session = Depends(database.get_db), cu
     db.add(new_invite)
     db.commit()
     db.refresh(new_invite)
-    invite_link = f"/frontend/pages/auth/accept_invite.html?token={new_invite.token}"
+    invite_link = f"/pages/auth/accept_invite.html?token={new_invite.token}"
     return {"invite_link": invite_link}
 @router.post("/invites/{invite_token}/accept")
 def accept_invite(invite_token: str, db: Session = Depends(database.get_db), current_user: models.Usuario = Depends(get_current_user_from_token)):
