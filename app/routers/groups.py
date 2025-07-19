@@ -61,13 +61,21 @@ def get_dashboard_data(group_id: str, db: Session = Depends(database.get_db), cu
 
     conquistas_recentes = group.conquistas[:3]
 
-    last_ai_usage = None
+    # (ALTERADO) Lógica para buscar o status de uso da IA
+    ai_usage_count_today = 0
+    ai_first_usage_timestamp_today = None
     if group.plano == 'gratuito':
         twenty_four_hours_ago = datetime.now(timezone.utc) - timedelta(days=1)
-        last_ai_usage = db.query(models.AIUsage).filter(
+        # Busca todos os usos nas últimas 24h, ordenando pelo mais antigo primeiro
+        recent_usages = db.query(models.AIUsage).filter(
             models.AIUsage.grupo_id == group.id,
             models.AIUsage.timestamp >= twenty_four_hours_ago
-        ).order_by(models.AIUsage.timestamp.desc()).first()
+        ).order_by(models.AIUsage.timestamp.asc()).all()
+
+        ai_usage_count_today = len(recent_usages)
+        if ai_usage_count_today > 0:
+            # Pega o timestamp do primeiro uso para basear o cronômetro
+            ai_first_usage_timestamp_today = recent_usages[0].timestamp
 
     dashboard_data = {
         "current_user_id": current_user.id,
@@ -79,10 +87,12 @@ def get_dashboard_data(group_id: str, db: Session = Depends(database.get_db), cu
         "conquistas_recentes": conquistas_recentes,
         "ganhos_mes_atual": ganhos_mes_atual,
         "gastos_mes_atual": gastos_mes_atual,
-        "last_ai_usage_timestamp": last_ai_usage.timestamp if last_ai_usage else None
+        "ai_usage_count_today": ai_usage_count_today,
+        "ai_first_usage_timestamp_today": ai_first_usage_timestamp_today
     }
     return dashboard_data
 
+# ... (o resto do ficheiro groups.py permanece o mesmo)
 @router.get("/{group_id}/chart_data", response_model=List[schemas.ChartMonthData])
 def get_chart_data(group_id: str, db: Session = Depends(database.get_db), current_user: models.Usuario = Depends(get_current_user_from_token)):
     group = db.query(models.Grupo).filter(models.Grupo.id == group_id).first()
@@ -113,14 +123,12 @@ def get_chart_data(group_id: str, db: Session = Depends(database.get_db), curren
             "saldo": float(saldo)
         })
     return chart_data[::-1]
-
 @router.get("/{group_id}/goals", response_model=List[schemas.Meta])
 def get_all_goals_for_group(group_id: str, db: Session = Depends(database.get_db), current_user: models.Usuario = Depends(get_current_user_from_token)):
     group = db.query(models.Grupo).filter(models.Grupo.id == group_id).first()
     if not group or current_user not in group.membros:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso não permitido.")
     return group.metas
-
 @router.post("/{group_id}/goals", response_model=schemas.Meta, status_code=status.HTTP_201_CREATED)
 def create_goal_for_group(group_id: str, goal: schemas.GoalCreate, db: Session = Depends(database.get_db), current_user: models.Usuario = Depends(get_current_user_from_token)):
     group = db.query(models.Grupo).options(joinedload(models.Grupo.metas)).filter(models.Grupo.id == group_id).first()
@@ -133,7 +141,6 @@ def create_goal_for_group(group_id: str, goal: schemas.GoalCreate, db: Session =
     db.commit()
     db.refresh(db_goal)
     return db_goal
-
 @router.put("/goals/{goal_id}", response_model=schemas.Meta)
 def update_goal(goal_id: str, goal_update: schemas.GoalUpdate, db: Session = Depends(database.get_db), current_user: models.Usuario = Depends(get_current_user_from_token)):
     db_goal = db.query(models.Meta).options(joinedload(models.Meta.grupo)).filter(models.Meta.id == goal_id).first()
@@ -145,7 +152,6 @@ def update_goal(goal_id: str, goal_update: schemas.GoalUpdate, db: Session = Dep
     db.commit()
     db.refresh(db_goal)
     return db_goal
-
 @router.delete("/goals/{goal_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_goal(goal_id: str, db: Session = Depends(database.get_db), current_user: models.Usuario = Depends(get_current_user_from_token)):
     db_goal = db.query(models.Meta).options(joinedload(models.Meta.grupo)).filter(models.Meta.id == goal_id).first()
@@ -156,7 +162,6 @@ def delete_goal(goal_id: str, db: Session = Depends(database.get_db), current_us
     db.delete(db_goal)
     db.commit()
     return
-
 @router.post("/goals/{goal_id}/add_funds", response_model=schemas.Meta)
 def add_funds_to_goal(goal_id: str, funds: schemas.GoalAddFunds, db: Session = Depends(database.get_db), current_user: models.Usuario = Depends(get_current_user_from_token)):
     db_goal = db.query(models.Meta).options(joinedload(models.Meta.grupo)).filter(models.Meta.id == goal_id).first()
@@ -191,7 +196,6 @@ def add_funds_to_goal(goal_id: str, funds: schemas.GoalAddFunds, db: Session = D
     db.commit()
     db.refresh(db_goal)
     return db_goal
-
 @router.post("/goals/{goal_id}/withdraw_funds", response_model=schemas.Meta)
 def withdraw_funds_from_goal(goal_id: str, funds: schemas.GoalWithdrawFunds, db: Session = Depends(database.get_db), current_user: models.Usuario = Depends(get_current_user_from_token)):
     db_goal = db.query(models.Meta).options(joinedload(models.Meta.grupo)).filter(models.Meta.id == goal_id).first()
@@ -206,79 +210,58 @@ def withdraw_funds_from_goal(goal_id: str, funds: schemas.GoalWithdrawFunds, db:
     db.commit()
     db.refresh(db_goal)
     return db_goal
-
 @router.post("/{group_id}/invites", response_model=schemas.InviteLink)
 def create_invite_link(group_id: str, db: Session = Depends(database.get_db), current_user: models.Usuario = Depends(get_current_user_from_token)):
     group = db.query(models.Grupo).options(joinedload(models.Grupo.associacoes_membros)).filter(models.Grupo.id == group_id).first()
     if not group:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Grupo não encontrado.")
-    
     user_role = next((assoc.papel for assoc in group.associacoes_membros if assoc.usuario_id == current_user.id), None)
     if user_role != 'dono':
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas o dono do grupo pode gerar convites.")
-    
     if len(group.membros) >= 4 or (group.plano == 'gratuito' and len(group.membros) >= 2):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="O grupo atingiu o limite máximo de membros.")
-
     new_invite = models.Convite(grupo_id=group.id)
     db.add(new_invite)
     db.commit()
     db.refresh(new_invite)
-
-    # (CORRIGIDO) O caminho do link agora é relativo à raiz do site, sem o /frontend.
-    invite_link = f"/pages/auth/accept_invite.html?token={new_invite.token}"
-    
+    invite_link = f"/frontend/pages/auth/accept_invite.html?token={new_invite.token}"
     return {"invite_link": invite_link}
-
 @router.post("/invites/{invite_token}/accept")
 def accept_invite(invite_token: str, db: Session = Depends(database.get_db), current_user: models.Usuario = Depends(get_current_user_from_token)):
     invite = db.query(models.Convite).filter(models.Convite.token == invite_token, models.Convite.status == 'pendente').first()
     if not invite:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Convite inválido, expirado ou já utilizado.")
-    
     group = invite.grupo
     if current_user in group.membros:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Você já é membro deste grupo.")
-        
     association = models.GrupoMembro(usuario_id=current_user.id, grupo_id=group.id, papel='membro')
     db.add(association)
-    
     invite.status = 'aceito'
-    
     db.commit()
-    
-    return {"message": "Convite aceito com sucesso! Você foi adicionado ao grupo.", "group_id": group.id}
-
+    return {"message": "Convite aceite com sucesso! Você foi adicionado ao grupo.", "group_id": group.id}
 @router.delete("/{group_id}/members/{member_id}", status_code=status.HTTP_204_NO_CONTENT)
 def remove_group_member(group_id: str, member_id: str, db: Session = Depends(database.get_db), current_user: models.Usuario = Depends(get_current_user_from_token)):
     group = db.query(models.Grupo).options(joinedload(models.Grupo.associacoes_membros)).filter(models.Grupo.id == group_id).first()
     if not group:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Grupo não encontrado.")
-
     user_role = next((assoc.papel for assoc in group.associacoes_membros if assoc.usuario_id == current_user.id), None)
     if user_role != 'dono':
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas o dono do grupo pode remover membros.")
-    
     if str(current_user.id) == member_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="O dono não pode sair do grupo.")
-
     association_to_delete = db.query(models.GrupoMembro).filter(
         models.GrupoMembro.grupo_id == group_id,
         models.GrupoMembro.usuario_id == member_id
     ).first()
-
     if not association_to_delete:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Membro não encontrado no grupo.")
-
     db.delete(association_to_delete)
     db.commit()
     return
-
 @router.get("/{group_id}/achievements", response_model=List[schemas.Conquista])
 def get_all_achievements_for_group(group_id: str, db: Session = Depends(database.get_db), current_user: models.Usuario = Depends(get_current_user_from_token)):
     """Lista todas as conquistas (medalhas) de um grupo."""
     group = db.query(models.Grupo).filter(models.Grupo.id == group_id).first()
     if not group or current_user not in group.membros:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso não permitido.")
-    
     return group.conquistas
