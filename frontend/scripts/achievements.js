@@ -1,4 +1,4 @@
-const API_URL = 'http://127.0.0.1:8000';
+const API_URL = '/api';
 
 // Mapeia o tipo de medalha para um emoji e uma cor do Tailwind CSS
 const medalInfo = {

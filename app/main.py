@@ -1,9 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.staticfiles import StaticFiles # Adicionado
+from starlette.responses import FileResponse # Adicionado
 
 from . import models
 from .database import engine
-# (ALTERADO) Garante que todos os routers, incluindo o da IA, são importados.
 from .routers import auth, users, groups, transactions, tasks, ai
 
 models.Base.metadata.create_all(bind=engine)
@@ -14,10 +15,9 @@ app = FastAPI(
     version="0.1.0",
 )
 
+# Configuração de CORS mais permissiva para o deploy
 origins = [
-    "http://localhost",
-    "http://localhost:8000",
-    "http://127.0.0.1:5500", 
+    "*" # Permite todas as origens
 ]
 
 app.add_middleware(
@@ -28,16 +28,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Inclui as rotas na aplicação principal.
-app.include_router(auth.router)
-app.include_router(users.router)
-app.include_router(groups.router)
-app.include_router(transactions.router)
-app.include_router(tasks.router)
-# (NOVO) Adiciona o router de IA à aplicação.
-app.include_router(ai.router)
+# Inclui as rotas da API.
+# O prefixo /api ajuda a diferenciar os endpoints da API dos ficheiros do site.
+app.include_router(auth.router, prefix="/api")
+app.include_router(users.router, prefix="/api")
+app.include_router(groups.router, prefix="/api")
+app.include_router(transactions.router, prefix="/api")
+app.include_router(tasks.router, prefix="/api")
+app.include_router(ai.router, prefix="/api")
 
 
-@app.get("/")
-def read_root():
-    return {"status": "Clarify API is running!"}
+# (NOVO) Monta a pasta 'frontend' para servir os ficheiros estáticos (HTML, JS, CSS)
+# Esta deve ser a ÚLTIMA coisa a ser montada na aplicação.
+app.mount("/", StaticFiles(directory="frontend", html=True), name="static")
+
+@app.exception_handler(404)
+async def not_found_handler(request, exc):
+    """Garante que o index.html seja servido para qualquer rota não encontrada."""
+    return FileResponse('frontend/index.html')

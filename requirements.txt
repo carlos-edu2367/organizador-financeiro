@@ -10,3 +10,4 @@ python-dateutil
 email-validator
 python-multipart
 httpx
+gunicorn
