@@ -34,7 +34,8 @@
   </div>
 
   <script>
-    const API_URL = 'http://127.0.0.1:8000';
+    // (CORRIGIDO) A API_URL agora é relativa, funcionando em qualquer ambiente.
+    const API_URL = '/api';
 
     document.addEventListener('DOMContentLoaded', async () => {
         const loadingState = document.getElementById('loading-state');
@@ -48,7 +49,6 @@
         const inviteToken = params.get('token');
 
         if (!token) {
-            // Se o utilizador não estiver logado, guarda o convite e redireciona para o login
             localStorage.setItem('pendingInviteToken', inviteToken);
             window.location.href = './login_page.html';
             return;
@@ -74,10 +74,8 @@
                 throw new Error(data.detail || 'Não foi possível aceitar o convite.');
             }
 
-            // Sucesso!
-            resultTitle.textContent = 'Convite Aceite!';
+            resultTitle.textContent = 'Convite Aceito!';
             resultMessage.textContent = data.message;
-            // Atualiza o grupo ativo para o novo grupo
             localStorage.setItem('activeGroupId', data.group_id);
 
         } catch (error) {
