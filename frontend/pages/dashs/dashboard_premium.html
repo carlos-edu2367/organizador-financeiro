@@ -50,7 +50,6 @@
         <span id="user-name" class="hidden sm:block text-gray-300">Olá!</span>
         <div class="relative">
           <button id="menu-button" class="p-2 rounded-full hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg></button>
-          <!-- (ALTERADO) Links do menu atualizados -->
           <div id="menu-card" class="hidden absolute right-0 mt-2 w-48 bg-surface rounded-lg shadow-xl py-2 z-30">
             <a href="./minha_conta.html" class="block px-4 py-2 text-sm text-gray-300 hover:bg-primary hover:text-white">Minha Conta</a>
             <a href="./meu_grupo.html" class="block px-4 py-2 text-sm text-gray-300 hover:bg-primary hover:text-white">Meu Grupo</a>
@@ -62,7 +61,6 @@
     </div>
   </header>
 
-  <!-- O resto do main e dos modais permanece o mesmo -->
   <main class="container mx-auto p-4 lg:p-8">
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div class="lg:col-span-2 space-y-8 order-1">
@@ -99,9 +97,9 @@
               <textarea id="ai-textarea" placeholder="Ex: 'gastei 30 reais de uber e investi 50 reais hoje'" class="w-full h-24 px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary"></textarea>
               <div class="flex space-x-2 mt-4">
                   <button id="analyze-ai-button" class="w-full py-2 bg-primary hover:bg-primary-dark transition rounded-lg font-medium text-white">Analisar</button>
-                  <!-- CORREÇÃO: Adicionado o id="ai-record-button" -->
                   <button id="ai-record-button" class="py-2 px-4 bg-gray-600 hover:bg-gray-700 transition rounded-lg font-medium text-white" title="Gravar áudio"><i class="fa-solid fa-microphone"></i></button>
-                  <button class="py-2 px-4 bg-gain hover:opacity-90 transition rounded-lg font-medium text-white" title="Registrar via WhatsApp"><i class="fa-brands fa-whatsapp"></i></button>
+                  <!-- CORREÇÃO: Botão do WhatsApp adicionado -->
+                  <button class="py-2 px-4 bg-green-500 hover:bg-green-600 transition rounded-lg font-medium text-white" title="Registrar via WhatsApp"><i class="fa-brands fa-whatsapp"></i></button>
               </div>
             </div>
             <div class="bg-surface p-6 rounded-xl shadow-lg">
