@@ -3,14 +3,22 @@ const API_URL = '/api';
 // --- ELEMENTOS DO DOM ---
 const userDataForm = document.getElementById('user-data-form');
 const userDataFieldset = document.getElementById('user-data-fieldset');
-const saveUserDataButton = document.getElementById('save-user-data-button');
+const editUserDataButton = document.getElementById('edit-user-data-button');
+const userDataActions = document.getElementById('user-data-actions');
+const cancelUserDataButton = document.getElementById('cancel-user-data-button');
+
 const passwordChangeForm = document.getElementById('password-change-form');
 const passwordChangeFieldset = document.getElementById('password-change-fieldset');
-const savePasswordButton = document.getElementById('save-password-button');
+const editPasswordButton = document.getElementById('edit-password-button');
+const passwordChangeActions = document.getElementById('password-change-actions');
+const cancelPasswordChangeButton = document.getElementById('cancel-password-change-button');
+
 const deleteAccountButton = document.getElementById('delete-account-button');
+
 const passwordConfirmModal = document.getElementById('password-confirm-modal');
 const passwordConfirmForm = document.getElementById('password-confirm-form');
 const cancelConfirmButton = document.getElementById('cancel-confirm-button');
+
 const nomeInput = document.getElementById('nome');
 const emailInput = document.getElementById('email');
 
@@ -24,18 +32,22 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function setupEventListeners() {
-    // Event listener para abrir o modal
-    userDataFieldset.addEventListener('click', () => handleSectionClick('edit-data'));
-    passwordChangeFieldset.addEventListener('click', () => handleSectionClick('edit-password'));
-    deleteAccountButton.addEventListener('click', () => handleSectionClick('delete-account'));
+    // Botões para iniciar uma ação (que requer senha)
+    editUserDataButton.addEventListener('click', () => handleEditClick('edit-data'));
+    editPasswordButton.addEventListener('click', () => handleEditClick('edit-password'));
+    deleteAccountButton.addEventListener('click', () => handleEditClick('delete-account'));
 
-    // Event listener do formulário do modal
+    // Formulário do modal de confirmação de senha
     passwordConfirmForm.addEventListener('submit', handlePasswordConfirmSubmit);
     cancelConfirmButton.addEventListener('click', () => toggleModal('password-confirm-modal', false));
     
-    // Event listeners dos formulários da página
+    // Formulários principais da página
     userDataForm.addEventListener('submit', handleUserDataFormSubmit);
     passwordChangeForm.addEventListener('submit', handlePasswordChangeFormSubmit);
+
+    // Botões de cancelar edição
+    cancelUserDataButton.addEventListener('click', () => disableEditing('edit-data'));
+    cancelPasswordChangeButton.addEventListener('click', () => disableEditing('edit-password'));
 }
 
 // --- LÓGICA DE DADOS (API) ---
@@ -65,6 +77,12 @@ async function handlePasswordConfirmSubmit(event) {
     const token = localStorage.getItem('accessToken');
     const password = document.getElementById('modal-password').value;
     const errorMessage = document.getElementById('modal-error-message');
+    const submitButton = passwordConfirmForm.querySelector('button[type="submit"]');
+    const originalButtonText = submitButton.textContent;
+
+    submitButton.disabled = true;
+    submitButton.textContent = 'Verificando...';
+    errorMessage.classList.add('hidden');
 
     try {
         const response = await fetch(`${API_URL}/users/verify-password`, {
@@ -73,11 +91,10 @@ async function handlePasswordConfirmSubmit(event) {
             body: JSON.stringify({ password: password })
         });
         const data = await response.json();
-        if (!response.ok) throw new Error(data.detail);
+        if (!response.ok) throw new Error(data.detail || 'Erro ao verificar senha.');
 
         if (data.verified) {
             toggleModal('password-confirm-modal', false);
-            errorMessage.classList.add('hidden');
             passwordConfirmForm.reset();
             executeCurrentAction();
         } else {
@@ -87,6 +104,9 @@ async function handlePasswordConfirmSubmit(event) {
     } catch (error) {
         errorMessage.textContent = error.message;
         errorMessage.classList.remove('hidden');
+    } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = originalButtonText;
     }
 }
 
@@ -175,7 +195,7 @@ async function handleDeleteAccount() {
 
 // --- LÓGICA DE UI ---
 
-function handleSectionClick(action) {
+function handleEditClick(action) {
     currentAction = action;
     toggleModal('password-confirm-modal', true);
     document.getElementById('modal-password').focus();
@@ -195,20 +215,26 @@ function executeCurrentAction() {
 function enableEditing(section) {
     if (section === 'edit-data') {
         userDataFieldset.disabled = false;
-        saveUserDataButton.classList.remove('hidden');
+        editUserDataButton.classList.add('hidden');
+        userDataActions.classList.remove('hidden');
     } else if (section === 'edit-password') {
         passwordChangeFieldset.disabled = false;
-        savePasswordButton.classList.remove('hidden');
+        editPasswordButton.classList.add('hidden');
+        passwordChangeActions.classList.remove('hidden');
     }
 }
 
 function disableEditing(section) {
     if (section === 'edit-data') {
         userDataFieldset.disabled = true;
-        saveUserDataButton.classList.add('hidden');
+        editUserDataButton.classList.remove('hidden');
+        userDataActions.classList.add('hidden');
+        fetchUserData(); // Recarrega os dados para reverter qualquer mudança não salva
     } else if (section === 'edit-password') {
         passwordChangeFieldset.disabled = true;
-        savePasswordButton.classList.add('hidden');
+        editPasswordButton.classList.remove('hidden');
+        passwordChangeActions.classList.add('hidden');
+        passwordChangeForm.reset();
     }
 }
 

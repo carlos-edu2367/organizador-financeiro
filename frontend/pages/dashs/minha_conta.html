@@ -43,45 +43,55 @@
     <div class="space-y-8">
       <!-- Dados Pessoais -->
       <div class="bg-surface p-6 rounded-xl shadow-lg">
-        <h2 class="text-xl font-bold mb-4">Dados Pessoais</h2>
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-bold">Dados Pessoais</h2>
+            <button id="edit-user-data-button" class="text-sm font-medium text-primary-light hover:underline">Editar</button>
+        </div>
         <form id="user-data-form" class="space-y-4">
           <fieldset id="user-data-fieldset" disabled>
             <div>
               <label for="nome" class="block text-sm font-medium text-gray-300">Nome</label>
-              <input type="text" id="nome" required class="mt-1 w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50">
+              <input type="text" id="nome" required class="mt-1 w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed">
             </div>
             <div>
               <label for="email" class="block text-sm font-medium text-gray-300">E-mail</label>
-              <input type="email" id="email" required class="mt-1 w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50">
+              <input type="email" id="email" required class="mt-1 w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed">
             </div>
           </fieldset>
-          <div class="flex justify-end pt-2">
-            <button type="submit" id="save-user-data-button" class="py-2 px-6 bg-primary hover:bg-primary-dark rounded-lg font-medium text-white hidden">Salvar Alterações</button>
+          <div id="user-data-actions" class="hidden flex justify-end items-center space-x-4 pt-2">
+            <button type="button" id="cancel-user-data-button" class="text-sm font-medium text-gray-400 hover:text-white">Cancelar</button>
+            <button type="submit" class="py-2 px-6 bg-primary hover:bg-primary-dark rounded-lg font-medium text-white">Salvar Alterações</button>
           </div>
         </form>
       </div>
 
       <!-- Alterar Senha -->
       <div class="bg-surface p-6 rounded-xl shadow-lg">
-        <h2 class="text-xl font-bold mb-4">Alterar Senha</h2>
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-bold">Alterar Senha</h2>
+            <button id="edit-password-button" class="text-sm font-medium text-primary-light hover:underline">Editar</button>
+        </div>
         <form id="password-change-form" class="space-y-4">
           <fieldset id="password-change-fieldset" disabled>
             <div>
               <label for="current-password" class="block text-sm font-medium text-gray-300">Senha Atual</label>
-              <input type="password" id="current-password" required class="mt-1 w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50">
+              <input type="password" id="current-password" required placeholder="••••••" class="mt-1 w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed">
             </div>
             <div>
               <label for="new-password" class="block text-sm font-medium text-gray-300">Nova Senha</label>
-              <input type="password" id="new-password" required class="mt-1 w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50">
+              <input type="password" id="new-password" required placeholder="Crie uma nova senha forte" class="mt-1 w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed">
             </div>
             <div>
               <label for="confirm-password" class="block text-sm font-medium text-gray-300">Confirmar Nova Senha</label>
-              <input type="password" id="confirm-password" required class="mt-1 w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50">
+              <input type="password" id="confirm-password" required placeholder="Confirme a nova senha" class="mt-1 w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed">
             </div>
           </fieldset>
-          <div class="flex justify-between items-center pt-2">
+          <div id="password-change-actions" class="hidden flex justify-between items-center pt-2">
              <a href="../auth/esqueci_a_senha.html" class="text-sm text-primary-light hover:underline">Esqueci minha senha</a>
-            <button type="submit" id="save-password-button" class="py-2 px-6 bg-primary hover:bg-primary-dark rounded-lg font-medium text-white hidden">Alterar Senha</button>
+             <div class="flex items-center space-x-4">
+                <button type="button" id="cancel-password-change-button" class="text-sm font-medium text-gray-400 hover:text-white">Cancelar</button>
+                <button type="submit" class="py-2 px-6 bg-primary hover:bg-primary-dark rounded-lg font-medium text-white">Alterar Senha</button>
+             </div>
           </div>
         </form>
       </div>
@@ -89,12 +99,12 @@
       <!-- Zona de Perigo -->
       <div class="bg-danger/10 border border-danger p-6 rounded-xl shadow-lg">
         <h2 class="text-xl font-bold text-danger mb-4">Zona de Perigo</h2>
-        <div class="flex justify-between items-center">
+        <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
           <div>
             <p class="font-medium">Apagar esta conta</p>
             <p class="text-sm text-gray-400">Uma vez que você apague sua conta, não há como voltar atrás. Tenha certeza.</p>
           </div>
-          <button id="delete-account-button" class="py-2 px-4 bg-danger hover:opacity-80 rounded-lg font-medium text-white">Apagar Conta</button>
+          <button id="delete-account-button" class="py-2 px-4 bg-danger hover:opacity-80 rounded-lg font-medium text-white flex-shrink-0">Apagar Conta</button>
         </div>
       </div>
     </div>
