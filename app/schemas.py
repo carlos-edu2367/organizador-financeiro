@@ -166,9 +166,10 @@ class InviteLink(BaseModel):
 class MemberStats(BaseModel):
     member_id: uuid.UUID
     member_name: str
-    ganhos: Decimal
-    gastos: Decimal
-    investimentos: Decimal
+    # CORREÇÃO: Alterado de Decimal para float para garantir que seja serializado como um número.
+    ganhos: float
+    gastos: float
+    investimentos: float
 
 # ==================
 # Schemas para o Gráfico
