@@ -61,12 +61,10 @@ def get_dashboard_data(group_id: str, db: Session = Depends(database.get_db), cu
 
     conquistas_recentes = group.conquistas[:3]
 
-    # (ALTERADO) Lógica para buscar o status de uso da IA
     ai_usage_count_today = 0
     ai_first_usage_timestamp_today = None
     if group.plano == 'gratuito':
         twenty_four_hours_ago = datetime.now(timezone.utc) - timedelta(days=1)
-        # Busca todos os usos nas últimas 24h, ordenando pelo mais antigo primeiro
         recent_usages = db.query(models.AIUsage).filter(
             models.AIUsage.grupo_id == group.id,
             models.AIUsage.timestamp >= twenty_four_hours_ago
@@ -74,7 +72,6 @@ def get_dashboard_data(group_id: str, db: Session = Depends(database.get_db), cu
 
         ai_usage_count_today = len(recent_usages)
         if ai_usage_count_today > 0:
-            # Pega o timestamp do primeiro uso para basear o cronômetro
             ai_first_usage_timestamp_today = recent_usages[0].timestamp
 
     dashboard_data = {
@@ -92,7 +89,41 @@ def get_dashboard_data(group_id: str, db: Session = Depends(database.get_db), cu
     }
     return dashboard_data
 
-# ... (o resto do ficheiro groups.py permanece o mesmo)
+@router.get("/{group_id}/stats", response_model=List[schemas.MemberStats])
+def get_group_stats(
+    group_id: str,
+    year: int,
+    month: int,
+    db: Session = Depends(database.get_db),
+    current_user: models.Usuario = Depends(get_current_user_from_token)
+):
+    """Retorna as estatísticas de gastos, ganhos e investimentos para cada membro em um determinado mês/ano."""
+    group = db.query(models.Grupo).options(joinedload(models.Grupo.membros)).filter(models.Grupo.id == group_id).first()
+    if not group or current_user not in group.membros:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso não permitido.")
+
+    stats = []
+    for member in group.membros:
+        def get_total_for_type(tipo: str) -> Decimal:
+            total = db.query(func.sum(models.Movimentacao.valor)).filter(
+                models.Movimentacao.grupo_id == group_id,
+                models.Movimentacao.responsavel_id == member.id,
+                models.Movimentacao.tipo == tipo,
+                extract('year', models.Movimentacao.data_transacao) == year,
+                extract('month', models.Movimentacao.data_transacao) == month
+            ).scalar()
+            return total or Decimal('0.0')
+
+        stats.append({
+            "member_id": member.id,
+            "member_name": member.nome,
+            "ganhos": get_total_for_type('ganho'),
+            "gastos": get_total_for_type('gasto'),
+            "investimentos": get_total_for_type('investimento')
+        })
+    return stats
+
+
 @router.get("/{group_id}/chart_data", response_model=List[schemas.ChartMonthData])
 def get_chart_data(group_id: str, db: Session = Depends(database.get_db), current_user: models.Usuario = Depends(get_current_user_from_token)):
     group = db.query(models.Grupo).filter(models.Grupo.id == group_id).first()

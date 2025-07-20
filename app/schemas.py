@@ -34,6 +34,20 @@ class UserSessionData(User):
     plano: str
     grupo_id: Optional[uuid.UUID] = None
 
+class UserUpdate(BaseModel):
+    nome: Optional[str] = None
+    email: Optional[EmailStr] = None
+
+class PasswordVerify(BaseModel):
+    password: str
+
+class PasswordVerifyResponse(BaseModel):
+    verified: bool
+
+class PasswordUpdate(BaseModel):
+    current_password: str
+    new_password: str
+
 # ==================
 # Schemas para Metas
 # ==================
@@ -142,13 +156,19 @@ class DashboardData(BaseModel):
     conquistas_recentes: List[Conquista] = []
     ganhos_mes_atual: Decimal = Field(default=0.0, max_digits=10, decimal_places=2)
     gastos_mes_atual: Decimal = Field(default=0.0, max_digits=10, decimal_places=2)
-    # (ALTERADO) Novos campos para a lógica do cronômetro da IA
     ai_usage_count_today: int = 0
     ai_first_usage_timestamp_today: Optional[datetime.datetime] = None
 
 
 class InviteLink(BaseModel):
     invite_link: str
+
+class MemberStats(BaseModel):
+    member_id: uuid.UUID
+    member_name: str
+    ganhos: Decimal
+    gastos: Decimal
+    investimentos: Decimal
 
 # ==================
 # Schemas para o Gráfico

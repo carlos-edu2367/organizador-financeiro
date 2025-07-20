@@ -97,7 +97,12 @@
               <h3 class="text-xl font-bold mb-4 text-gray-200">Adicionar Transação (IA)</h3>
               <p class="text-sm text-gray-400 mb-4">Descreva sua movimentação por texto ou áudio.</p>
               <textarea id="ai-textarea" placeholder="Ex: 'gastei 30 reais de uber e investi 50 reais hoje'" class="w-full h-24 px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary"></textarea>
-              <div class="flex space-x-2 mt-4"><button id="analyze-ai-button" class="w-full py-2 bg-primary hover:bg-primary-dark transition rounded-lg font-medium text-white">Analisar</button><button class="py-2 px-4 bg-gray-600 hover:bg-gray-700 transition rounded-lg font-medium text-white" title="Gravar áudio"><i class="fa-solid fa-microphone"></i></button><button class="py-2 px-4 bg-gain hover:opacity-90 transition rounded-lg font-medium text-white" title="Registrar via WhatsApp"><i class="fa-brands fa-whatsapp"></i></button></div>
+              <div class="flex space-x-2 mt-4">
+                  <button id="analyze-ai-button" class="w-full py-2 bg-primary hover:bg-primary-dark transition rounded-lg font-medium text-white">Analisar</button>
+                  <!-- CORREÇÃO: Adicionado o id="ai-record-button" -->
+                  <button id="ai-record-button" class="py-2 px-4 bg-gray-600 hover:bg-gray-700 transition rounded-lg font-medium text-white" title="Gravar áudio"><i class="fa-solid fa-microphone"></i></button>
+                  <button class="py-2 px-4 bg-gain hover:opacity-90 transition rounded-lg font-medium text-white" title="Registrar via WhatsApp"><i class="fa-brands fa-whatsapp"></i></button>
+              </div>
             </div>
             <div class="bg-surface p-6 rounded-xl shadow-lg">
                 <h3 class="text-xl font-bold text-gray-200 mb-4">Nossas Metas</h3>
