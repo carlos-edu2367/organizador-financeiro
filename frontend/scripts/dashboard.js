@@ -803,7 +803,7 @@ function populateTransactions(transactions) {
             <td class="py-3 px-2">${tx.descricao || 'N/A'}</td>
             <td class="py-3 px-2 ${valorClass}">${valorSignal} R$ ${Number(tx.valor).toFixed(2)}</td>
             <td class="py-3 px-2">${tx.responsavel_nome}</td>
-            <td class="py-3 px-2">${new Date(tx.data_transacao).toLocaleDateString()}</td>
+            <td class="py-3 px-2">${new Date(tx.data_transacao).toLocaleDateString('pt-BR')}</td>
             <td class="py-3 px-2 text-center">
                 <button onclick="openTransactionFormModal('${tx.id}')" class="text-primary-light hover:opacity-75"><i class="fas fa-pencil-alt"></i></button>
                 <button onclick="handleDeleteTransaction('${tx.id}')" class="text-expense hover:opacity-75 ml-3"><i class="fas fa-trash"></i></button>
