@@ -6,7 +6,8 @@ let groupMembers = [];
 let allTransactions = [];
 let monthlyChart = null;
 let currentUserId = null;
-let aiUsageTimer = null; // Variável para controlar o timer do setInterval
+let aiUsageTimer = null;
+let recognition = null; // (NOVO) Variável para a API de reconhecimento de fala
 
 const medalInfo = {
     'Bronze':   { emoji: '🥉', color: 'text-bronze' },
@@ -20,6 +21,7 @@ const medalInfo = {
 
 document.addEventListener('DOMContentLoaded', () => {
     setupEventListeners();
+    setupSpeechRecognition(); // (NOVO) Inicializa a API de fala
     fetchDashboardData();
 });
 
@@ -39,6 +41,7 @@ function setupEventListeners() {
     document.getElementById('close-invite-modal')?.addEventListener('click', () => toggleModal('invite-modal', false));
     document.getElementById('copy-invite-link-button')?.addEventListener('click', copyInviteLink);
     document.getElementById('analyze-ai-button')?.addEventListener('click', handleAITransactionParse);
+    document.getElementById('ai-record-button')?.addEventListener('click', toggleAudioRecording); // (NOVO) Listener para o botão de gravar
     document.getElementById('close-ai-results-modal')?.addEventListener('click', () => toggleModal('ai-results-modal', false));
     document.getElementById('cancel-ai-results-button')?.addEventListener('click', () => toggleModal('ai-results-modal', false));
     document.getElementById('save-ai-results-button')?.addEventListener('click', handleSaveAITransactions);
@@ -53,7 +56,7 @@ function logout(event) {
 
 
 // --- LÓGICA DE DADOS (API) ---
-
+// ... (código de fetchDashboardData e gestão de grupo/transações/metas permanece o mesmo)
 async function fetchDashboardData(retries = 3) {
     const token = localStorage.getItem('accessToken');
     const groupId = localStorage.getItem('activeGroupId');
@@ -98,9 +101,6 @@ async function fetchDashboardData(retries = 3) {
         }
     }
 }
-
-
-// --- LÓGICA DE GESTÃO DE GRUPO ---
 async function handleInviteClick() {
     const token = localStorage.getItem('accessToken');
     const groupId = localStorage.getItem('activeGroupId');
@@ -125,7 +125,6 @@ async function handleInviteClick() {
         await showCustomAlert('Erro', error.message);
     }
 }
-
 async function copyInviteLink() {
     const inviteLinkInput = document.getElementById('invite-link-input');
     inviteLinkInput.select();
@@ -138,7 +137,6 @@ async function copyInviteLink() {
         await showCustomAlert('Copiado!', 'O link de convite foi copiado para a área de transferência.');
     }
 }
-
 async function handleRemoveMember(memberId) {
     const confirmed = await showCustomAlert('Confirmar Remoção', 'Você tem certeza que quer remover este membro do grupo?', 'confirm');
     if (!confirmed) return;
@@ -163,10 +161,6 @@ async function handleRemoveMember(memberId) {
         await showCustomAlert('Erro', error.message);
     }
 }
-
-
-// --- LÓGICA DE GESTÃO DE TRANSAÇÕES ---
-
 function openTransactionFormModal(transactionId = null) {
     const form = document.getElementById('transaction-form');
     const modalTitle = document.getElementById('transaction-form-title');
@@ -190,7 +184,6 @@ function openTransactionFormModal(transactionId = null) {
     }
     toggleModal('transaction-form-modal', true);
 }
-
 async function handleTransactionFormSubmit(event) {
     event.preventDefault();
     const token = localStorage.getItem('accessToken');
@@ -229,7 +222,6 @@ async function handleTransactionFormSubmit(event) {
         document.getElementById('transaction-error-message').classList.remove('hidden');
     }
 }
-
 async function handleDeleteTransaction(transactionId) {
     const confirmed = await showCustomAlert('Confirmar Exclusão', 'Você tem certeza que quer apagar esta movimentação?', 'confirm');
     if (!confirmed) return;
@@ -249,10 +241,6 @@ async function handleDeleteTransaction(transactionId) {
         await showCustomAlert('Erro', `Erro ao apagar movimentação: ${error.message}`);
     }
 }
-
-
-// --- LÓGICA DE GESTÃO DE METAS ---
-
 function openGoalFormModal(goalId = null) {
     const form = document.getElementById('goal-form');
     const modalTitle = document.getElementById('goal-form-title');
@@ -273,7 +261,6 @@ function openGoalFormModal(goalId = null) {
     }
     toggleModal('goal-form-modal', true);
 }
-
 async function handleGoalFormSubmit(event) {
     event.preventDefault();
     const token = localStorage.getItem('accessToken');
@@ -306,7 +293,6 @@ async function handleGoalFormSubmit(event) {
         document.getElementById('goal-error-message').classList.remove('hidden');
     }
 }
-
 async function handleDeleteGoal(goalId) {
     const confirmed = await showCustomAlert('Confirmar Exclusão', 'Você tem certeza que quer apagar esta meta? Esta ação não pode ser desfeita.', 'confirm');
     if (!confirmed) return;
@@ -326,13 +312,11 @@ async function handleDeleteGoal(goalId) {
         await showCustomAlert('Erro', `Erro ao apagar meta: ${error.message}`);
     }
 }
-
 function openAddFundsModal(goalId) {
     const form = document.getElementById('add-funds-form');
     form.dataset.goalId = goalId;
     toggleModal('add-funds-modal', true);
 }
-
 async function handleAddFundsSubmit(event) {
     event.preventDefault();
     const token = localStorage.getItem('accessToken');
@@ -356,12 +340,10 @@ async function handleAddFundsSubmit(event) {
         document.getElementById('funds-error-message').classList.remove('hidden');
     }
 }
-
 function openWithdrawFundsModal(goalId) {
     document.getElementById('withdraw-goal-id').value = goalId;
     toggleModal('withdraw-funds-modal', true);
 }
-
 async function handleWithdrawFormSubmit(event) {
     event.preventDefault();
     const token = localStorage.getItem('accessToken');
@@ -527,6 +509,55 @@ async function handleSaveAITransactions() {
     } finally {
         button.disabled = false;
         button.innerHTML = originalButtonText;
+    }
+}
+
+// (NOVO) Lógica de Gravação de Áudio
+function setupSpeechRecognition() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        console.warn("Seu navegador não suporta a API de Reconhecimento de Fala.");
+        const recordButton = document.getElementById('ai-record-button');
+        if(recordButton) recordButton.style.display = 'none'; // Esconde o botão se não for suportado
+        return;
+    }
+
+    recognition = new SpeechRecognition();
+    recognition.lang = 'pt-BR';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        const textArea = document.getElementById('ai-textarea');
+        textArea.value = transcript;
+        // Automaticamente chama a análise após a transcrição
+        handleAITransactionParse(); 
+    };
+
+    recognition.onerror = (event) => {
+        showCustomAlert('Erro na Gravação', `Ocorreu um erro: ${event.error}`);
+    };
+
+    recognition.onend = () => {
+        const recordButton = document.getElementById('ai-record-button');
+        recordButton.classList.remove('bg-red-500', 'animate-pulse');
+        recordButton.innerHTML = '<i class="fas fa-microphone"></i>';
+    };
+}
+
+function toggleAudioRecording() {
+    if (!recognition) return;
+
+    const recordButton = document.getElementById('ai-record-button');
+    const isRecording = recordButton.classList.contains('bg-red-500');
+
+    if (isRecording) {
+        recognition.stop();
+    } else {
+        recognition.start();
+        recordButton.classList.add('bg-red-500', 'animate-pulse');
+        recordButton.innerHTML = '<i class="fas fa-stop"></i>';
     }
 }
 
@@ -870,7 +901,6 @@ function updateAIUsageStatus(plan, usageCount, firstUsageTimestamp) {
     }
 }
 
-// (NOVO) Modal Genérico para Alertas e Confirmações
 function showCustomAlert(title, message, type = 'alert') {
     return new Promise((resolve) => {
         const modal = document.getElementById('generic-modal');
