@@ -7,7 +7,8 @@ let allTransactions = [];
 let monthlyChart = null;
 let currentUserId = null;
 let aiUsageTimer = null;
-let recognition = null; // (NOVO) Variável para a API de reconhecimento de fala
+let recognition = null; 
+let isRecording = false;
 
 const medalInfo = {
     'Bronze':   { emoji: '🥉', color: 'text-bronze' },
@@ -21,7 +22,7 @@ const medalInfo = {
 
 document.addEventListener('DOMContentLoaded', () => {
     setupEventListeners();
-    setupSpeechRecognition(); // (NOVO) Inicializa a API de fala
+    setupSpeechRecognition();
     fetchDashboardData();
 });
 
@@ -41,7 +42,7 @@ function setupEventListeners() {
     document.getElementById('close-invite-modal')?.addEventListener('click', () => toggleModal('invite-modal', false));
     document.getElementById('copy-invite-link-button')?.addEventListener('click', copyInviteLink);
     document.getElementById('analyze-ai-button')?.addEventListener('click', handleAITransactionParse);
-    document.getElementById('ai-record-button')?.addEventListener('click', toggleAudioRecording); // (NOVO) Listener para o botão de gravar
+    document.getElementById('ai-record-button')?.addEventListener('click', toggleAudioRecording); 
     document.getElementById('close-ai-results-modal')?.addEventListener('click', () => toggleModal('ai-results-modal', false));
     document.getElementById('cancel-ai-results-button')?.addEventListener('click', () => toggleModal('ai-results-modal', false));
     document.getElementById('save-ai-results-button')?.addEventListener('click', handleSaveAITransactions);
@@ -56,7 +57,6 @@ function logout(event) {
 
 
 // --- LÓGICA DE DADOS (API) ---
-// ... (código de fetchDashboardData e gestão de grupo/transações/metas permanece o mesmo)
 async function fetchDashboardData(retries = 3) {
     const token = localStorage.getItem('accessToken');
     const groupId = localStorage.getItem('activeGroupId');
@@ -512,13 +512,18 @@ async function handleSaveAITransactions() {
     }
 }
 
-// (NOVO) Lógica de Gravação de Áudio
+// --- LÓGICA DE GRAVAÇÃO DE ÁUDIO (REFEITA) ---
+
 function setupSpeechRecognition() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recordButton = document.getElementById('ai-record-button');
+
     if (!SpeechRecognition) {
         console.warn("Seu navegador não suporta a API de Reconhecimento de Fala.");
-        const recordButton = document.getElementById('ai-record-button');
-        if(recordButton) recordButton.style.display = 'none'; // Esconde o botão se não for suportado
+        if (recordButton) {
+            recordButton.disabled = true;
+            recordButton.title = "Gravação de áudio não suportada neste navegador.";
+        }
         return;
     }
 
@@ -536,28 +541,45 @@ function setupSpeechRecognition() {
     };
 
     recognition.onerror = (event) => {
-        showCustomAlert('Erro na Gravação', `Ocorreu um erro: ${event.error}`);
+        if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+            showCustomAlert('Permissão Negada', 'Você precisa permitir o acesso ao microfone no seu navegador para usar a gravação de voz.');
+        } else {
+            showCustomAlert('Erro na Gravação', `Ocorreu um erro: ${event.error}`);
+        }
+    };
+
+    recognition.onstart = () => {
+        isRecording = true;
+        recordButton.classList.remove('bg-gray-600', 'hover:bg-gray-700');
+        recordButton.classList.add('bg-red-500', 'animate-pulse');
+        recordButton.innerHTML = '<i class="fas fa-stop"></i>';
+        recordButton.title = "Parar gravação";
     };
 
     recognition.onend = () => {
-        const recordButton = document.getElementById('ai-record-button');
+        isRecording = false;
         recordButton.classList.remove('bg-red-500', 'animate-pulse');
+        recordButton.classList.add('bg-gray-600', 'hover:bg-gray-700');
         recordButton.innerHTML = '<i class="fas fa-microphone"></i>';
+        recordButton.title = "Gravar áudio";
     };
 }
 
 function toggleAudioRecording() {
-    if (!recognition) return;
-
-    const recordButton = document.getElementById('ai-record-button');
-    const isRecording = recordButton.classList.contains('bg-red-500');
+    if (!recognition) {
+        showCustomAlert('Não Suportado', 'A gravação de áudio não é suportada pelo seu navegador.');
+        return;
+    }
 
     if (isRecording) {
         recognition.stop();
     } else {
-        recognition.start();
-        recordButton.classList.add('bg-red-500', 'animate-pulse');
-        recordButton.innerHTML = '<i class="fas fa-stop"></i>';
+        try {
+            recognition.start();
+        } catch (error) {
+            console.error("Erro ao iniciar o reconhecimento de voz:", error);
+            showCustomAlert('Erro', 'Não foi possível iniciar a gravação. Verifique as permissões do microfone.');
+        }
     }
 }
 
