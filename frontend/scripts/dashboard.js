@@ -660,9 +660,11 @@ function populateRecentAchievements(achievements) {
 
 function populateGoalsOnDashboard(plan) {
     const goalContainer = document.getElementById('goals-list-container');
-    const addGoalButton = document.getElementById('add-goal-button');
-    if (!goalContainer || !addGoalButton) return;
+    const addGoalButtonContainer = document.getElementById('add-goal-button-container');
+    if (!goalContainer || !addGoalButtonContainer) return;
+    
     goalContainer.innerHTML = '';
+    
     if (allGoals.length > 0) {
         allGoals.forEach(goal => {
             const percentage = (goal.valor_meta > 0) ? (goal.valor_atual / goal.valor_meta) * 100 : 0;
@@ -716,14 +718,22 @@ function populateGoalsOnDashboard(plan) {
     } else {
         goalContainer.innerHTML = '<p class="text-center text-gray-400">Nenhuma meta criada ainda.</p>';
     }
+
+    // Lógica para o botão de adicionar meta
+    addGoalButtonContainer.innerHTML = ''; // Limpa o container
     if (plan === 'gratuito' && allGoals.some(g => g.status === 'ativa')) {
-        addGoalButton.disabled = true;
-        addGoalButton.className = 'w-full text-center mt-4 py-2 border-2 border-dashed border-gray-600 text-gray-500 rounded-lg cursor-not-allowed';
-        addGoalButton.innerHTML = 'Criar nova meta 💎';
-    } else if (plan === 'gratuito') {
-        addGoalButton.disabled = false;
+        const upgradeLink = document.createElement('a');
+        upgradeLink.href = './premium.html';
+        upgradeLink.className = 'block w-full text-center mt-4 py-2 border-2 border-dashed border-gray-600 text-gray-500 rounded-lg hover:bg-gray-700/50 transition';
+        upgradeLink.innerHTML = 'Criar nova meta 💎';
+        addGoalButtonContainer.appendChild(upgradeLink);
+    } else {
+        const addGoalButton = document.createElement('button');
+        addGoalButton.id = 'add-goal-button';
         addGoalButton.className = 'w-full text-center mt-4 py-2 bg-primary/80 hover:bg-primary transition text-white rounded-lg';
         addGoalButton.textContent = 'Adicionar Nova Meta';
+        addGoalButton.onclick = () => openGoalFormModal();
+        addGoalButtonContainer.appendChild(addGoalButton);
     }
 }
 

@@ -50,7 +50,6 @@
         <span id="user-name" class="hidden sm:block text-gray-300">Olá!</span>
         <div class="relative">
           <button id="menu-button" class="p-2 rounded-full hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg></button>
-          <!-- (ALTERADO) Links do menu atualizados -->
           <div id="menu-card" class="hidden absolute right-0 mt-2 w-48 bg-surface rounded-lg shadow-xl py-2 z-30">
             <a href="./minha_conta.html" class="block px-4 py-2 text-sm text-gray-300 hover:bg-primary hover:text-white">Minha Conta</a>
             <a href="./meu_grupo.html" class="block px-4 py-2 text-sm text-gray-300 hover:bg-primary hover:text-white">Meu Grupo</a>
@@ -63,7 +62,6 @@
     </div>
   </header>
 
-  <!-- O resto do main e dos modais permanece o mesmo -->
   <main class="container mx-auto p-4 lg:p-8">
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div class="lg:col-span-2 space-y-8 order-1">
@@ -87,7 +85,8 @@
               </div>
               <div class="overflow-y-auto max-h-80"><table class="w-full text-left"><thead><tr class="border-b border-gray-700"><th class="py-2 px-2">Título</th><th class="py-2 px-2">Valor</th><th class="py-2 px-2">Responsável</th><th class="py-2 px-2">Data</th><th class="py-2 px-2 text-center">Ações</th></tr></thead><tbody id="transactions-table-body"></tbody></table></div>
               <div class="text-center mt-4">
-                  <a href="#" class="text-sm font-medium text-primary-light hover:underline flex items-center justify-center">Ver histórico completo <span class="ml-2 text-xs bg-gold/20 text-gold font-bold py-0.5 px-2 rounded-full">💎 PREMIUM</span></a>
+                  <!-- CORREÇÃO: Link de histórico completo agora aponta para a página premium -->
+                  <a href="./premium.html" class="text-sm font-medium text-primary-light hover:underline flex items-center justify-center">Ver histórico completo <span class="ml-2 text-xs bg-gold/20 text-gold font-bold py-0.5 px-2 rounded-full">💎 PREMIUM</span></a>
               </div>
             </div>
         </div>
@@ -99,7 +98,6 @@
                 <textarea id="ai-textarea" placeholder="Ex: 'gastei 30 reais de uber e investi 50 reais hoje'" class="w-full h-24 px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary"></textarea>
                 <div class="flex space-x-2 mt-4">
                     <button id="analyze-ai-button" class="w-full py-2 bg-primary hover:bg-primary-dark transition rounded-lg font-medium text-white">Analisar</button>
-                    <!-- CORREÇÃO: Adicionado o id="ai-record-button" -->
                     <button id="ai-record-button" class="py-2 px-4 bg-gray-600 hover:bg-gray-700 transition rounded-lg font-medium text-white" title="Gravar áudio">
                         <i class="fas fa-microphone"></i>
                     </button>
@@ -108,7 +106,10 @@
             <div class="bg-surface p-6 rounded-xl shadow-lg">
                 <h3 class="text-xl font-bold text-gray-200 mb-4">Meta do Grupo</h3>
                 <div id="goals-list-container" class="space-y-4"></div>
-                <button id="add-goal-button" class="w-full text-center mt-4 py-2 bg-primary/80 hover:bg-primary transition text-white rounded-lg">Adicionar Nova Meta</button>
+                <!-- CORREÇÃO: O botão de adicionar meta agora será um link para a página premium quando desabilitado -->
+                <div id="add-goal-button-container">
+                    <button id="add-goal-button" class="w-full text-center mt-4 py-2 bg-primary/80 hover:bg-primary transition text-white rounded-lg">Adicionar Nova Meta</button>
+                </div>
             </div>
             <div class="bg-surface p-6 rounded-xl shadow-lg">
                 <h3 class="text-xl font-bold text-gray-200 mb-4">Conquistas Recentes</h3>
@@ -125,7 +126,8 @@
                     </button>
                     <div id="upgrade-card" class="hidden mt-4 p-4 bg-background rounded-lg text-center">
                         <p class="text-sm text-gray-300">Adicione mais membros e tenha relatórios avançados.</p>
-                        <button class="w-full mt-3 py-2 bg-gold/80 hover:bg-gold text-black rounded-lg font-bold transition">Fazer Upgrade para Premium 💎</button>
+                        <!-- CORREÇÃO: Botão de upgrade agora é um link para a página premium -->
+                        <a href="./premium.html" class="inline-block w-full mt-3 py-2 bg-gold/80 hover:bg-gold text-black rounded-lg font-bold transition">Fazer Upgrade para Premium 💎</a>
                     </div>
                 </div>
             </div>
