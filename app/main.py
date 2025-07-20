@@ -29,8 +29,8 @@ app.add_middleware(
 )
 
 # Inclui as rotas da API.
-# O prefixo /api ajuda a diferenciar os endpoints da API dos ficheiros do site.
-app.include_router(auth.router, prefix="/api")
+# CORREÇÃO: O router de autenticação agora tem seu próprio prefixo, então o removemos daqui.
+app.include_router(auth.router)
 app.include_router(users.router, prefix="/api")
 app.include_router(groups.router, prefix="/api")
 app.include_router(transactions.router, prefix="/api")

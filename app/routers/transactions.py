@@ -22,11 +22,12 @@ def create_transaction(
 ):
     """Cria uma nova transação manual para um grupo."""
     group = db.query(models.Grupo).filter(models.Grupo.id == group_id).first()
-    if not group or current_user not in group.membros:
+    # CORREÇÃO: Usando a propriedade renomeada 'member_list'
+    if not group or current_user not in group.member_list:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso não permitido a este grupo.")
 
     responsavel = db.query(models.Usuario).filter(models.Usuario.id == transaction.responsavel_id).first()
-    if not responsavel or responsavel not in group.membros:
+    if not responsavel or responsavel not in group.member_list:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Responsável inválido.")
 
     # CORREÇÃO: Prepara o dicionário de dados antes de criar o objeto.
@@ -63,7 +64,7 @@ def update_transaction(
 ):
     """Atualiza uma transação existente."""
     db_transaction = db.query(models.Movimentacao).options(joinedload(models.Movimentacao.grupo)).filter(models.Movimentacao.id == transaction_id).first()
-    if not db_transaction or current_user not in db_transaction.grupo.membros:
+    if not db_transaction or current_user not in db_transaction.grupo.member_list:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso não permitido.")
 
     # Atualiza os campos
@@ -94,7 +95,7 @@ def delete_transaction(
 ):
     """Apaga uma transação."""
     db_transaction = db.query(models.Movimentacao).options(joinedload(models.Movimentacao.grupo)).filter(models.Movimentacao.id == transaction_id).first()
-    if not db_transaction or current_user not in db_transaction.grupo.membros:
+    if not db_transaction or current_user not in db_transaction.grupo.member_list:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso não permitido.")
     
     db.delete(db_transaction)

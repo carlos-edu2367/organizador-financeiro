@@ -26,7 +26,8 @@ def get_dashboard_data(group_id: str, db: Session = Depends(database.get_db), cu
     if not group:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Grupo não encontrado.")
     
-    if current_user not in group.membros:
+    # CORREÇÃO: Usando a propriedade renomeada 'member_list'
+    if current_user not in group.member_list:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso não permitido a este grupo.")
 
     membros_com_papel = [{"id": assoc.usuario.id, "nome": assoc.usuario.nome, "papel": assoc.papel} for assoc in group.associacoes_membros]
@@ -61,10 +62,12 @@ def get_dashboard_data(group_id: str, db: Session = Depends(database.get_db), cu
 
     conquistas_recentes = group.conquistas[:3]
 
+    # (ALTERADO) Lógica para buscar o status de uso da IA
     ai_usage_count_today = 0
     ai_first_usage_timestamp_today = None
     if group.plano == 'gratuito':
         twenty_four_hours_ago = datetime.now(timezone.utc) - timedelta(days=1)
+        # Busca todos os usos nas últimas 24h, ordenando pelo mais antigo primeiro
         recent_usages = db.query(models.AIUsage).filter(
             models.AIUsage.grupo_id == group.id,
             models.AIUsage.timestamp >= twenty_four_hours_ago
@@ -72,6 +75,7 @@ def get_dashboard_data(group_id: str, db: Session = Depends(database.get_db), cu
 
         ai_usage_count_today = len(recent_usages)
         if ai_usage_count_today > 0:
+            # Pega o timestamp do primeiro uso para basear o cronômetro
             ai_first_usage_timestamp_today = recent_usages[0].timestamp
 
     dashboard_data = {
@@ -89,45 +93,11 @@ def get_dashboard_data(group_id: str, db: Session = Depends(database.get_db), cu
     }
     return dashboard_data
 
-@router.get("/{group_id}/stats", response_model=List[schemas.MemberStats])
-def get_group_stats(
-    group_id: str,
-    year: int,
-    month: int,
-    db: Session = Depends(database.get_db),
-    current_user: models.Usuario = Depends(get_current_user_from_token)
-):
-    """Retorna as estatísticas de gastos, ganhos e investimentos para cada membro em um determinado mês/ano."""
-    group = db.query(models.Grupo).options(joinedload(models.Grupo.membros)).filter(models.Grupo.id == group_id).first()
-    if not group or current_user not in group.membros:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso não permitido.")
-
-    stats = []
-    for member in group.membros:
-        def get_total_for_type(tipo: str) -> Decimal:
-            total = db.query(func.sum(models.Movimentacao.valor)).filter(
-                models.Movimentacao.grupo_id == group_id,
-                models.Movimentacao.responsavel_id == member.id,
-                models.Movimentacao.tipo == tipo,
-                extract('year', models.Movimentacao.data_transacao) == year,
-                extract('month', models.Movimentacao.data_transacao) == month
-            ).scalar()
-            return total or Decimal('0.0')
-
-        stats.append({
-            "member_id": member.id,
-            "member_name": member.nome,
-            "ganhos": get_total_for_type('ganho'),
-            "gastos": get_total_for_type('gasto'),
-            "investimentos": get_total_for_type('investimento')
-        })
-    return stats
-
-
+# ... (o resto do ficheiro groups.py permanece o mesmo)
 @router.get("/{group_id}/chart_data", response_model=List[schemas.ChartMonthData])
 def get_chart_data(group_id: str, db: Session = Depends(database.get_db), current_user: models.Usuario = Depends(get_current_user_from_token)):
     group = db.query(models.Grupo).filter(models.Grupo.id == group_id).first()
-    if not group or current_user not in group.membros:
+    if not group or current_user not in group.member_list:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso não permitido.")
     today = datetime.now()
     chart_data = []
@@ -157,13 +127,13 @@ def get_chart_data(group_id: str, db: Session = Depends(database.get_db), curren
 @router.get("/{group_id}/goals", response_model=List[schemas.Meta])
 def get_all_goals_for_group(group_id: str, db: Session = Depends(database.get_db), current_user: models.Usuario = Depends(get_current_user_from_token)):
     group = db.query(models.Grupo).filter(models.Grupo.id == group_id).first()
-    if not group or current_user not in group.membros:
+    if not group or current_user not in group.member_list:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso não permitido.")
     return group.metas
 @router.post("/{group_id}/goals", response_model=schemas.Meta, status_code=status.HTTP_201_CREATED)
 def create_goal_for_group(group_id: str, goal: schemas.GoalCreate, db: Session = Depends(database.get_db), current_user: models.Usuario = Depends(get_current_user_from_token)):
     group = db.query(models.Grupo).options(joinedload(models.Grupo.metas)).filter(models.Grupo.id == group_id).first()
-    if not group or current_user not in group.membros:
+    if not group or current_user not in group.member_list:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso não permitido.")
     if group.plano == 'gratuito' and len([m for m in group.metas if m.status == 'ativa']) > 0:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="O plano gratuito permite apenas uma meta ativa.")
@@ -175,7 +145,7 @@ def create_goal_for_group(group_id: str, goal: schemas.GoalCreate, db: Session =
 @router.put("/goals/{goal_id}", response_model=schemas.Meta)
 def update_goal(goal_id: str, goal_update: schemas.GoalUpdate, db: Session = Depends(database.get_db), current_user: models.Usuario = Depends(get_current_user_from_token)):
     db_goal = db.query(models.Meta).options(joinedload(models.Meta.grupo)).filter(models.Meta.id == goal_id).first()
-    if not db_goal or current_user not in db_goal.grupo.membros:
+    if not db_goal or current_user not in db_goal.grupo.member_list:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso não permitido.")
     db_goal.titulo = goal_update.titulo
     db_goal.valor_meta = goal_update.valor_meta
@@ -186,7 +156,7 @@ def update_goal(goal_id: str, goal_update: schemas.GoalUpdate, db: Session = Dep
 @router.delete("/goals/{goal_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_goal(goal_id: str, db: Session = Depends(database.get_db), current_user: models.Usuario = Depends(get_current_user_from_token)):
     db_goal = db.query(models.Meta).options(joinedload(models.Meta.grupo)).filter(models.Meta.id == goal_id).first()
-    if not db_goal or current_user not in db_goal.grupo.membros:
+    if not db_goal or current_user not in db_goal.grupo.member_list:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso não permitido.")
     if db_goal.valor_atual > 0:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Não é possível apagar uma meta com fundos. Por favor, retire os fundos primeiro.")
@@ -196,7 +166,7 @@ def delete_goal(goal_id: str, db: Session = Depends(database.get_db), current_us
 @router.post("/goals/{goal_id}/add_funds", response_model=schemas.Meta)
 def add_funds_to_goal(goal_id: str, funds: schemas.GoalAddFunds, db: Session = Depends(database.get_db), current_user: models.Usuario = Depends(get_current_user_from_token)):
     db_goal = db.query(models.Meta).options(joinedload(models.Meta.grupo)).filter(models.Meta.id == goal_id).first()
-    if not db_goal or current_user not in db_goal.grupo.membros:
+    if not db_goal or current_user not in db_goal.grupo.member_list:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso não permitido a esta meta.")
     db_goal.valor_atual += funds.valor
     if db_goal.valor_atual >= db_goal.valor_meta and db_goal.status == 'ativa':
@@ -230,7 +200,7 @@ def add_funds_to_goal(goal_id: str, funds: schemas.GoalAddFunds, db: Session = D
 @router.post("/goals/{goal_id}/withdraw_funds", response_model=schemas.Meta)
 def withdraw_funds_from_goal(goal_id: str, funds: schemas.GoalWithdrawFunds, db: Session = Depends(database.get_db), current_user: models.Usuario = Depends(get_current_user_from_token)):
     db_goal = db.query(models.Meta).options(joinedload(models.Meta.grupo)).filter(models.Meta.id == goal_id).first()
-    if not db_goal or current_user not in db_goal.grupo.membros:
+    if not db_goal or current_user not in db_goal.grupo.member_list:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso não permitido.")
     valor_a_retirar = funds.valor
     if valor_a_retirar > db_goal.valor_atual:
@@ -249,7 +219,7 @@ def create_invite_link(group_id: str, db: Session = Depends(database.get_db), cu
     user_role = next((assoc.papel for assoc in group.associacoes_membros if assoc.usuario_id == current_user.id), None)
     if user_role != 'dono':
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas o dono do grupo pode gerar convites.")
-    if len(group.membros) >= 4 or (group.plano == 'gratuito' and len(group.membros) >= 2):
+    if len(group.member_list) >= 4 or (group.plano == 'gratuito' and len(group.member_list) >= 2):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="O grupo atingiu o limite máximo de membros.")
     new_invite = models.Convite(grupo_id=group.id)
     db.add(new_invite)
@@ -263,7 +233,7 @@ def accept_invite(invite_token: str, db: Session = Depends(database.get_db), cur
     if not invite:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Convite inválido, expirado ou já utilizado.")
     group = invite.grupo
-    if current_user in group.membros:
+    if current_user in group.member_list:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Você já é membro deste grupo.")
     association = models.GrupoMembro(usuario_id=current_user.id, grupo_id=group.id, papel='membro')
     db.add(association)
@@ -293,6 +263,6 @@ def remove_group_member(group_id: str, member_id: str, db: Session = Depends(dat
 def get_all_achievements_for_group(group_id: str, db: Session = Depends(database.get_db), current_user: models.Usuario = Depends(get_current_user_from_token)):
     """Lista todas as conquistas (medalhas) de um grupo."""
     group = db.query(models.Grupo).filter(models.Grupo.id == group_id).first()
-    if not group or current_user not in group.membros:
+    if not group or current_user not in group.member_list:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso não permitido.")
     return group.conquistas

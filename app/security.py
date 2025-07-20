@@ -15,7 +15,8 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Define o "esquema" de segurança. Ele diz ao FastAPI para procurar
 # um cabeçalho 'Authorization' com um token 'Bearer'.
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+# CORREÇÃO: A URL do token agora aponta para o endpoint completo.
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/token")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -60,4 +61,3 @@ def get_current_user_from_token(token: str = Depends(oauth2_scheme), db: Session
     if user is None:
         raise credentials_exception
     return user
-

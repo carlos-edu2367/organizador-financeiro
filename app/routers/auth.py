@@ -5,6 +5,8 @@ from sqlalchemy.orm import Session
 from .. import database, schemas, models, security
 
 router = APIRouter(
+    # CORREÇÃO: Adicionando o prefixo diretamente aqui para maior clareza.
+    prefix="/api",
     tags=['Authentication']
 )
 

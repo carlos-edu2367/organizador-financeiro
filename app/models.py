@@ -58,8 +58,9 @@ class Grupo(Base):
     
     ai_usages = relationship("AIUsage", back_populates="grupo", cascade="all, delete-orphan")
     
+    # CORREÇÃO: A propriedade 'membros' foi renomeada para 'member_list' para evitar conflitos com o SQLAlchemy.
     @property
-    def membros(self):
+    def member_list(self):
         return [assoc.usuario for assoc in self.associacoes_membros]
 
 
