@@ -17,24 +17,22 @@
             gain: '#22c55e',
             investment: '#38bdf8',
             gold: '#facc15',
-            silver: '#d1d5db',
-            bronze: '#f59e0b',
           },
           fontFamily: { sans: ['Inter', 'sans-serif'] },
         }
       }
     };
   </script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Bibliotecas para exportação de PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
   <style>
     ::-webkit-scrollbar { width: 8px; height: 8px; }
     ::-webkit-scrollbar-track { background: #0f172a; }
     ::-webkit-scrollbar-thumb { background-color: #3b82f6; border-radius: 10px; border: 2px solid #0f172a; }
-    ::-webkit-scrollbar-thumb:hover { background-color: #2563eb; }
   </style>
 </head>
 <body class="bg-background text-white font-sans">
@@ -70,9 +68,7 @@
               <p id="mascote-text" class="text-gray-400 max-w-md mx-auto">Vocês estão no caminho certo! Continuem assim para bater todas as metas.</p>
             </div>
             <div class="bg-surface p-6 rounded-xl shadow-lg">
-              <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-bold text-gray-200">Resumo Mensal</h3>
-              </div>
+              <h3 class="text-xl font-bold mb-6 text-gray-200">Resumo Mensal</h3>
               <div class="h-64 relative"><canvas id="monthly-chart"></canvas></div>
               <div class="mt-8 pt-6 border-t border-gray-700 grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div class="bg-background p-4 rounded-lg"><h4 class="text-sm font-medium text-gray-400">Total Investido</h4><p id="total-investido" class="text-2xl font-bold text-investment">R$ 0,00</p></div>
@@ -81,13 +77,13 @@
             </div>
             <div class="bg-surface p-6 rounded-xl shadow-lg">
               <div class="flex justify-between items-center mb-4">
-                  <h3 class="text-xl font-bold text-gray-200">Histórico Completo</h3>
-                  <div class="flex items-center space-x-2">
-                      <button id="add-transaction-button" class="text-sm font-medium bg-primary hover:bg-primary-dark text-white py-2 px-3 rounded-lg flex items-center"><i class="fas fa-plus mr-2"></i>Adicionar</button>
-                      <button class="text-sm font-medium bg-surface hover:bg-gray-700 text-gray-300 py-2 px-3 rounded-lg flex items-center border border-gray-600"><i class="fa-solid fa-file-export mr-2"></i>Exportar</button>
-                  </div>
+                  <h3 class="text-xl font-bold text-gray-200">Histórico Recente (30 dias)</h3>
+                  <button id="add-transaction-button" class="text-sm font-medium bg-primary hover:bg-primary-dark text-white py-2 px-3 rounded-lg flex items-center"><i class="fas fa-plus mr-2"></i>Adicionar</button>
               </div>
               <div class="overflow-y-auto max-h-80"><table class="w-full text-left"><thead><tr class="border-b border-gray-700"><th class="py-2 px-2">Título</th><th class="py-2 px-2">Valor</th><th class="py-2 px-2">Responsável</th><th class="py-2 px-2">Data</th><th class="py-2 px-2 text-center">Ações</th></tr></thead><tbody id="transactions-table-body"></tbody></table></div>
+              <div class="text-center mt-4">
+                  <button id="full-history-button" class="text-sm font-medium text-primary-light hover:underline">Ver histórico completo e filtros</button>
+              </div>
             </div>
         </div>
         <div class="space-y-8 order-2">
@@ -98,7 +94,6 @@
               <div class="flex space-x-2 mt-4">
                   <button id="analyze-ai-button" class="w-full py-2 bg-primary hover:bg-primary-dark transition rounded-lg font-medium text-white">Analisar</button>
                   <button id="ai-record-button" class="py-2 px-4 bg-gray-600 hover:bg-gray-700 transition rounded-lg font-medium text-white" title="Gravar áudio"><i class="fa-solid fa-microphone"></i></button>
-                  <!-- CORREÇÃO: Botão do WhatsApp adicionado -->
                   <button class="py-2 px-4 bg-green-500 hover:bg-green-600 transition rounded-lg font-medium text-white" title="Registrar via WhatsApp"><i class="fa-brands fa-whatsapp"></i></button>
               </div>
             </div>
@@ -126,6 +121,60 @@
   </main>
   
   <!-- Modais -->
+  <div id="full-history-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 z-50 flex items-center justify-center p-4">
+    <div class="bg-surface rounded-xl shadow-lg w-full max-w-4xl p-6 flex flex-col" style="height: 90vh;">
+        <div class="flex justify-between items-center mb-4 flex-shrink-0">
+            <h3 class="text-2xl font-bold text-white">Histórico Completo</h3>
+            <button id="close-history-modal" class="text-gray-400 hover:text-white text-3xl font-bold">&times;</button>
+        </div>
+        <!-- Filtros -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4 flex-shrink-0">
+            <div>
+                <label for="filter-start-date" class="text-xs text-gray-400">De</label>
+                <input type="date" id="filter-start-date" class="w-full mt-1 px-3 py-2 rounded-lg bg-gray-800 border border-gray-600 text-white text-sm">
+            </div>
+            <div>
+                <label for="filter-end-date" class="text-xs text-gray-400">Até</label>
+                <input type="date" id="filter-end-date" class="w-full mt-1 px-3 py-2 rounded-lg bg-gray-800 border border-gray-600 text-white text-sm">
+            </div>
+            <div>
+                <label for="filter-type" class="text-xs text-gray-400">Tipo</label>
+                <select id="filter-type" class="w-full mt-1 px-3 py-2 rounded-lg bg-gray-800 border border-gray-600 text-white text-sm">
+                    <option value="">Todos</option>
+                    <option value="ganho">Ganho</option>
+                    <option value="gasto">Gasto</option>
+                    <option value="investimento">Investimento</option>
+                </select>
+            </div>
+            <div class="flex items-end">
+                <button id="apply-filters-button" class="w-full py-2 bg-primary hover:bg-primary-dark transition rounded-lg font-medium text-white">Filtrar</button>
+            </div>
+        </div>
+        <!-- Tabela de Histórico -->
+        <div class="overflow-y-auto flex-grow">
+            <table class="w-full text-left">
+                <thead class="sticky top-0 bg-surface">
+                    <tr class="border-b border-gray-700">
+                        <th class="py-2 px-2">Título</th>
+                        <th class="py-2 px-2">Valor</th>
+                        <th class="py-2 px-2">Responsável</th>
+                        <th class="py-2 px-2">Data</th>
+                    </tr>
+                </thead>
+                <tbody id="full-history-table-body">
+                    <!-- Conteúdo será preenchido via JS -->
+                </tbody>
+            </table>
+        </div>
+        <!-- Ações de Exportação -->
+        <div class="flex justify-end space-x-4 pt-4 mt-4 border-t border-gray-700 flex-shrink-0">
+            <button id="export-csv-button" class="text-sm font-medium bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 rounded-lg flex items-center"><i class="fas fa-file-csv mr-2"></i>Exportar CSV</button>
+            <button id="export-pdf-button" class="text-sm font-medium bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg flex items-center"><i class="fas fa-file-pdf mr-2"></i>Exportar PDF</button>
+        </div>
+    </div>
+  </div>
+
+  <!-- Outros modais (convite, transação, etc.) permanecem aqui -->
   <div id="invite-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
     <div class="bg-surface rounded-xl shadow-lg w-full max-w-md p-6">
         <div class="flex justify-between items-center mb-4">

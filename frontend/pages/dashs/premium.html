@@ -46,7 +46,7 @@
     <section class="text-center py-16 lg:py-24 px-4 bg-gradient-to-b from-surface to-background">
       <div class="container mx-auto">
         <span class="text-gold font-bold text-lg">CLARIFY PREMIUM</span>
-        <h1 class="text-4xl md:text-6xl font-extrabold text-white leading-tight mt-2">
+        <h1 class="text-4xl md:text-5xl font-extrabold text-white leading-tight mt-2">
           Leve a gestão do seu grupo para o próximo nível.
         </h1>
         <p class="mt-6 text-lg md:text-xl text-gray-400 max-w-3xl mx-auto">
@@ -60,15 +60,47 @@
       </div>
     </section>
 
-    <!-- Features Comparison -->
+    <!-- Premium Highlights Section -->
     <section class="py-20 px-4">
+        <div class="container mx-auto max-w-5xl">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+                <!-- Feature 1: Mais Membros -->
+                <div class="bg-surface p-8 rounded-xl">
+                    <div class="flex items-center justify-center h-16 w-16 rounded-full bg-primary/20 mx-auto mb-6">
+                        <i class="fas fa-users text-3xl text-primary"></i>
+                    </div>
+                    <h3 class="text-xl font-bold">Grupos Maiores</h3>
+                    <p class="mt-2 text-gray-400">Adicione até 4 membros e planeje as finanças com toda a família ou seu grupo de amigos.</p>
+                </div>
+                <!-- Feature 2: Metas Ilimitadas -->
+                <div class="bg-surface p-8 rounded-xl">
+                    <div class="flex items-center justify-center h-16 w-16 rounded-full bg-primary/20 mx-auto mb-6">
+                        <i class="fas fa-bullseye text-3xl text-primary"></i>
+                    </div>
+                    <h3 class="text-xl font-bold">Metas Ilimitadas</h3>
+                    <p class="mt-2 text-gray-400">Crie quantas metas simultâneas precisar: uma para a viagem, outra para o carro novo e mais uma para a reserva de emergência.</p>
+                </div>
+                <!-- Feature 3: Lembretes -->
+                <div class="bg-surface p-8 rounded-xl">
+                    <div class="flex items-center justify-center h-16 w-16 rounded-full bg-primary/20 mx-auto mb-6">
+                        <i class="fas fa-bell text-3xl text-primary"></i>
+                    </div>
+                    <h3 class="text-xl font-bold">Lembretes Automáticos</h3>
+                    <p class="mt-2 text-gray-400">Nunca mais esqueça uma conta. Configure lembretes de pagamentos e receba notificações para manter tudo em dia.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Comparison -->
+    <section class="py-20 px-4 bg-surface">
       <div class="container mx-auto max-w-5xl">
         <div class="text-center mb-12">
           <h2 class="text-3xl md:text-4xl font-bold">Compare os Planos</h2>
           <p class="mt-4 text-gray-400">Veja tudo o que você ganha com o Premium.</p>
         </div>
 
-        <div class="bg-surface rounded-xl shadow-lg overflow-hidden">
+        <div class="bg-background rounded-xl shadow-lg overflow-hidden">
           <table class="w-full text-left">
             <thead>
               <tr class="border-b border-gray-700">
@@ -95,6 +127,12 @@
                 <td class="p-4 sm:p-6 font-medium">Análise de transações com IA</td>
                 <td class="p-4 sm:p-6 text-center text-gray-400">2 por dia</td>
                 <td class="p-4 sm:p-6 text-center font-bold text-white">Ilimitado</td>
+              </tr>
+              <!-- Lembretes de Pagamento -->
+              <tr class="hover:bg-white/5">
+                <td class="p-4 sm:p-6 font-medium">Lembretes de Pagamento</td>
+                <td class="p-4 sm:p-6 text-center text-gray-400"><i class="fas fa-times-circle"></i></td>
+                <td class="p-4 sm:p-6 text-center font-bold text-white"><i class="fas fa-check-circle text-green-400"></i></td>
               </tr>
               <!-- Histórico -->
               <tr class="hover:bg-white/5">
@@ -127,7 +165,7 @@
     </section>
 
     <!-- Testimonial -->
-    <section class="py-20 px-4 bg-surface">
+    <section class="py-20 px-4">
         <div class="container mx-auto max-w-3xl text-center">
             <img src="../../assets/mascote_feliz.png" alt="Mascote Feliz" class="w-24 h-24 mx-auto mb-6">
             <p class="text-xl lg:text-2xl text-gray-300 italic">"O Clarify Premium transformou a forma como eu e meu marido lidamos com as finanças da casa. Ter metas ilimitadas nos ajudou a planejar nossa reforma e as férias ao mesmo tempo. Vale cada centavo!"</p>
@@ -137,17 +175,18 @@
     </section>
 
     <!-- Pricing & CTA -->
-    <section id="pricing" class="py-20 px-4">
+    <section id="pricing" class="py-20 px-4 bg-surface">
       <div class="container mx-auto max-w-md text-center">
         <h2 class="text-3xl md:text-4xl font-bold">Pronto para começar?</h2>
-        <p class="mt-4 text-gray-400">Escolha o plano que vai mudar a sua vida financeira em grupo.</p>
-        <div class="bg-surface border-2 border-gold rounded-xl p-8 mt-10 shadow-glow-gold">
+        <p class="mt-4 text-gray-400">Desbloqueie hoje mesmo o seu potencial financeiro em grupo.</p>
+        <div class="bg-background border-2 border-gold rounded-xl p-8 mt-10 shadow-glow-gold">
           <h3 class="text-2xl font-bold text-gold">Plano Premium</h3>
           <p class="text-5xl font-extrabold my-4">R$ 19,90<span class="text-lg font-medium text-gray-400">/mês</span></p>
           <p class="text-gray-400">Cobrado por grupo, não por usuário. Cancele quando quiser.</p>
           <button class="w-full mt-8 bg-gold hover:bg-gold-dark text-slate-900 font-bold py-3 px-8 rounded-lg text-lg transition transform hover:scale-105">
             Assinar o Premium Agora
           </button>
+           <p class="text-xs text-gray-500 mt-4">Garantia de satisfação de 7 dias.</p>
         </div>
       </div>
     </section>
@@ -155,7 +194,7 @@
   </main>
 
   <!-- Footer -->
-  <footer class="bg-surface border-t border-gray-700">
+  <footer class="bg-background border-t border-gray-700">
     <div class="container mx-auto py-6 px-4 text-center text-gray-500">
       <p>&copy; 2025 Clarify. Todos os direitos reservados.</p>
     </div>

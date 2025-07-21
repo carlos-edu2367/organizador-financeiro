@@ -1,8 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session, joinedload
-from typing import List
+from typing import List, Optional
 from decimal import Decimal
-import datetime
+from datetime import date
 
 from .. import database, schemas, models
 from ..security import get_current_user_from_token
@@ -13,6 +13,40 @@ router = APIRouter(
     dependencies=[Depends(get_current_user_from_token)]
 )
 
+@router.get("/group/{group_id}/full_history", response_model=List[schemas.Movimentacao])
+def get_full_transaction_history(
+    group_id: str,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    transaction_type: Optional[str] = Query(None, alias="type"),
+    db: Session = Depends(database.get_db),
+    current_user: models.Usuario = Depends(get_current_user_from_token)
+):
+    """Busca o histórico de transações completo para um grupo, com filtros."""
+    group = db.query(models.Grupo).filter(models.Grupo.id == group_id).first()
+    if not group or current_user not in group.member_list:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso não permitido a este grupo.")
+
+    query = db.query(models.Movimentacao).filter(models.Movimentacao.grupo_id == group_id)
+
+    if start_date:
+        query = query.filter(models.Movimentacao.data_transacao >= start_date)
+    if end_date:
+        query = query.filter(models.Movimentacao.data_transacao <= end_date)
+    if transaction_type:
+        query = query.filter(models.Movimentacao.tipo == transaction_type)
+
+    transactions = query.order_by(models.Movimentacao.data_transacao.desc()).all()
+    
+    return [
+        {
+            "id": tx.id, "tipo": tx.tipo, "descricao": tx.descricao,
+            "valor": tx.valor, "data_transacao": tx.data_transacao,
+            "responsavel_nome": tx.responsavel.nome
+        } for tx in transactions
+    ]
+
+
 @router.post("/group/{group_id}", response_model=schemas.Movimentacao, status_code=status.HTTP_201_CREATED)
 def create_transaction(
     group_id: str,
@@ -22,7 +56,6 @@ def create_transaction(
 ):
     """Cria uma nova transação manual para um grupo."""
     group = db.query(models.Grupo).filter(models.Grupo.id == group_id).first()
-    # CORREÇÃO: Usando a propriedade renomeada 'member_list'
     if not group or current_user not in group.member_list:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso não permitido a este grupo.")
 
@@ -30,12 +63,9 @@ def create_transaction(
     if not responsavel or responsavel not in group.member_list:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Responsável inválido.")
 
-    # CORREÇÃO: Prepara o dicionário de dados antes de criar o objeto.
     transaction_data = transaction.model_dump()
-    # Converte o valor de float para Decimal, que é o tipo esperado pelo modelo.
     transaction_data['valor'] = Decimal(str(transaction_data['valor']))
 
-    # Cria a instância do modelo usando o dicionário preparado e adiciona o grupo_id.
     db_transaction = models.Movimentacao(
         **transaction_data,
         grupo_id=group_id
@@ -45,13 +75,9 @@ def create_transaction(
     db.commit()
     db.refresh(db_transaction)
     
-    # Prepara a resposta para corresponder ao schema 'Movimentacao'
     return {
-        "id": db_transaction.id,
-        "tipo": db_transaction.tipo,
-        "descricao": db_transaction.descricao,
-        "valor": db_transaction.valor,
-        "data_transacao": db_transaction.data_transacao,
+        "id": db_transaction.id, "tipo": db_transaction.tipo, "descricao": db_transaction.descricao,
+        "valor": db_transaction.valor, "data_transacao": db_transaction.data_transacao,
         "responsavel_nome": db_transaction.responsavel.nome
     }
 
@@ -67,7 +93,6 @@ def update_transaction(
     if not db_transaction or current_user not in db_transaction.grupo.member_list:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso não permitido.")
 
-    # Atualiza os campos
     update_data = transaction.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         if key == 'valor':
@@ -79,11 +104,8 @@ def update_transaction(
     db.refresh(db_transaction)
     
     return {
-        "id": db_transaction.id,
-        "tipo": db_transaction.tipo,
-        "descricao": db_transaction.descricao,
-        "valor": db_transaction.valor,
-        "data_transacao": db_transaction.data_transacao,
+        "id": db_transaction.id, "tipo": db_transaction.tipo, "descricao": db_transaction.descricao,
+        "valor": db_transaction.valor, "data_transacao": db_transaction.data_transacao,
         "responsavel_nome": db_transaction.responsavel.nome
     }
 

@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.staticfiles import StaticFiles # Adicionado
-from starlette.responses import FileResponse # Adicionado
+from starlette.staticfiles import StaticFiles
+from starlette.responses import FileResponse
 
 from . import models
 from .database import engine
@@ -29,7 +29,6 @@ app.add_middleware(
 )
 
 # Inclui as rotas da API.
-# CORREÇÃO: O router de autenticação agora tem seu próprio prefixo, então o removemos daqui.
 app.include_router(auth.router)
 app.include_router(users.router, prefix="/api")
 app.include_router(groups.router, prefix="/api")
@@ -38,8 +37,7 @@ app.include_router(tasks.router, prefix="/api")
 app.include_router(ai.router, prefix="/api")
 
 
-# (NOVO) Monta a pasta 'frontend' para servir os ficheiros estáticos (HTML, JS, CSS)
-# Esta deve ser a ÚLTIMA coisa a ser montada na aplicação.
+# Monta a pasta 'frontend' para servir os ficheiros estáticos (HTML, JS, CSS)
 app.mount("/", StaticFiles(directory="frontend", html=True), name="static")
 
 @app.exception_handler(404)
