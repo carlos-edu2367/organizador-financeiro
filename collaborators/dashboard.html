@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard Colaborador - Clarify</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: { DEFAULT: '#3b82f6', dark: '#2563eb' },
+            background: '#0f172a',
+            surface: '#1e293b',
+            sidebar: '#131c31',
+          },
+          fontFamily: { sans: ['Inter', 'sans-serif'] },
+        }
+      }
+    };
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-background text-white font-sans flex">
+
+  <!-- Barra Lateral -->
+  <aside class="w-64 bg-sidebar p-6 flex-shrink-0 flex flex-col h-screen sticky top-0">
+    <div class="flex items-center space-x-3 mb-10">
+      <svg width="32" height="32" viewBox="0 0 24 24"><path d="M11 19C15.4183 19 19 15.4183 19 11C19 6.58172 15.4183 3 11 3C6.58172 3 3 6.58172 3 11C3 15.4183 6.58172 19 11 19Z" stroke="#3b82f6" stroke-width="2"/><path d="M21 21L16.65 16.65" stroke="#3b82f6" stroke-width="2"/></svg>
+      <span class="text-2xl font-bold">Clarify</span>
+    </div>
+    <nav class="flex flex-col space-y-2">
+      <a href="#inicio" class="nav-link active flex items-center p-3 rounded-lg hover:bg-surface transition">
+        <i class="fas fa-home w-6 text-center"></i><span class="ml-3">Início</span>
+      </a>
+      <a href="#suporte" class="nav-link flex items-center p-3 rounded-lg hover:bg-surface transition">
+        <i class="fas fa-headset w-6 text-center"></i><span class="ml-3">Suporte</span>
+      </a>
+    </nav>
+    <div class="mt-auto">
+      <a href="#" id="logout-button" class="flex items-center p-3 rounded-lg hover:bg-surface transition text-gray-400">
+        <i class="fas fa-sign-out-alt w-6 text-center"></i><span class="ml-3">Sair</span>
+      </a>
+    </div>
+  </aside>
+
+  <!-- Conteúdo Principal -->
+  <main class="flex-grow p-8 overflow-y-auto">
+    <div id="inicio" class="page-content">
+      <h1 class="text-3xl font-bold mb-8">Dashboard de Métricas</h1>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="bg-surface p-6 rounded-xl"><h3 class="text-gray-400">Total de Usuários</h3><p id="total-usuarios" class="text-3xl font-bold mt-2">0</p></div>
+        <div class="bg-surface p-6 rounded-xl"><h3 class="text-gray-400">Assinantes Premium</h3><p id="total-premium" class="text-3xl font-bold mt-2">0</p></div>
+        <div class="bg-surface p-6 rounded-xl"><h3 class="text-gray-400">Taxa de Conversão</h3><p id="taxa-conversao" class="text-3xl font-bold mt-2">0%</p></div>
+      </div>
+      <div class="bg-surface p-6 rounded-xl">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl font-bold">Novos Usuários</h2>
+          <div id="user-chart-filter" class="flex space-x-1 bg-background p-1 rounded-lg">
+            <button class="filter-btn active" data-period="hoje">Hoje</button>
+            <button class="filter-btn" data-period="semana">Semana</button>
+            <button class="filter-btn" data-period="mes">Mês</button>
+          </div>
+        </div>
+        <div class="h-80"><canvas id="users-chart"></canvas></div>
+      </div>
+    </div>
+
+    <div id="suporte" class="page-content hidden">
+      <h1 class="text-3xl font-bold mb-8">Chamados de Suporte</h1>
+      <div class="bg-surface p-6 rounded-xl">
+        <!-- Tabela de chamados será inserida aqui -->
+        <p class="text-center text-gray-500">A funcionalidade de suporte será implementada em breve.</p>
+      </div>
+    </div>
+  </main>
+  <script src="./dashboard.js"></script>
+</body>
+</html>

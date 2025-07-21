@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Acesso Restrito - Clarify</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: { DEFAULT: '#3b82f6', dark: '#2563eb' },
+            background: '#0f172a',
+            surface: '#1e293b',
+          },
+          fontFamily: { sans: ['Inter', 'sans-serif'] },
+        }
+      }
+    };
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-background text-white min-h-screen flex items-center justify-center font-sans p-4">
+
+  <div class="bg-surface p-8 rounded-xl shadow-lg w-full max-w-sm">
+    <div class="flex flex-col items-center justify-center mb-6">
+      <img src="../assets/mascote_neutro.png" alt="Mascote Clarify" class="w-24 h-24 mb-4">
+      <h2 class="text-2xl font-bold">Acesso Restrito</h2>
+      <p class="text-gray-400 mt-2">Área exclusiva para colaboradores.</p>
+    </div>
+
+    <div id="message-container" class="hidden mb-4 p-3 rounded-lg text-center text-sm"></div>
+
+    <form id="login-form" class="space-y-5">
+      <div>
+        <label for="login" class="block text-sm font-medium text-gray-300">E-mail ou CPF</label>
+        <input type="text" required id="login" class="mt-1 w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary" />
+      </div>
+      <div>
+        <label for="senha" class="block text-sm font-medium text-gray-300">Senha</label>
+        <input type="password" required id="senha" class="mt-1 w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary" />
+      </div>
+      <div class="flex justify-end items-center text-sm">
+        <a href="#" id="forgot-password-link" class="text-primary-light hover:underline">Problemas para acessar?</a>
+      </div>
+      <button type="submit" class="w-full py-2.5 bg-primary hover:bg-primary-dark transition rounded-lg font-medium text-white">Entrar</button>
+    </form>
+  </div>
+  <script src="./auth.js"></script>
+</body>
+</html>
