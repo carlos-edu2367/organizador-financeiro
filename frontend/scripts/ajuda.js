@@ -68,15 +68,26 @@ async function handleSupportFormSubmit(event) {
 
         if (!response.ok) {
             const errorData = await response.json();
-            // --- INÍCIO DA ALTERAÇÃO: Tratamento de erro aprimorado ---
+            // --- INÍCIO DA ALTERAÇÃO: Mensagens de erro mais amigáveis ---
             let errorMessage = 'Não foi possível enviar o ticket.';
-            // Erros de validação do FastAPI vêm como um array em 'detail'
             if (errorData.detail && Array.isArray(errorData.detail)) {
                 const firstError = errorData.detail[0];
                 const field = firstError.loc ? firstError.loc.slice(-1)[0] : 'campo';
-                errorMessage = `Erro no ${field}: ${firstError.msg}`;
+                let friendlyMsg = firstError.msg;
+
+                // "Traduz" as mensagens de validação do backend
+                if (field === 'descricao' && friendlyMsg.includes('string should have at least 10 characters')) {
+                    friendlyMsg = 'Por favor, forneça mais detalhes na descrição (pelo menos 10 caracteres).';
+                } else if (field === 'titulo' && friendlyMsg.includes('string should have at least 5 characters')) {
+                    friendlyMsg = 'O assunto deve ter pelo menos 5 caracteres.';
+                } else {
+                    // Fallback para outras mensagens de validação
+                    errorMessage = `Erro no ${field}: ${friendlyMsg}`;
+                }
+                
+                errorMessage = friendlyMsg;
+
             } else if (errorData.detail) {
-                // Outros erros que vêm como uma string em 'detail'
                 errorMessage = errorData.detail;
             }
             throw new Error(errorMessage);
