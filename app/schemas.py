@@ -221,3 +221,22 @@ class AdminPasswordUpdate(BaseModel):
     nova_senha: str
 class AdminGrantPremium(BaseModel):
     meses: int = Field(..., gt=0)
+
+    
+class PagamentoAgendadoBase(BaseModel):
+    titulo: str = Field(..., min_length=3, max_length=100)
+    descricao: Optional[str] = None
+    valor: Optional[Decimal] = Field(None, max_digits=10, decimal_places=2, gt=0)
+    data_vencimento: datetime.date
+
+class PagamentoAgendadoCreate(PagamentoAgendadoBase):
+    pass
+
+class PagamentoAgendado(PagamentoAgendadoBase):
+    id: uuid.UUID
+    status: str
+    data_criacao: datetime.datetime
+    data_pagamento: Optional[datetime.datetime] = None
+    
+    class Config:
+        from_attributes = True

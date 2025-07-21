@@ -15,15 +15,30 @@ try:
     cursor = conn.cursor()
 
     # Comando ALTER TABLE
-    comando = """
-    -- Adiciona as duas novas colunas à tabela 'usuarios'
-    -- Elas são criadas como NULLABLE, o que é seguro para tabelas com dados existentes.
-    ALTER TABLE usuarios
-    ADD COLUMN reset_token_expires TIMESTAMP WITH TIME ZONE;
+    comando = """-- Cria a enumeração para o status do pagamento, se ainda não existir.
+        -- Este bloco garante que o comando não falhe se o tipo já tiver sido criado.
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'statuspagamentoenum') THEN
+                CREATE TYPE statuspagamentoenum AS ENUM ('pendente', 'pago', 'atrasado');
+            END IF;
+        END$$;
 
-    -- Adiciona um índice único na nova coluna 'reset_token' para garantir
-    -- que os tokens não se repitam e para otimizar as buscas.
-    CREATE UNIQUE INDEX ix_usuarios_reset_token ON usuarios (reset_token);
+        -- Cria a nova tabela para armazenar os pagamentos agendados
+        CREATE TABLE pagamentos_agendados (
+            id UUID PRIMARY KEY,
+            grupo_id UUID NOT NULL REFERENCES grupos(id) ON DELETE CASCADE,
+            titulo VARCHAR(100) NOT NULL,
+            descricao TEXT,
+            valor NUMERIC(10, 2),
+            data_vencimento DATE NOT NULL,
+            status statuspagamentoenum NOT NULL DEFAULT 'pendente',
+            data_criacao TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            data_pagamento TIMESTAMP WITH TIME ZONE
+        );
+
+        -- Adiciona um índice na coluna grupo_id para otimizar as buscas
+        CREATE INDEX ix_pagamentos_agendados_grupo_id ON pagamentos_agendados (grupo_id);
     """
     cursor.execute(comando)
     conn.commit()

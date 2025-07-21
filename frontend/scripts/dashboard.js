@@ -1,4 +1,3 @@
-// --- INÍCIO DA ALTERAÇÃO ---
 /**
  * Determina a URL base da API com base no ambiente (desenvolvimento ou produção).
  * @returns {string} A URL base para as chamadas da API.
@@ -6,7 +5,6 @@
 const getApiBaseUrl = () => {
     const hostname = window.location.hostname;
     // Se estiver em ambiente de desenvolvimento local, aponta para a porta do Uvicorn.
-    // CORREÇÃO: O IP '12-7.0.0.1' foi corrigido para '127.0.0.1'.
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
         return 'http://127.0.0.1:8000';
     }
@@ -14,9 +12,7 @@ const getApiBaseUrl = () => {
     return '';
 };
 
-// Define a URL base da API dinamicamente.
 const API_URL = getApiBaseUrl();
-// --- FIM DA ALTERAÇÃO ---
 
 // --- Variáveis Globais ---
 let allGoals = [];
@@ -47,7 +43,6 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function setupEventListeners() {
-    // ... (event listeners existentes)
     document.getElementById('logout-button')?.addEventListener('click', logout);
     document.getElementById('add-transaction-button')?.addEventListener('click', () => openTransactionFormModal());
     document.getElementById('transaction-form')?.addEventListener('submit', handleTransactionFormSubmit);
@@ -67,173 +62,30 @@ function setupEventListeners() {
     document.getElementById('close-ai-results-modal')?.addEventListener('click', () => toggleModal('ai-results-modal', false));
     document.getElementById('cancel-ai-results-button')?.addEventListener('click', () => toggleModal('ai-results-modal', false));
     document.getElementById('save-ai-results-button')?.addEventListener('click', handleSaveAITransactions);
-
-    // --- NOVOS EVENT LISTENERS PARA O HISTÓRICO PREMIUM ---
     document.getElementById('full-history-button')?.addEventListener('click', openFullHistoryModal);
     document.getElementById('close-history-modal')?.addEventListener('click', () => toggleModal('full-history-modal', false));
     document.getElementById('apply-filters-button')?.addEventListener('click', applyFiltersAndRenderHistory);
     document.getElementById('export-csv-button')?.addEventListener('click', exportToCSV);
     document.getElementById('export-pdf-button')?.addEventListener('click', exportToPDF);
+    document.getElementById('add-payment-reminder-button')?.addEventListener('click', () => openPaymentFormModal());
+    document.getElementById('payment-reminder-form')?.addEventListener('submit', handlePaymentFormSubmit);
+    document.getElementById('cancel-payment-reminder-button')?.addEventListener('click', () => toggleModal('payment-reminder-modal', false));
 }
 
-// --- LÓGICA DO HISTÓRICO COMPLETO (PREMIUM) ---
+// --- LÓGICA DE DADOS (API) ---
 
-async function openFullHistoryModal() {
-    const token = localStorage.getItem('accessToken');
-    const groupId = localStorage.getItem('activeGroupId');
-    const tableBody = document.getElementById('full-history-table-body');
-    
-    tableBody.innerHTML = '<tr><td colspan="4" class="text-center p-4">Carregando histórico...</td></tr>';
-    toggleModal('full-history-modal', true);
-
-    try {
-        const response = await fetch(`${API_URL}/api/transactions/group/${groupId}/full_history`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (!response.ok) throw new Error('Não foi possível carregar o histórico completo.');
-        
-        fullTransactionHistory = await response.json();
-        filteredTransactionHistory = [...fullTransactionHistory]; // Começa com a lista completa
-        renderFullHistoryTable(filteredTransactionHistory);
-
-    } catch (error) {
-        tableBody.innerHTML = `<tr><td colspan="4" class="text-center p-4 text-red-400">${error.message}</td></tr>`;
-    }
-}
-
-function applyFiltersAndRenderHistory() {
-    const startDate = document.getElementById('filter-start-date').value;
-    const endDate = document.getElementById('filter-end-date').value;
-    const type = document.getElementById('filter-type').value;
-
-    filteredTransactionHistory = fullTransactionHistory.filter(tx => {
-        const txDate = new Date(tx.data_transacao);
-        const start = startDate ? new Date(startDate + 'T00:00:00') : null;
-        const end = endDate ? new Date(endDate + 'T23:59:59') : null;
-
-        if (start && txDate < start) return false;
-        if (end && txDate > end) return false;
-        if (type && tx.tipo !== type) return false;
-        
-        return true;
-    });
-
-    renderFullHistoryTable(filteredTransactionHistory);
-}
-
-function renderFullHistoryTable(transactions) {
-    const tableBody = document.getElementById('full-history-table-body');
-    tableBody.innerHTML = '';
-
-    if (transactions.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="4" class="text-center p-4 text-gray-500">Nenhuma transação encontrada para os filtros selecionados.</td></tr>';
-        return;
-    }
-
-    transactions.forEach(tx => {
-        let valorClass = '', valorSignal = '';
-        switch (tx.tipo) {
-            case 'gasto': valorClass = 'text-expense'; valorSignal = '-'; break;
-            case 'ganho': valorClass = 'text-gain'; valorSignal = '+'; break;
-            case 'investimento': valorClass = 'text-investment'; valorSignal = '';
-        }
-
-        const row = `
-            <tr class="border-b border-gray-800">
-                <td class="py-3 px-2">${tx.descricao || 'N/A'}</td>
-                <td class="py-3 px-2 ${valorClass}">${valorSignal} R$ ${Number(tx.valor).toFixed(2)}</td>
-                <td class="py-3 px-2">${tx.responsavel_nome}</td>
-                <td class="py-3 px-2">${new Date(tx.data_transacao).toLocaleDateString('pt-BR')}</td>
-            </tr>
-        `;
-        tableBody.innerHTML += row;
-    });
-}
-
-function exportToCSV() {
-    if (filteredTransactionHistory.length === 0) {
-        showCustomAlert('Atenção', 'Não há dados para exportar com os filtros atuais.');
-        return;
-    }
-
-    const headers = ['Data', 'Descricao', 'Tipo', 'Valor', 'Responsavel'];
-    const rows = filteredTransactionHistory.map(tx => [
-        new Date(tx.data_transacao).toLocaleDateString('pt-BR'),
-        `"${tx.descricao || ''}"`,
-        tx.tipo,
-        Number(tx.valor).toFixed(2),
-        tx.responsavel_nome
-    ].join(','));
-
-    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows].join('\n');
-    
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `clarify_historico_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-}
-
-function exportToPDF() {
-    if (filteredTransactionHistory.length === 0) {
-        showCustomAlert('Atenção', 'Não há dados para exportar com os filtros atuais.');
-        return;
-    }
-
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-
-    const head = [['Data', 'Descrição', 'Tipo', 'Valor (R$)', 'Responsável']];
-    const body = filteredTransactionHistory.map(tx => [
-        new Date(tx.data_transacao).toLocaleDateString('pt-BR'),
-        tx.descricao || 'N/A',
-        tx.tipo.charAt(0).toUpperCase() + tx.tipo.slice(1),
-        Number(tx.valor).toFixed(2),
-        tx.responsavel_nome
-    ]);
-
-    doc.setFontSize(18);
-    doc.text(`Relatório de Transações - Clarify`, 14, 22);
-    doc.setFontSize(11);
-    doc.setTextColor(100);
-    doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, 14, 29);
-
-    doc.autoTable({
-        startY: 35,
-        head: head,
-        body: body,
-        theme: 'grid',
-        headStyles: { fillColor: [59, 130, 246] }, // Cor primária do Clarify
-        styles: { font: 'helvetica', fontSize: 9 },
-    });
-
-    doc.save(`clarify_relatorio_${new Date().toISOString().split('T')[0]}.pdf`);
-}
-
-
-// --- Funções existentes (logout, fetchDashboardData, etc.) ---
-// O restante do arquivo permanece o mesmo, sem alterações.
-
-function logout(event) {
-    event.preventDefault();
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('activeGroupId');
-    window.location.href = '../auth/login_page.html';
-}
 async function fetchDashboardData(retries = 3) {
     const token = localStorage.getItem('accessToken');
     const groupId = localStorage.getItem('activeGroupId');
 
     if (!token || !groupId) {
-        window.location.href = '../auth/login_page.html';
+        logout();
         return;
     }
 
     try {
         const dashboardResponse = await fetch(`${API_URL}/api/groups/${groupId}/dashboard`, { headers: { 'Authorization': `Bearer ${token}` } });
-        if (dashboardResponse.status === 401) { logout({ preventDefault: () => {} }); return; }
+        if (dashboardResponse.status === 401) { logout(); return; }
         if (!dashboardResponse.ok) throw new Error('Falha ao carregar dados do dashboard.');
         const dashboardData = await dashboardResponse.json();
 
@@ -266,6 +118,464 @@ async function fetchDashboardData(retries = 3) {
         }
     }
 }
+
+function populateUI(dashboardData, chartData) {
+    const mainContent = document.querySelector('main');
+    if (mainContent.innerHTML.includes('Tentando reconectar')) {
+        window.location.reload();
+        return;
+    }
+
+    updateMascot(dashboardData.ganhos_mes_atual, dashboardData.gastos_mes_atual);
+    populateUserInfo(dashboardData.nome_utilizador, dashboardData.plano);
+    populateGroupInfo(dashboardData.nome_grupo, dashboardData.membros, dashboardData.plano);
+    populateTransactions(dashboardData.movimentacoes_recentes);
+    populateGoalsOnDashboard(dashboardData.plano);
+    populateSummaryCards(dashboardData.total_investido, dashboardData.saldo_total);
+    populateRecentAchievements(dashboardData.conquistas_recentes);
+    updateAIUsageStatus(dashboardData.plano, dashboardData.ai_usage_count_today, dashboardData.ai_first_usage_timestamp_today);
+    renderChart(chartData);
+    if (dashboardData.plano === 'premium') {
+        fetchPaymentReminders();
+    }
+}
+
+// --- RENDERIZAÇÃO DA UI ---
+
+function updateMascot(ganhos, gastos) {
+    const mascoteImg = document.getElementById('mascote-img');
+    const mascoteTitle = document.getElementById('mascote-title');
+    const mascoteText = document.getElementById('mascote-text');
+    if (!mascoteImg || !mascoteTitle || !mascoteText) return;
+    const ganhosNum = Number(ganhos);
+    const gastosNum = Number(gastos);
+    let ratio = 0;
+    if (ganhosNum > 0) {
+        ratio = (gastosNum / ganhosNum) * 100;
+    } else if (gastosNum > 0) {
+        ratio = 101;
+    }
+    if (ratio >= 100) {
+        mascoteImg.src = '../../assets/mascote_desesperado.png';
+        mascoteImg.alt = 'Mascote Clarify Desesperado';
+        mascoteTitle.textContent = 'Situação Financeira: Crítica!';
+        mascoteText.textContent = 'Atenção! Os gastos deste mês ultrapassaram os ganhos. É hora de rever o orçamento.';
+    } else if (ratio >= 80) {
+        mascoteImg.src = '../../assets/mascote_neutro.png';
+        mascoteImg.alt = 'Mascote Clarify Neutro';
+        mascoteTitle.textContent = 'Situação Financeira: Alerta';
+        mascoteText.textContent = 'Cuidado, os gastos estão se aproximando dos ganhos. Mantenham o controle para fechar o mês no verde.';
+    } else {
+        mascoteImg.src = '../../assets/mascote_feliz.png';
+        mascoteImg.alt = 'Mascote Clarify Feliz';
+        mascoteTitle.textContent = 'Situação Financeira: Estável';
+        mascoteText.textContent = 'Ótimo trabalho! Seus gastos estão controlados e a saúde financeira do grupo está boa.';
+    }
+}
+
+function populateUserInfo(userName, plan) {
+    const userNameElement = document.getElementById('user-name');
+    if (userNameElement) {
+        userNameElement.textContent = `Olá, ${userName.split(' ')[0]}!`;
+        if (plan === 'premium') {
+            userNameElement.innerHTML += ` <span class="text-gold font-bold">💎</span>`;
+        }
+    }
+}
+
+function populateGroupInfo(groupName, members, plan) {
+    const groupNameElement = document.getElementById('group-name');
+    const membersListElement = document.getElementById('members-list');
+    const inviteButton = document.getElementById('invite-button');
+    const upgradeCard = document.getElementById('upgrade-card');
+    const limit = (plan === 'premium') ? 4 : 2;
+    if (groupNameElement) {
+        groupNameElement.textContent = `${groupName} (${members.length}/${limit})`;
+    }
+    if (membersListElement) {
+        membersListElement.innerHTML = '';
+        const currentUserIsOwner = members.find(m => m.id === currentUserId)?.papel === 'dono';
+        members.forEach(member => {
+            const memberDiv = document.createElement('div');
+            memberDiv.className = 'flex items-center justify-between';
+            let removeButtonHtml = '';
+            if (currentUserIsOwner && member.papel !== 'dono') {
+                removeButtonHtml = `<button onclick="handleRemoveMember('${member.id}')" class="text-gray-500 hover:text-expense" title="Remover membro"><i class="fas fa-trash"></i></button>`;
+            }
+            memberDiv.innerHTML = `
+                <div class="flex items-center">
+                    <div class="w-10 h-10 rounded-full bg-blue-400 flex items-center justify-center font-bold text-black mr-3">${member.nome.charAt(0)}</div>
+                    <span>${member.nome} ${member.papel === 'dono' ? '<span class="text-xs text-gold">(Dono)</span>' : ''}</span>
+                </div>
+                ${removeButtonHtml}
+            `;
+            membersListElement.appendChild(memberDiv);
+        });
+    }
+    if (inviteButton && upgradeCard) {
+        if (plan === 'gratuito' && members.length >= 2) {
+            inviteButton.classList.add('hidden');
+            upgradeCard.classList.remove('hidden');
+        } else {
+            inviteButton.classList.remove('hidden');
+            upgradeCard.classList.add('hidden');
+        }
+    }
+}
+
+function populateTransactions(transactions) {
+    const tableBody = document.getElementById('transactions-table-body');
+    if (!tableBody) return;
+    tableBody.innerHTML = '';
+    if (transactions.length === 0) {
+        const row = tableBody.insertRow();
+        const cell = row.insertCell();
+        cell.colSpan = 5;
+        cell.textContent = 'Ainda não há transações registradas.';
+        cell.className = 'text-center text-gray-400 py-4';
+        return;
+    }
+    transactions.forEach(tx => {
+        const row = tableBody.insertRow();
+        row.className = 'border-b border-gray-800 hover:bg-gray-800/50';
+        let valorClass = '', valorSignal = '';
+        switch (tx.tipo) {
+            case 'gasto': valorClass = 'text-expense'; valorSignal = '-'; break;
+            case 'ganho': valorClass = 'text-gain'; valorSignal = '+'; break;
+            case 'investimento': valorClass = 'text-investment'; valorSignal = '';
+            default: valorClass = 'text-gray-400';
+        }
+        row.innerHTML = `
+            <td class="py-3 px-2">${tx.descricao || 'N/A'}</td>
+            <td class="py-3 px-2 ${valorClass}">${valorSignal} R$ ${Number(tx.valor).toFixed(2)}</td>
+            <td class="py-3 px-2">${tx.responsavel_nome}</td>
+            <td class="py-3 px-2">${new Date(tx.data_transacao).toLocaleDateString('pt-BR')}</td>
+            <td class="py-3 px-2 text-center">
+                <button onclick="openTransactionFormModal('${tx.id}')" class="text-primary-light hover:opacity-75"><i class="fas fa-pencil-alt"></i></button>
+                <button onclick="handleDeleteTransaction('${tx.id}')" class="text-expense hover:opacity-75 ml-3"><i class="fas fa-trash"></i></button>
+            </td>
+        `;
+        tableBody.appendChild(row);
+    });
+}
+
+function populateSummaryCards(totalInvestido, saldoTotal) {
+    const totalInvestidoEl = document.getElementById('total-investido');
+    const saldoTotalEl = document.getElementById('saldo-total');
+    if (totalInvestidoEl) {
+        totalInvestidoEl.textContent = `R$ ${Number(totalInvestido).toFixed(2).replace('.', ',')}`;
+    }
+    if (saldoTotalEl) {
+        saldoTotalEl.textContent = `R$ ${Number(saldoTotal).toFixed(2).replace('.', ',')}`;
+        saldoTotalEl.classList.remove('text-gain', 'text-expense');
+        if (saldoTotal >= 0) {
+            saldoTotalEl.classList.add('text-gain');
+        } else {
+            saldoTotalEl.classList.add('text-expense');
+        }
+    }
+}
+
+function populateRecentAchievements(achievements) {
+    const container = document.getElementById('achievements-list-container');
+    if (!container) return;
+    container.innerHTML = '';
+    if (achievements.length === 0) {
+        container.innerHTML = '<p class="text-center text-sm text-gray-500">Nenhuma medalha ganha ainda. Continuem assim!</p>';
+        return;
+    }
+    achievements.forEach(ach => {
+        const info = medalInfo[ach.tipo_medalha] || { emoji: '⭐', color: 'text-white' };
+        const achievementEl = document.createElement('div');
+        achievementEl.className = 'flex items-center space-x-4';
+        achievementEl.innerHTML = `
+            <span class="text-4xl">${info.emoji}</span>
+            <div>
+                <p class="font-bold ${info.color}">${ach.tipo_medalha}</p>
+                <p class="text-sm text-gray-400">${ach.descricao}</p>
+            </div>
+        `;
+        container.appendChild(achievementEl);
+    });
+}
+
+function populateGoalsOnDashboard(plan) {
+    const goalContainer = document.getElementById('goals-list-container');
+    const addGoalButtonContainer = document.getElementById('add-goal-button-container');
+    if (!goalContainer || !addGoalButtonContainer) return;
+    
+    goalContainer.innerHTML = '';
+    
+    if (allGoals.length > 0) {
+        allGoals.forEach(goal => {
+            const percentage = (goal.valor_meta > 0) ? (Number(goal.valor_atual) / Number(goal.valor_meta)) * 100 : 0;
+            let deadlineHtml = '';
+            if (goal.data_limite) {
+                const today = new Date();
+                const deadlineDate = new Date(goal.data_limite + 'T00:00:00');
+                today.setHours(0, 0, 0, 0);
+                const diffTime = deadlineDate - today;
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                let colorClass = 'text-gray-400';
+                if (diffDays < 0) {
+                    colorClass = 'text-red-500';
+                } else if (diffDays <= 7) {
+                    colorClass = 'text-amber-500';
+                }
+                const formattedDate = deadlineDate.toLocaleDateString('pt-BR');
+                deadlineHtml = `
+                    <div class="flex items-center text-xs mt-2 ${colorClass}">
+                        <i class="fas fa-clock mr-1.5"></i>
+                        <span>${formattedDate}</span>
+                    </div>
+                `;
+            }
+            const goalEl = document.createElement('div');
+            goalEl.className = 'bg-background p-3 rounded-lg';
+            goalEl.innerHTML = `
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="font-bold text-white">${goal.titulo}</p>
+                        <p class="text-xs text-gray-400">R$ ${Number(goal.valor_atual).toFixed(2)} / R$ ${Number(goal.valor_meta).toFixed(2)}</p>
+                    </div>
+                    <div class="flex space-x-3 items-center">
+                        <button class="text-gain hover:opacity-75" onclick="openAddFundsModal('${goal.id}')" title="Adicionar Aporte"><i class="fas fa-piggy-bank"></i></button>
+                        <button class="text-yellow-400 hover:opacity-75" onclick="openWithdrawFundsModal('${goal.id}')" title="Retirar Aporte"><i class="fas fa-hand-holding-dollar"></i></button>
+                        <button class="text-primary-light hover:opacity-75" onclick="openGoalFormModal('${goal.id}')" title="Editar Meta"><i class="fas fa-pencil-alt"></i></button>
+                        <button class="text-expense hover:opacity-75" onclick="handleDeleteGoal('${goal.id}')" title="Apagar Meta"><i class="fas fa-trash"></i></button>
+                    </div>
+                </div>
+                <div class="w-full bg-gray-700 rounded-full h-2.5 mt-2">
+                    <div class="bg-primary h-2.5 rounded-full" style="width: ${percentage.toFixed(2)}%"></div>
+                </div>
+                ${deadlineHtml}
+            `;
+            goalContainer.appendChild(goalEl);
+        });
+    } else {
+        goalContainer.innerHTML = '<p class="text-center text-gray-400">Nenhuma meta criada ainda.</p>';
+    }
+
+    const addGoalButton = document.getElementById('add-goal-button');
+    if (plan === 'gratuito' && allGoals.some(g => g.status === 'ativa')) {
+        addGoalButton.disabled = true;
+        addGoalButtonContainer.innerHTML = `<a href="./premium.html" class="block w-full text-center mt-4 py-2 border-2 border-dashed border-gray-600 text-gray-500 rounded-lg">Criar nova meta 💎</a>`;
+    } else {
+        if (addGoalButton) addGoalButton.disabled = false;
+        addGoalButtonContainer.innerHTML = `<button id="add-goal-button" class="w-full text-center mt-4 py-2 bg-primary/80 hover:bg-primary transition text-white rounded-lg">Adicionar Nova Meta</button>`;
+        document.getElementById('add-goal-button')?.addEventListener('click', () => openGoalFormModal());
+    }
+}
+
+function renderChart(chartData) {
+    const ctx = document.getElementById('monthly-chart');
+    if (!ctx) return;
+    if (monthlyChart) monthlyChart.destroy();
+    monthlyChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: chartData.map(d => d.mes),
+            datasets: [
+                { label: 'Ganhos', data: chartData.map(d => d.ganhos), backgroundColor: 'rgba(34, 197, 94, 0.6)' },
+                { label: 'Gastos', data: chartData.map(d => d.gastos), backgroundColor: 'rgba(239, 68, 68, 0.6)' },
+                { label: 'Investimentos', data: chartData.map(d => d.investimentos), backgroundColor: 'rgba(56, 189, 248, 0.6)' },
+                { label: 'Saldo', data: chartData.map(d => d.saldo), backgroundColor: 'rgba(229, 231, 235, 0.6)' }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, ticks: { color: '#9ca3af' }, grid: { color: 'rgba(255, 255, 255, 0.1)' } },
+                x: { ticks: { color: '#9ca3af' }, grid: { display: false } }
+            }
+        }
+    });
+}
+
+function updateAIUsageStatus(plan, usageCount, firstUsageTimestamp) {
+    const statusEl = document.getElementById('ai-usage-status');
+    const analyzeButton = document.getElementById('analyze-ai-button');
+    const textArea = document.getElementById('ai-textarea');
+    if (!statusEl || !analyzeButton || !textArea) return;
+
+    if (aiUsageTimer) clearInterval(aiUsageTimer);
+
+    if (plan !== 'gratuito') {
+        statusEl.innerHTML = `<span class="text-green-400">Uso da IA ilimitado! 💎</span>`;
+        analyzeButton.disabled = false;
+        textArea.disabled = false;
+        return;
+    }
+
+    const dailyLimit = 2;
+    if (usageCount < dailyLimit) {
+        statusEl.innerHTML = `<span class="text-green-400">Uso diário disponível: ${dailyLimit - usageCount}/${dailyLimit}</span>`;
+        analyzeButton.disabled = false;
+        textArea.disabled = false;
+    } else {
+        const unlockTime = new Date(firstUsageTimestamp).getTime() + 24 * 60 * 60 * 1000;
+        
+        const updateTimer = () => {
+            const now = new Date().getTime();
+            const remainingTime = unlockTime - now;
+
+            if (remainingTime <= 0) {
+                clearInterval(aiUsageTimer);
+                statusEl.innerHTML = `<span class="text-green-400">Uso diário disponível: ${dailyLimit}/${dailyLimit}</span>`;
+                analyzeButton.disabled = false;
+                textArea.disabled = false;
+            } else {
+                const hours = Math.floor((remainingTime % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((remainingTime % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((remainingTime % (1000 * 60)) / 1000);
+                
+                statusEl.innerHTML = `<span>Limite diário atingido. Próximo uso em: <span class="font-bold text-amber-400">${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}</span></span>`;
+                analyzeButton.disabled = true;
+                textArea.disabled = true;
+            }
+        };
+        
+        updateTimer();
+        aiUsageTimer = setInterval(updateTimer, 1000);
+    }
+}
+
+// --- LÓGICA DE LEMBRETES DE PAGAMENTO ---
+
+async function fetchPaymentReminders() {
+    const token = localStorage.getItem('accessToken');
+    const groupId = localStorage.getItem('activeGroupId');
+    try {
+        const response = await fetch(`${API_URL}/api/pagamentos/grupo/${groupId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) throw new Error('Falha ao carregar lembretes.');
+        const pagamentos = await response.json();
+        renderPaymentReminders(pagamentos);
+    } catch (error) {
+        console.error(error);
+        document.getElementById('payment-reminders-container').innerHTML = `<p class="text-red-400 text-sm">${error.message}</p>`;
+    }
+}
+
+function renderPaymentReminders(pagamentos) {
+    const container = document.getElementById('payment-reminders-container');
+    container.innerHTML = '';
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const pendingPayments = pagamentos.filter(p => p.status !== 'pago');
+
+    if (pendingPayments.length === 0) {
+        container.innerHTML = '<p class="text-center text-sm text-gray-500">Nenhum pagamento pendente. Tudo em dia!</p>';
+        return;
+    }
+
+    pendingPayments.forEach(pagamento => {
+        const dueDate = new Date(pagamento.data_vencimento + 'T00:00:00');
+        const diffTime = dueDate - today;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        let statusText = '';
+        let statusColor = '';
+        if (diffDays < 0) {
+            statusText = `Atrasado há ${-diffDays} dia(s)`;
+            statusColor = 'text-red-400';
+        } else if (diffDays === 0) {
+            statusText = 'Vence hoje';
+            statusColor = 'text-orange-400';
+        } else {
+            statusText = `Vence em ${diffDays} dia(s)`;
+            statusColor = 'text-gray-400';
+        }
+
+        const paymentElement = document.createElement('details');
+        paymentElement.className = 'bg-background rounded-lg overflow-hidden';
+        paymentElement.innerHTML = `
+            <summary class="grid grid-cols-6 gap-4 items-center p-3 cursor-pointer hover:bg-surface/50">
+                <div class="col-span-3 font-medium">${pagamento.titulo}</div>
+                <div class="col-span-2 text-sm ${statusColor}">${statusText}</div>
+                <div class="col-span-1 text-right text-lg font-bold">R$ ${Number(pagamento.valor || 0).toFixed(2)}</div>
+            </summary>
+            <div class="border-t border-gray-700 p-3 text-sm">
+                <p class="text-gray-300 mb-3">${pagamento.descricao || 'Sem descrição.'}</p>
+                <div class="flex justify-end space-x-3">
+                    <button onclick="handleDeletePayment('${pagamento.id}')" class="text-gray-400 hover:text-white">Apagar</button>
+                    <button onclick="handleMarkAsPaid('${pagamento.id}')" class="bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-3 rounded-md">Marcar como Pago</button>
+                </div>
+            </div>
+        `;
+        container.appendChild(paymentElement);
+    });
+}
+
+function openPaymentFormModal(pagamentoId = null) {
+    document.getElementById('payment-reminder-form').reset();
+    document.getElementById('payment-reminder-id').value = '';
+    document.getElementById('payment-reminder-due-date').value = new Date().toISOString().split('T')[0];
+    toggleModal('payment-reminder-modal', true);
+}
+
+async function handlePaymentFormSubmit(event) {
+    event.preventDefault();
+    const token = localStorage.getItem('accessToken');
+    const groupId = localStorage.getItem('activeGroupId');
+    const pagamentoData = {
+        titulo: document.getElementById('payment-reminder-title').value,
+        valor: parseFloat(document.getElementById('payment-reminder-value').value) || null,
+        data_vencimento: document.getElementById('payment-reminder-due-date').value,
+        descricao: document.getElementById('payment-reminder-description').value,
+    };
+    try {
+        const response = await fetch(`${API_URL}/api/pagamentos/grupo/${groupId}`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify(pagamentoData)
+        });
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || 'Falha ao salvar lembrete.');
+        }
+        toggleModal('payment-reminder-modal', false);
+        fetchPaymentReminders();
+    } catch (error) {
+        const errorEl = document.getElementById('payment-reminder-error-message');
+        errorEl.textContent = error.message;
+        errorEl.classList.remove('hidden');
+    }
+}
+
+async function handleMarkAsPaid(pagamentoId) {
+    const token = localStorage.getItem('accessToken');
+    try {
+        const response = await fetch(`${API_URL}/api/pagamentos/${pagamentoId}/marcar-pago`, {
+            method: 'PUT',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) throw new Error('Falha ao marcar como pago.');
+        fetchPaymentReminders();
+    } catch (error) {
+        showCustomAlert('Erro', error.message);
+    }
+}
+
+async function handleDeletePayment(pagamentoId) {
+    const confirmed = await showCustomAlert('Confirmar Exclusão', 'Tem certeza que deseja apagar este lembrete?', 'confirm');
+    if (!confirmed) return;
+    const token = localStorage.getItem('accessToken');
+    try {
+        const response = await fetch(`${API_URL}/api/pagamentos/${pagamentoId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) throw new Error('Falha ao apagar lembrete.');
+        fetchPaymentReminders();
+    } catch (error) {
+        showCustomAlert('Erro', error.message);
+    }
+}
+
 async function handleInviteClick() {
     const token = localStorage.getItem('accessToken');
     const groupId = localStorage.getItem('activeGroupId');
@@ -290,6 +600,7 @@ async function handleInviteClick() {
         await showCustomAlert('Erro', error.message);
     }
 }
+
 async function copyInviteLink() {
     const inviteLinkInput = document.getElementById('invite-link-input');
     inviteLinkInput.select();
@@ -302,6 +613,7 @@ async function copyInviteLink() {
         await showCustomAlert('Copiado!', 'O link de convite foi copiado para a área de transferência.');
     }
 }
+
 async function handleRemoveMember(memberId) {
     const confirmed = await showCustomAlert('Confirmar Remoção', 'Você tem certeza que quer remover este membro do grupo?', 'confirm');
     if (!confirmed) return;
@@ -326,6 +638,7 @@ async function handleRemoveMember(memberId) {
         await showCustomAlert('Erro', error.message);
     }
 }
+
 function openTransactionFormModal(transactionId = null) {
     const form = document.getElementById('transaction-form');
     const modalTitle = document.getElementById('transaction-form-title');
@@ -349,6 +662,7 @@ function openTransactionFormModal(transactionId = null) {
     }
     toggleModal('transaction-form-modal', true);
 }
+
 async function handleTransactionFormSubmit(event) {
     event.preventDefault();
     const token = localStorage.getItem('accessToken');
@@ -387,6 +701,7 @@ async function handleTransactionFormSubmit(event) {
         document.getElementById('transaction-error-message').classList.remove('hidden');
     }
 }
+
 async function handleDeleteTransaction(transactionId) {
     const confirmed = await showCustomAlert('Confirmar Exclusão', 'Você tem certeza que quer apagar esta movimentação?', 'confirm');
     if (!confirmed) return;
@@ -406,6 +721,7 @@ async function handleDeleteTransaction(transactionId) {
         await showCustomAlert('Erro', `Erro ao apagar movimentação: ${error.message}`);
     }
 }
+
 function openGoalFormModal(goalId = null) {
     const form = document.getElementById('goal-form');
     const modalTitle = document.getElementById('goal-form-title');
@@ -426,6 +742,7 @@ function openGoalFormModal(goalId = null) {
     }
     toggleModal('goal-form-modal', true);
 }
+
 async function handleGoalFormSubmit(event) {
     event.preventDefault();
     const token = localStorage.getItem('accessToken');
@@ -458,6 +775,7 @@ async function handleGoalFormSubmit(event) {
         document.getElementById('goal-error-message').classList.remove('hidden');
     }
 }
+
 async function handleDeleteGoal(goalId) {
     const confirmed = await showCustomAlert('Confirmar Exclusão', 'Você tem certeza que quer apagar esta meta? Esta ação não pode ser desfeita.', 'confirm');
     if (!confirmed) return;
@@ -477,11 +795,14 @@ async function handleDeleteGoal(goalId) {
         await showCustomAlert('Erro', `Erro ao apagar meta: ${error.message}`);
     }
 }
+
 function openAddFundsModal(goalId) {
     const form = document.getElementById('add-funds-form');
     form.dataset.goalId = goalId;
+    form.reset();
     toggleModal('add-funds-modal', true);
 }
+
 async function handleAddFundsSubmit(event) {
     event.preventDefault();
     const token = localStorage.getItem('accessToken');
@@ -505,10 +826,13 @@ async function handleAddFundsSubmit(event) {
         document.getElementById('funds-error-message').classList.remove('hidden');
     }
 }
+
 function openWithdrawFundsModal(goalId) {
     document.getElementById('withdraw-goal-id').value = goalId;
+    document.getElementById('withdraw-funds-form').reset();
     toggleModal('withdraw-funds-modal', true);
 }
+
 async function handleWithdrawFormSubmit(event) {
     event.preventDefault();
     const token = localStorage.getItem('accessToken');
@@ -532,6 +856,7 @@ async function handleWithdrawFormSubmit(event) {
         document.getElementById('withdraw-error-message').classList.remove('hidden');
     }
 }
+
 async function handleAITransactionParse() {
     const token = localStorage.getItem('accessToken');
     const textArea = document.getElementById('ai-textarea');
@@ -575,6 +900,7 @@ async function handleAITransactionParse() {
         await fetchDashboardData();
     }
 }
+
 function populateAIResultsModal(transactions) {
     const container = document.getElementById('ai-results-container');
     if (!container) return;
@@ -613,6 +939,7 @@ function populateAIResultsModal(transactions) {
     
     toggleModal('ai-results-modal', true);
 }
+
 async function handleSaveAITransactions() {
     const token = localStorage.getItem('accessToken');
     const groupId = localStorage.getItem('activeGroupId');
@@ -670,6 +997,7 @@ async function handleSaveAITransactions() {
         button.innerHTML = originalButtonText;
     }
 }
+
 function setupSpeechRecognition() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recordButton = document.getElementById('ai-record-button');
@@ -719,6 +1047,7 @@ function setupSpeechRecognition() {
         recordButton.title = "Gravar áudio";
     };
 }
+
 function toggleAudioRecording() {
     if (!recognition) {
         showCustomAlert('Não Suportado', 'A gravação de áudio não é suportada pelo seu navegador.');
@@ -736,272 +1065,15 @@ function toggleAudioRecording() {
         }
     }
 }
-function populateUI(dashboardData, chartData) {
+
+function handleApiError(error) {
+    console.error('Erro de API:', error);
     const mainContent = document.querySelector('main');
-    if (mainContent.innerHTML.includes('Tentando reconectar')) {
-        window.location.reload();
-        return;
-    }
-
-    updateMascot(dashboardData.ganhos_mes_atual, dashboardData.gastos_mes_atual);
-    populateUserInfo(dashboardData.nome_utilizador, dashboardData.plano);
-    populateGroupInfo(dashboardData.nome_grupo, dashboardData.membros, dashboardData.plano);
-    populateTransactions(dashboardData.movimentacoes_recentes);
-    populateGoalsOnDashboard(dashboardData.plano);
-    populateSummaryCards(dashboardData.total_investido, dashboardData.saldo_total);
-    populateRecentAchievements(dashboardData.conquistas_recentes);
-    updateAIUsageStatus(dashboardData.plano, dashboardData.ai_usage_count_today, dashboardData.ai_first_usage_timestamp_today);
-    renderChart(chartData);
-}
-function updateMascot(ganhos, gastos) {
-    const mascoteImg = document.getElementById('mascote-img');
-    const mascoteTitle = document.getElementById('mascote-title');
-    const mascoteText = document.getElementById('mascote-text');
-    if (!mascoteImg || !mascoteTitle || !mascoteText) return;
-    const ganhosNum = Number(ganhos);
-    const gastosNum = Number(gastos);
-    let ratio = 0;
-    if (ganhosNum > 0) {
-        ratio = (gastosNum / ganhosNum) * 100;
-    } else if (gastosNum > 0) {
-        ratio = 101;
-    }
-    if (ratio >= 100) {
-        mascoteImg.src = '../../assets/mascote_desesperado.png';
-        mascoteImg.alt = 'Mascote Clarify Desesperado';
-        mascoteTitle.textContent = 'Situação Financeira: Crítica!';
-        mascoteText.textContent = 'Atenção! Os gastos deste mês ultrapassaram os ganhos. É hora de rever o orçamento.';
-    } else if (ratio >= 80) {
-        mascoteImg.src = '../../assets/mascote_neutro.png';
-        mascoteImg.alt = 'Mascote Clarify Neutro';
-        mascoteTitle.textContent = 'Situação Financeira: Alerta';
-        mascoteText.textContent = 'Cuidado, os gastos estão se aproximando dos ganhos. Mantenham o controle para fechar o mês no verde.';
-    } else {
-        mascoteImg.src = '../../assets/mascote_feliz.png';
-        mascoteImg.alt = 'Mascote Clarify Feliz';
-        mascoteTitle.textContent = 'Situação Financeira: Estável';
-        mascoteText.textContent = 'Ótimo trabalho! Seus gastos estão controlados e a saúde financeira do grupo está boa.';
-    }
-}
-function populateRecentAchievements(achievements) {
-    const container = document.getElementById('achievements-list-container');
-    if (!container) return;
-    container.innerHTML = '';
-    if (achievements.length === 0) {
-        container.innerHTML = '<p class="text-center text-sm text-gray-500">Nenhuma medalha ganha ainda. Continuem assim!</p>';
-        return;
-    }
-    achievements.forEach(ach => {
-        const info = medalInfo[ach.tipo_medalha] || { emoji: '⭐', color: 'text-white' };
-        const achievementEl = document.createElement('div');
-        achievementEl.className = 'flex items-center space-x-4';
-        achievementEl.innerHTML = `
-            <span class="text-4xl">${info.emoji}</span>
-            <div>
-                <p class="font-bold ${info.color}">${ach.tipo_medalha}</p>
-                <p class="text-sm text-gray-400">${ach.descricao}</p>
-            </div>
-        `;
-        container.appendChild(achievementEl);
-    });
-}
-function populateGoalsOnDashboard(plan) {
-    const goalContainer = document.getElementById('goals-list-container');
-    const addGoalButtonContainer = document.getElementById('add-goal-button-container');
-    if (!goalContainer || !addGoalButtonContainer) return;
-    
-    goalContainer.innerHTML = '';
-    
-    if (allGoals.length > 0) {
-        allGoals.forEach(goal => {
-            const percentage = (goal.valor_meta > 0) ? (goal.valor_atual / goal.valor_meta) * 100 : 0;
-            let deadlineHtml = '';
-            if (goal.data_limite) {
-                const today = new Date();
-                const deadlineDate = new Date(goal.data_limite + 'T00:00:00');
-                today.setHours(0, 0, 0, 0);
-                const diffTime = deadlineDate - today;
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                let colorClass = 'text-gray-400';
-                if (diffDays < 0) {
-                    colorClass = 'text-red-500';
-                } else if (diffDays <= 7) {
-                    colorClass = 'text-amber-500';
-                } else if (diffDays <= 14) {
-                    colorClass = 'text-yellow-400';
-                } else if (diffDays <= 30) {
-                    colorClass = 'text-yellow-300';
-                }
-                const formattedDate = deadlineDate.toLocaleDateString('pt-BR');
-                deadlineHtml = `
-                    <div class="flex items-center text-xs mt-2 ${colorClass}">
-                        <i class="fas fa-clock mr-1.5"></i>
-                        <span>${formattedDate}</span>
-                    </div>
-                `;
-            }
-            const goalEl = document.createElement('div');
-            goalEl.className = 'bg-background p-3 rounded-lg';
-            goalEl.innerHTML = `
-                <div class="flex justify-between items-start">
-                    <div>
-                        <p class="font-bold text-white">${goal.titulo}</p>
-                        <p class="text-xs text-gray-400">R$ ${Number(goal.valor_atual).toFixed(2)} / R$ ${Number(goal.valor_meta).toFixed(2)}</p>
-                    </div>
-                    <div class="flex space-x-3 items-center">
-                        <button class="text-gain hover:opacity-75" onclick="openAddFundsModal('${goal.id}')" title="Adicionar Aporte"><i class="fas fa-piggy-bank"></i></button>
-                        <button class="text-yellow-400 hover:opacity-75" onclick="openWithdrawFundsModal('${goal.id}')" title="Retirar Aporte"><i class="fas fa-hand-holding-dollar"></i></button>
-                        <button class="text-primary-light hover:opacity-75" onclick="openGoalFormModal('${goal.id}')" title="Editar Meta"><i class="fas fa-pencil-alt"></i></button>
-                        <button class="text-expense hover:opacity-75" onclick="handleDeleteGoal('${goal.id}')" title="Apagar Meta"><i class="fas fa-trash"></i></button>
-                    </div>
-                </div>
-                <div class="w-full bg-gray-700 rounded-full h-2.5 mt-2">
-                    <div class="bg-primary h-2.5 rounded-full" style="width: ${percentage.toFixed(2)}%"></div>
-                </div>
-                ${deadlineHtml}
-            `;
-            goalContainer.appendChild(goalEl);
-        });
-    } else {
-        goalContainer.innerHTML = '<p class="text-center text-gray-400">Nenhuma meta criada ainda.</p>';
-    }
-
-    const addGoalButton = document.getElementById('add-goal-button');
-    if (plan === 'gratuito' && allGoals.some(g => g.status === 'ativa')) {
-        addGoalButton.disabled = true;
-        addGoalButton.className = 'w-full text-center mt-4 py-2 border-2 border-dashed border-gray-600 text-gray-500 rounded-lg cursor-not-allowed';
-        addGoalButton.innerHTML = 'Criar nova meta 💎';
-    } else {
-        addGoalButton.disabled = false;
-        addGoalButton.className = 'w-full text-center mt-4 py-2 bg-primary/80 hover:bg-primary transition text-white rounded-lg';
-        addGoalButton.textContent = 'Adicionar Nova Meta';
+    if (mainContent) {
+        mainContent.innerHTML = `<div class="text-center text-red-400 p-8"><strong>Erro:</strong> ${error.message}</div>`;
     }
 }
 
-function populateUserInfo(userName, plan) {
-    const userNameElement = document.getElementById('user-name');
-    if (userNameElement) {
-        userNameElement.textContent = `Olá, ${userName}!`;
-        if (plan === 'premium') {
-            userNameElement.innerHTML += ` <span class="text-gold font-bold">💎</span>`;
-        }
-    }
-}
-function populateGroupInfo(groupName, members, plan) {
-    const groupNameElement = document.getElementById('group-name');
-    const membersListElement = document.getElementById('members-list');
-    const inviteButton = document.getElementById('invite-button');
-    const upgradeCard = document.getElementById('upgrade-card');
-    const limit = (plan === 'premium') ? 4 : 2;
-    if (groupNameElement) {
-        groupNameElement.textContent = `${groupName} (${members.length}/${limit})`;
-    }
-    if (membersListElement) {
-        membersListElement.innerHTML = '';
-        const currentUserIsOwner = members.find(m => m.id === currentUserId)?.papel === 'dono';
-        members.forEach(member => {
-            const memberDiv = document.createElement('div');
-            memberDiv.className = 'flex items-center justify-between';
-            let removeButtonHtml = '';
-            if (currentUserIsOwner && member.papel !== 'dono') {
-                removeButtonHtml = `<button onclick="handleRemoveMember('${member.id}')" class="text-gray-500 hover:text-expense" title="Remover membro"><i class="fas fa-trash"></i></button>`;
-            }
-            memberDiv.innerHTML = `
-                <div class="flex items-center">
-                    <div class="w-10 h-10 rounded-full bg-blue-400 flex items-center justify-center font-bold text-black mr-3">${member.nome.charAt(0)}</div>
-                    <span>${member.nome} ${member.papel === 'dono' ? '<span class="text-xs text-gold">(Dono)</span>' : ''}</span>
-                </div>
-                ${removeButtonHtml}
-            `;
-            membersListElement.appendChild(memberDiv);
-        });
-    }
-    if (inviteButton && upgradeCard) {
-        if (plan === 'gratuito' && members.length >= 2) {
-            inviteButton.classList.add('hidden');
-            upgradeCard.classList.remove('hidden');
-        } else {
-            inviteButton.classList.remove('hidden');
-            upgradeCard.classList.add('hidden');
-        }
-    }
-}
-function populateTransactions(transactions) {
-    const tableBody = document.getElementById('transactions-table-body');
-    if (!tableBody) return;
-    tableBody.innerHTML = '';
-    if (transactions.length === 0) {
-        const row = tableBody.insertRow();
-        const cell = row.insertCell();
-        cell.colSpan = 5;
-        cell.textContent = 'Ainda não há transações registradas.';
-        cell.className = 'text-center text-gray-400 py-4';
-        return;
-    }
-    transactions.forEach(tx => {
-        const row = tableBody.insertRow();
-        row.className = 'border-b border-gray-800 hover:bg-gray-800/50';
-        let valorClass = '', valorSignal = '';
-        switch (tx.tipo) {
-            case 'gasto': valorClass = 'text-expense'; valorSignal = '-'; break;
-            case 'ganho': valorClass = 'text-gain'; valorSignal = '+'; break;
-            case 'investimento': valorClass = 'text-investment'; valorSignal = '';
-            default: valorClass = 'text-gray-400';
-        }
-        row.innerHTML = `
-            <td class="py-3 px-2">${tx.descricao || 'N/A'}</td>
-            <td class="py-3 px-2 ${valorClass}">${valorSignal} R$ ${Number(tx.valor).toFixed(2)}</td>
-            <td class="py-3 px-2">${tx.responsavel_nome}</td>
-            <td class="py-3 px-2">${new Date(tx.data_transacao).toLocaleDateString('pt-BR')}</td>
-            <td class="py-3 px-2 text-center">
-                <button onclick="openTransactionFormModal('${tx.id}')" class="text-primary-light hover:opacity-75"><i class="fas fa-pencil-alt"></i></button>
-                <button onclick="handleDeleteTransaction('${tx.id}')" class="text-expense hover:opacity-75 ml-3"><i class="fas fa-trash"></i></button>
-            </td>
-        `;
-        tableBody.appendChild(row);
-    });
-}
-function populateSummaryCards(totalInvestido, saldoTotal) {
-    const totalInvestidoEl = document.getElementById('total-investido');
-    const saldoTotalEl = document.getElementById('saldo-total');
-    if (totalInvestidoEl) {
-        totalInvestidoEl.textContent = `R$ ${Number(totalInvestido).toFixed(2).replace('.', ',')}`;
-    }
-    if (saldoTotalEl) {
-        saldoTotalEl.textContent = `R$ ${Number(saldoTotal).toFixed(2).replace('.', ',')}`;
-        saldoTotalEl.classList.remove('text-gain', 'text-expense');
-        if (saldoTotal >= 0) {
-            saldoTotalEl.classList.add('text-gain');
-        } else {
-            saldoTotalEl.classList.add('text-expense');
-        }
-    }
-}
-function renderChart(chartData) {
-    const ctx = document.getElementById('monthly-chart');
-    if (!ctx) return;
-    if (monthlyChart) monthlyChart.destroy();
-    monthlyChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: chartData.map(d => d.mes),
-            datasets: [
-                { label: 'Ganhos', data: chartData.map(d => d.ganhos), backgroundColor: 'rgba(34, 197, 94, 0.6)' },
-                { label: 'Gastos', data: chartData.map(d => d.gastos), backgroundColor: 'rgba(239, 68, 68, 0.6)' },
-                { label: 'Investimentos', data: chartData.map(d => d.investimentos), backgroundColor: 'rgba(56, 189, 248, 0.6)' },
-                { label: 'Saldo', data: chartData.map(d => d.saldo), backgroundColor: 'rgba(229, 231, 235, 0.6)' }
-            ]
-        },
-        options: {
-            responsive: true, maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
-            scales: {
-                y: { beginAtZero: true, ticks: { color: '#9ca3af' }, grid: { color: 'rgba(255, 255, 255, 0.1)' } },
-                x: { ticks: { color: '#9ca3af' }, grid: { display: false } }
-            }
-        }
-    });
-}
 function toggleModal(modalId, show) {
     const modal = document.getElementById(modalId);
     if (modal) {
@@ -1012,60 +1084,7 @@ function toggleModal(modalId, show) {
         }
     }
 }
-function handleApiError(error) {
-    console.error('Erro de API:', error);
-    const mainContent = document.querySelector('main');
-    if (mainContent) {
-        mainContent.innerHTML = `<div class="text-center text-red-400 p-8"><strong>Erro:</strong> ${error.message}</div>`;
-    }
-}
-function updateAIUsageStatus(plan, usageCount, firstUsageTimestamp) {
-    const statusEl = document.getElementById('ai-usage-status');
-    const analyzeButton = document.getElementById('analyze-ai-button');
-    const textArea = document.getElementById('ai-textarea');
-    if (!statusEl || !analyzeButton || !textArea) return;
 
-    if (aiUsageTimer) clearInterval(aiUsageTimer);
-
-    if (plan !== 'gratuito') {
-        statusEl.innerHTML = `<span class="text-green-400">Uso da IA ilimitado! 💎</span>`;
-        analyzeButton.disabled = false;
-        textArea.disabled = false;
-        return;
-    }
-
-    const dailyLimit = 2;
-    if (usageCount < dailyLimit) {
-        statusEl.innerHTML = `<span class="text-green-400">Uso diário disponível: ${dailyLimit - usageCount}/${dailyLimit}</span>`;
-        analyzeButton.disabled = false;
-        textArea.disabled = false;
-    } else {
-        const unlockTime = new Date(firstUsageTimestamp).getTime() + 24 * 60 * 60 * 1000;
-        
-        const updateTimer = () => {
-            const now = new Date().getTime();
-            const remainingTime = unlockTime - now;
-
-            if (remainingTime <= 0) {
-                clearInterval(aiUsageTimer);
-                statusEl.innerHTML = `<span class="text-green-400">Uso diário disponível: ${dailyLimit}/${dailyLimit}</span>`;
-                analyzeButton.disabled = false;
-                textArea.disabled = false;
-            } else {
-                const hours = Math.floor((remainingTime % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                const minutes = Math.floor((remainingTime % (1000 * 60 * 60)) / (1000 * 60));
-                const seconds = Math.floor((remainingTime % (1000 * 60)) / 1000);
-                
-                statusEl.innerHTML = `<span>Limite diário atingido. Próximo uso em: <span class="font-bold text-amber-400">${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}</span></span>`;
-                analyzeButton.disabled = true;
-                textArea.disabled = true;
-            }
-        };
-        
-        updateTimer();
-        aiUsageTimer = setInterval(updateTimer, 1000);
-    }
-}
 function showCustomAlert(title, message, type = 'alert') {
     return new Promise((resolve) => {
         const modal = document.getElementById('generic-modal');

@@ -36,10 +36,8 @@ class Usuario(Base):
     email = Column(String(255), unique=True, nullable=False, index=True)
     senha = Column(Text, nullable=False)
     criado_em = Column(DateTime(timezone=True), server_default=func.now())
-
     reset_token = Column(String, unique=True, index=True, nullable=True)
     reset_token_expires = Column(DateTime(timezone=True), nullable=True)
-    
     associacoes_grupo = relationship("GrupoMembro", back_populates="usuario", cascade="all, delete-orphan")
     movimentacoes = relationship("Movimentacao", back_populates="responsavel")
 
@@ -73,8 +71,6 @@ class Assinatura(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     grupo_id = Column(UUID(as_uuid=True), ForeignKey('grupos.id', ondelete="CASCADE"), unique=True, nullable=False)
     status = Column(String(50), nullable=False, default='ativa')
-    # CORREÇÃO: O nome da coluna foi alterado de 'data_fim' para 'periodo_atual_fim'
-    # para corresponder exatamente à estrutura da sua tabela na base de dados.
     data_fim = Column('periodo_atual_fim', DateTime(timezone=True), nullable=False)
     criado_em = Column(DateTime(timezone=True), server_default=func.now())
     atualizado_em = Column(DateTime(timezone=True), onupdate=func.now())
@@ -128,6 +124,27 @@ class AIUsage(Base):
     grupo_id = Column(UUID(as_uuid=True), ForeignKey('grupos.id', ondelete="CASCADE"), nullable=False)
     timestamp = Column(DateTime(timezone=True), server_default=func.now())
     grupo = relationship("Grupo", back_populates="ai_usages")
+
+# --- INÍCIO DA ALTERAÇÃO: Novo modelo para Pagamentos Agendados ---
+class StatusPagamentoEnum(str, enum.Enum):
+    pendente = "pendente"
+    pago = "pago"
+    atrasado = "atrasado"
+
+class PagamentoAgendado(Base):
+    __tablename__ = 'pagamentos_agendados'
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    grupo_id = Column(UUID(as_uuid=True), ForeignKey('grupos.id', ondelete="CASCADE"), nullable=False, index=True)
+    titulo = Column(String(100), nullable=False)
+    descricao = Column(Text)
+    valor = Column(DECIMAL(10, 2))
+    data_vencimento = Column(Date, nullable=False)
+    status = Column(SQLAlchemyEnum(StatusPagamentoEnum, name="statuspagamentoenum"), nullable=False, default=StatusPagamentoEnum.pendente)
+    data_criacao = Column(DateTime(timezone=True), server_default=func.now())
+    data_pagamento = Column(DateTime(timezone=True))
+    
+    grupo = relationship("Grupo")
+# --- FIM DA ALTERAÇÃO ---
 
 class CargoColaboradorEnum(str, enum.Enum):
     adm = "adm"

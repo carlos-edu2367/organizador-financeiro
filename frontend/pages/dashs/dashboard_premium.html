@@ -76,6 +76,20 @@
                   <div class="bg-background p-4 rounded-lg"><h4 class="text-sm font-medium text-gray-400">Saldo Total</h4><p id="saldo-total" class="text-2xl font-bold">R$ 0,00</p></div>
               </div>
             </div>
+
+            <!-- Seção de Lembretes de Pagamento -->
+            <div class="bg-surface p-6 rounded-xl shadow-lg">
+              <div class="flex justify-between items-center mb-4">
+                  <h3 class="text-xl font-bold text-gray-200">Lembretes de Pagamento</h3>
+                  <button id="add-payment-reminder-button" class="text-sm font-medium bg-primary hover:bg-primary-dark text-white py-2 px-3 rounded-lg flex items-center">
+                      <i class="fas fa-plus mr-2"></i>Adicionar Lembrete
+                  </button>
+              </div>
+              <div id="payment-reminders-container" class="space-y-2">
+                  <!-- Lembretes serão inseridos aqui pelo JS -->
+              </div>
+            </div>
+
             <div class="bg-surface p-6 rounded-xl shadow-lg">
               <div class="flex justify-between items-center mb-4">
                   <h3 class="text-xl font-bold text-gray-200">Histórico Recente (30 dias)</h3>
@@ -101,11 +115,9 @@
             <div class="bg-surface p-6 rounded-xl shadow-lg">
                 <h3 class="text-xl font-bold text-gray-200 mb-4">Nossas Metas</h3>
                 <div id="goals-list-container" class="space-y-4"></div>
-                <!-- INÍCIO DA ALTERAÇÃO: Adicionado o div wrapper -->
                 <div id="add-goal-button-container">
                   <button id="add-goal-button" class="w-full text-center mt-4 py-2 bg-primary/80 hover:bg-primary transition text-white rounded-lg">Adicionar Nova Meta</button>
                 </div>
-                <!-- FIM DA ALTERAÇÃO -->
             </div>
             <div class="bg-surface p-6 rounded-xl shadow-lg">
                 <h3 class="text-xl font-bold text-gray-200 mb-4">Conquistas Recentes</h3>
@@ -176,6 +188,38 @@
             <button id="export-csv-button" class="text-sm font-medium bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 rounded-lg flex items-center"><i class="fas fa-file-csv mr-2"></i>Exportar CSV</button>
             <button id="export-pdf-button" class="text-sm font-medium bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg flex items-center"><i class="fas fa-file-pdf mr-2"></i>Exportar PDF</button>
         </div>
+    </div>
+  </div>
+
+  <div id="payment-reminder-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
+    <div class="bg-surface rounded-xl shadow-lg w-full max-w-md p-6">
+      <h3 id="payment-reminder-form-title" class="text-xl font-bold text-white mb-4">Novo Lembrete de Pagamento</h3>
+      <form id="payment-reminder-form" class="space-y-4">
+        <input type="hidden" id="payment-reminder-id">
+        <div>
+            <label for="payment-reminder-title" class="block text-sm font-medium text-gray-300">Título</label>
+            <input type="text" id="payment-reminder-title" required class="mt-1 w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary">
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <label for="payment-reminder-value" class="block text-sm font-medium text-gray-300">Valor (R$)</label>
+                <input type="number" id="payment-reminder-value" step="0.01" class="mt-1 w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary">
+            </div>
+            <div>
+                <label for="payment-reminder-due-date" class="block text-sm font-medium text-gray-300">Data de Vencimento</label>
+                <input type="date" id="payment-reminder-due-date" required class="mt-1 w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary">
+            </div>
+        </div>
+        <div>
+            <label for="payment-reminder-description" class="block text-sm font-medium text-gray-300">Descrição (Opcional)</label>
+            <textarea id="payment-reminder-description" rows="3" class="mt-1 w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary"></textarea>
+        </div>
+        <div id="payment-reminder-error-message" class="hidden text-red-400 text-sm"></div>
+        <div class="flex justify-end space-x-4 pt-4">
+            <button type="button" id="cancel-payment-reminder-button" class="py-2 px-4 text-gray-300 hover:text-white">Cancelar</button>
+            <button type="submit" class="py-2 px-6 bg-primary hover:bg-primary-dark rounded-lg font-medium text-white">Salvar</button>
+        </div>
+      </form>
     </div>
   </div>
 
