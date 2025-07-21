@@ -6,7 +6,7 @@ from starlette.exceptions import HTTPException
 
 from . import models
 from .database import engine
-from .routers import auth, users, groups, transactions, tasks, ai, collaborators, admin_users
+from .routers import auth, users, support, groups, transactions, tasks, ai, collaborators, admin_users
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -40,6 +40,7 @@ app.include_router(groups.router, prefix="/api")
 app.include_router(transactions.router, prefix="/api")
 app.include_router(tasks.router, prefix="/api")
 app.include_router(ai.router, prefix="/api")
+app.include_router(support.router, prefix="/api") 
 
 # Rotas da API para colaboradores
 app.include_router(collaborators.router)

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Central de Ajuda - Clarify</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: { DEFAULT: '#3b82f6', dark: '#2563eb', light: '#60a5fa' },
+            background: '#0f172a',
+            surface: '#1e293b',
+          },
+          fontFamily: { sans: ['Inter', 'sans-serif'] },
+        }
+      }
+    };
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    details > summary { list-style: none; }
+    details > summary::-webkit-details-marker { display: none; }
+    details[open] summary .arrow-down { transform: rotate(180deg); }
+  </style>
+</head>
+<body class="bg-background text-white font-sans">
+
+  <!-- Header -->
+  <header class="bg-surface p-4 shadow-md">
+    <div class="container mx-auto flex justify-between items-center">
+      <a href="./dashboard_free.html" id="header-dashboard-link" class="flex items-center space-x-3">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11 19C15.4183 19 19 15.4183 19 11C19 6.58172 15.4183 3 11 3C6.58172 3 3 6.58172 3 11C3 15.4183 6.58172 19 11 19Z" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 21L16.65 16.65" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 11.5L10.5 13L13.5 10" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span class="text-2xl font-bold text-white">Clarify</span>
+      </a>
+      <a href="./dashboard_free.html" id="back-to-dashboard" class="text-gray-300 hover:text-primary transition">Voltar ao Dashboard</a>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="container mx-auto p-4 lg:p-8 max-w-4xl">
+    <h1 class="text-3xl font-bold text-white mb-8 text-center">Central de Ajuda</h1>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
+      <!-- FAQ Section -->
+      <div class="space-y-4">
+        <h2 class="text-2xl font-bold text-white mb-4">Perguntas Frequentes</h2>
+        <details class="bg-surface p-4 rounded-lg cursor-pointer">
+          <summary class="flex justify-between items-center font-medium">
+            Como adiciono um novo membro ao meu grupo?
+            <svg class="w-5 h-5 text-gray-400 transition-transform transform arrow-down" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+          </summary>
+          <p class="mt-3 text-gray-300 text-sm">No seu dashboard, localize o card "Meu Grupo" e clique no botão "Convidar Membro". Um link de convite único será gerado para você compartilhar com a pessoa que deseja adicionar.</p>
+        </details>
+        <details class="bg-surface p-4 rounded-lg cursor-pointer">
+          <summary class="flex justify-between items-center font-medium">
+            Qual o limite de uso da IA no plano gratuito?
+            <svg class="w-5 h-5 text-gray-400 transition-transform transform arrow-down" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+          </summary>
+          <p class="mt-3 text-gray-300 text-sm">O plano gratuito permite até 2 análises de transação via IA por dia. O contador é reiniciado 24 horas após o seu primeiro uso. Para uso ilimitado, considere o plano Premium.</p>
+        </details>
+        <details class="bg-surface p-4 rounded-lg cursor-pointer">
+          <summary class="flex justify-between items-center font-medium">
+            Posso ter mais de uma meta ativa?
+            <svg class="w-5 h-5 text-gray-400 transition-transform transform arrow-down" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+          </summary>
+          <p class="mt-3 text-gray-300 text-sm">O plano gratuito permite uma meta ativa por vez. Para criar metas ilimitadas e simultâneas (ex: uma para a viagem, outra para o carro), você pode fazer o upgrade para o plano Premium.</p>
+        </details>
+      </div>
+
+      <!-- Support Ticket Section -->
+      <div>
+        <h2 class="text-2xl font-bold text-white mb-4">Ainda precisa de ajuda?</h2>
+        <p class="text-gray-400 mb-6">Se não encontrou sua resposta, envie-nos uma mensagem. Nossa equipe de suporte responderá o mais breve possível.</p>
+        <div id="message-container" class="hidden mb-4"></div>
+        <form id="support-ticket-form" class="bg-surface p-6 rounded-xl space-y-4">
+          <div>
+            <label for="ticket-title" class="block text-sm font-medium text-gray-300">Assunto</label>
+            <input type="text" id="ticket-title" required placeholder="Ex: Problema ao adicionar transação" class="mt-1 w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary">
+          </div>
+          <div>
+            <label for="ticket-description" class="block text-sm font-medium text-gray-300">Descrição</label>
+            <textarea id="ticket-description" required rows="5" placeholder="Descreva seu problema ou dúvida com o máximo de detalhes possível." class="mt-1 w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary"></textarea>
+          </div>
+          <button type="submit" class="w-full py-2.5 bg-primary hover:bg-primary-dark transition rounded-lg font-medium text-white">Enviar Ticket</button>
+        </form>
+      </div>
+    </div>
+  </main>
+
+  <script src="../../scripts/ajuda.js" defer></script>
+</body>
+</html>

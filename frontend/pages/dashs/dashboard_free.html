@@ -54,6 +54,7 @@
             <a href="./minha_conta.html" class="block px-4 py-2 text-sm text-gray-300 hover:bg-primary hover:text-white">Minha Conta</a>
             <a href="./meu_grupo.html" class="block px-4 py-2 text-sm text-gray-300 hover:bg-primary hover:text-white">Meu Grupo</a>
             <a href="./premium.html" class="block px-4 py-2 text-sm text-gold hover:bg-primary hover:text-white">Seja Premium 💎</a>
+            <a href="./ajuda.html" class="block px-4 py-2 text-sm text-gray-300 hover:bg-primary hover:text-white">Ajuda e Suporte</a>
             <div class="border-t border-gray-700 my-1"></div>
             <a href="#" id="logout-button" class="block px-4 py-2 text-sm text-gray-300 hover:bg-primary hover:text-white">Sair</a>
           </div>
@@ -85,7 +86,6 @@
               </div>
               <div class="overflow-y-auto max-h-80"><table class="w-full text-left"><thead><tr class="border-b border-gray-700"><th class="py-2 px-2">Título</th><th class="py-2 px-2">Valor</th><th class="py-2 px-2">Responsável</th><th class="py-2 px-2">Data</th><th class="py-2 px-2 text-center">Ações</th></tr></thead><tbody id="transactions-table-body"></tbody></table></div>
               <div class="text-center mt-4">
-                  <!-- CORREÇÃO: Link de histórico completo agora aponta para a página premium -->
                   <a href="./premium.html" class="text-sm font-medium text-primary-light hover:underline flex items-center justify-center">Ver histórico completo <span class="ml-2 text-xs bg-gold/20 text-gold font-bold py-0.5 px-2 rounded-full">💎 PREMIUM</span></a>
               </div>
             </div>
@@ -106,7 +106,6 @@
             <div class="bg-surface p-6 rounded-xl shadow-lg">
                 <h3 class="text-xl font-bold text-gray-200 mb-4">Meta do Grupo</h3>
                 <div id="goals-list-container" class="space-y-4"></div>
-                <!-- CORREÇÃO: O botão de adicionar meta agora será um link para a página premium quando desabilitado -->
                 <div id="add-goal-button-container">
                     <button id="add-goal-button" class="w-full text-center mt-4 py-2 bg-primary/80 hover:bg-primary transition text-white rounded-lg">Adicionar Nova Meta</button>
                 </div>
@@ -126,7 +125,6 @@
                     </button>
                     <div id="upgrade-card" class="hidden mt-4 p-4 bg-background rounded-lg text-center">
                         <p class="text-sm text-gray-300">Adicione mais membros e tenha relatórios avançados.</p>
-                        <!-- CORREÇÃO: Botão de upgrade agora é um link para a página premium -->
                         <a href="./premium.html" class="inline-block w-full mt-3 py-2 bg-gold/80 hover:bg-gold text-black rounded-lg font-bold transition">Fazer Upgrade para Premium 💎</a>
                     </div>
                 </div>
