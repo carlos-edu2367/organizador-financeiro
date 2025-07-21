@@ -1,4 +1,22 @@
-const API_URL = '/api';
+// --- INÍCIO DA ALTERAÇÃO ---
+/**
+ * Determina a URL base da API com base no ambiente (desenvolvimento ou produção).
+ * @returns {string} A URL base para as chamadas da API.
+ */
+const getApiBaseUrl = () => {
+    const hostname = window.location.hostname;
+    // Se estiver em ambiente de desenvolvimento local, aponta para a porta do Uvicorn.
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        return 'http://127.0.0.1:8000';
+    }
+    // Em produção, as chamadas são relativas à própria origem, então retornamos uma string vazia.
+    return '';
+};
+
+// Define a URL base da API dinamicamente.
+const API_URL = getApiBaseUrl();
+// --- FIM DA ALTERAÇÃO ---
+
 
 const loginForm = document.getElementById('login-form');
 const registerForm = document.getElementById('cadastro-form');
@@ -40,8 +58,12 @@ if (loginForm) {
  */
 async function attemptLogin(formData, retries = 3) {
     try {
-        const response = await fetch(`${API_URL}/token`, {
+        // --- INÍCIO DA ALTERAÇÃO ---
+        // Garante que o prefixo /api seja incluído na URL.
+        const response = await fetch(`${API_URL}/api/token`, {
+        // --- FIM DA ALTERAÇÃO ---
             method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: formData,
         });
 
@@ -50,7 +72,7 @@ async function attemptLogin(formData, retries = 3) {
             showMessage(data.detail || 'E-mail ou senha incorretos.');
             return;
         }
-
+        
         if (!response.ok) {
             const data = await response.json().catch(() => ({}));
             throw new Error(data.detail || `Erro do servidor: ${response.status}`);
@@ -58,12 +80,31 @@ async function attemptLogin(formData, retries = 3) {
 
         const data = await response.json();
         localStorage.setItem('accessToken', data.access_token);
-        await fetchUserSessionAndRedirect();
+        
+        // Redirecionamento após login bem-sucedido
+        const pendingInvite = localStorage.getItem('pendingInviteToken');
+        if (pendingInvite) {
+            localStorage.removeItem('pendingInviteToken');
+            window.location.href = `./accept_invite.html?token=${pendingInvite}`;
+        } else {
+            // Busca os dados do usuário para saber para qual dashboard redirecionar
+            const userResponse = await fetch(`${API_URL}/api/users/me`, {
+                 headers: { 'Authorization': `Bearer ${data.access_token}` }
+            });
+            const userData = await userResponse.json();
+            localStorage.setItem('userPlan', userData.plano);
+            localStorage.setItem('activeGroupId', userData.grupo_id);
 
+            if (userData.plano === 'premium') {
+                window.location.href = '../dashs/dashboard_premium.html';
+            } else {
+                window.location.href = '../dashs/dashboard_free.html';
+            }
+        }
     } catch (error) {
         if (retries > 0) {
             console.warn(`Falha no login, tentando novamente em 3 segundos... (${retries} tentativas restantes)`);
-            showMessage('Conexão instável. Tentando reconectar...', true);
+            showMessage('Conexão instável. Tentando conectar...', true);
             await new Promise(res => setTimeout(res, 3000));
             await attemptLogin(formData, retries - 1);
         } else {
@@ -73,98 +114,30 @@ async function attemptLogin(formData, retries = 3) {
     }
 }
 
-async function fetchUserSessionAndRedirect() {
-    const token = localStorage.getItem('accessToken');
-    if (!token) return;
-
-    try {
-        const response = await fetch(`${API_URL}/users/me`, {
-            headers: { 'Authorization': `Bearer ${token}` },
-        });
-        
-        if (!response.ok) {
-             const userData = await response.json().catch(() => ({}));
-             throw new Error(userData.detail || 'Sessão inválida.');
-        }
-
-        const userData = await response.json();
-
-        if (userData.grupo_id) {
-            localStorage.setItem('activeGroupId', userData.grupo_id);
-        } else {
-            showMessage('Não foi possível encontrar o seu grupo. Contate o suporte.');
-            return;
-        }
-
-        if (userData.plano === 'premium') {
-            window.location.href = '../dashs/dashboard_premium.html';
-        } else {
-            window.location.href = '../dashs/dashboard_free.html';
-        }
-    } catch (error) {
-        showMessage(error.message);
-        localStorage.removeItem('accessToken');
-    }
-}
 
 if (registerForm) {
     registerForm.addEventListener('submit', async (event) => {
         event.preventDefault();
-        const nome = document.getElementById('nome').value;
-        const email = document.getElementById('email').value;
-        const senha = document.getElementById('senha').value;
-
-        // (NOVO) Validação da senha antes de enviar
-        const passwordValidation = validatePassword(senha);
-        if (!passwordValidation.isValid) {
-            showMessage(passwordValidation.message);
-            return;
-        }
-
-        const userData = { nome, email, senha };
+        const userData = {
+            nome: document.getElementById('nome').value,
+            email: document.getElementById('email').value,
+            senha: document.getElementById('senha').value,
+        };
         await attemptRegistration(userData);
     });
 }
 
 /**
- * (NOVO) Valida a senha de acordo com as regras definidas.
- * @param {string} password - A senha a ser validada.
- * @returns {{isValid: boolean, message: string}} - Objeto com o resultado da validação.
- */
-function validatePassword(password) {
-    if (password.length < 6) {
-        return { isValid: false, message: "A senha deve ter no mínimo 6 caracteres." };
-    }
-    if (!/[a-zA-Z]/.test(password)) {
-        return { isValid: false, message: "A senha deve conter pelo menos uma letra." };
-    }
-    if (!/\d/.test(password)) {
-        return { isValid: false, message: "A senha deve conter pelo menos um número." };
-    }
-    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-        return { isValid: false, message: "A senha deve conter pelo menos um caractere especial." };
-    }
-    // Verifica números sequenciais (ex: 123, 456)
-    for (let i = 0; i < password.length - 2; i++) {
-        const first = password.charCodeAt(i);
-        if (password.charCodeAt(i + 1) === first + 1 && password.charCodeAt(i + 2) === first + 2) {
-            if (!isNaN(parseInt(password[i]))) { // Garante que são números
-                 return { isValid: false, message: "A senha não pode conter números sequenciais (ex: 123)." };
-            }
-        }
-    }
-    return { isValid: true, message: "Senha válida." };
-}
-
-
-/**
- * Tenta registrar um novo usuário com lógica de nova tentativa aprimorada.
- * @param {object} userData - Os dados do usuário.
+ * Tenta registrar um novo usuário com lógica de nova tentativa.
+ * @param {object} userData - Os dados do usuário para registro.
  * @param {number} retries - O número de tentativas restantes.
  */
 async function attemptRegistration(userData, retries = 3) {
      try {
-        const response = await fetch(`${API_URL}/register`, {
+        // --- INÍCIO DA ALTERAÇÃO ---
+        // Garante que o prefixo /api seja incluído na URL.
+        const response = await fetch(`${API_URL}/api/register`, {
+        // --- FIM DA ALTERAÇÃO ---
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(userData),

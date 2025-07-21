@@ -1,4 +1,20 @@
-const API_URL = '/api';
+// --- INÍCIO DA ALTERAÇÃO ---
+/**
+ * Determina a URL base da API com base no ambiente (desenvolvimento ou produção).
+ * @returns {string} A URL base para as chamadas da API.
+ */
+const getApiBaseUrl = () => {
+    const hostname = window.location.hostname;
+    // Se estiver em ambiente de desenvolvimento local, aponta para a porta do Uvicorn.
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        return 'http://127.0.0.1:8000';
+    }
+    // Em produção, as chamadas são relativas à própria origem, então retornamos uma string vazia.
+    return '';
+};
+
+const API_URL = getApiBaseUrl();
+// --- FIM DA ALTERAÇÃO ---
 
 // Mapeia o tipo de medalha para um emoji e uma cor do Tailwind CSS
 const medalInfo = {
@@ -29,7 +45,7 @@ async function fetchAllAchievements() {
     const loadingState = document.getElementById('loading-state');
 
     try {
-        const response = await fetch(`${API_URL}/groups/${groupId}/achievements`, {
+        const response = await fetch(`${API_URL}/api/groups/${groupId}/achievements`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
 

@@ -1,3 +1,19 @@
+
+// Define a URL completa da sua API que está rodando no Uvicorn
+const getApiBaseUrl = () => {
+    const hostname = window.location.hostname;
+    // Se estiver em ambiente de desenvolvimento local, aponta para a porta do Uvicorn.
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        return 'http://127.0.0.1:8000';
+    }
+    // Em produção, as chamadas são relativas à própria origem (ex: /collaborators/token),
+    // então retornamos uma string vazia.
+    return '';
+};
+
+const API_URL = getApiBaseUrl();
+
+
 const loginForm = document.getElementById('login-form');
 const forgotPasswordLink = document.getElementById('forgot-password-link');
 
@@ -15,7 +31,10 @@ loginForm.addEventListener('submit', async (event) => {
     const senha = document.getElementById('senha').value;
 
     try {
-        const response = await fetch('/collaborators/token', {
+        // --- INÍCIO DA ALTERAÇÃO ---
+        // Adiciona a variável API_URL no início da chamada fetch
+        const response = await fetch(`${API_URL}/collaborators/token`, {
+        // --- FIM DA ALTERAÇÃO ---
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ login, senha }),

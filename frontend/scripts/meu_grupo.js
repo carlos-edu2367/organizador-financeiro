@@ -1,4 +1,20 @@
-const API_URL = '/api';
+// --- INÍCIO DA ALTERAÇÃO ---
+/**
+ * Determina a URL base da API com base no ambiente (desenvolvimento ou produção).
+ * @returns {string} A URL base para as chamadas da API.
+ */
+const getApiBaseUrl = () => {
+    const hostname = window.location.hostname;
+    // Se estiver em ambiente de desenvolvimento local, aponta para a porta do Uvicorn.
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        return 'http://127.0.0.1:8000';
+    }
+    // Em produção, as chamadas são relativas à própria origem, então retornamos uma string vazia.
+    return '';
+};
+
+const API_URL = getApiBaseUrl();
+// --- FIM DA ALTERAÇÃO ---
 
 // --- ELEMENTOS DO DOM ---
 const loadingState = document.getElementById('loading-state');
@@ -41,7 +57,7 @@ async function loadGroupData() {
 
     try {
         // Fetch dashboard data to get member list and current user ID
-        const dashboardResponse = await fetch(`${API_URL}/groups/${groupId}/dashboard`, {
+        const dashboardResponse = await fetch(`${API_URL}/api/groups/${groupId}/dashboard`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         if (!dashboardResponse.ok) throw new Error('Falha ao carregar dados do grupo.');
@@ -66,7 +82,7 @@ async function handleInviteClick() {
     const inviteLinkInput = document.getElementById('invite-link-input');
     
     try {
-        const response = await fetch(`${API_URL}/groups/${groupId}/invites`, {
+        const response = await fetch(`${API_URL}/api/groups/${groupId}/invites`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -90,7 +106,7 @@ async function handleRemoveMember(memberId) {
     const groupId = localStorage.getItem('activeGroupId');
 
     try {
-        const response = await fetch(`${API_URL}/groups/${groupId}/members/${memberId}`, {
+        const response = await fetch(`${API_URL}/api/groups/${groupId}/members/${memberId}`, {
             method: 'DELETE',
             headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -175,7 +191,7 @@ async function renderMemberStats() {
     statsContainer.innerHTML = '<p>A carregar estatísticas...</p>';
 
     try {
-        const response = await fetch(`${API_URL}/groups/${groupId}/stats?year=${year}&month=${month}`, {
+        const response = await fetch(`${API_URL}/api/groups/${groupId}/stats?year=${year}&month=${month}`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         if (!response.ok) throw new Error('Não foi possível carregar as estatísticas.');

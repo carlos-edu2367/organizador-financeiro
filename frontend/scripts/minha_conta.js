@@ -1,4 +1,20 @@
-const API_URL = '/api';
+// --- INÍCIO DA ALTERAÇÃO ---
+/**
+ * Determina a URL base da API com base no ambiente (desenvolvimento ou produção).
+ * @returns {string} A URL base para as chamadas da API.
+ */
+const getApiBaseUrl = () => {
+    const hostname = window.location.hostname;
+    // Se estiver em ambiente de desenvolvimento local, aponta para a porta do Uvicorn.
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        return 'http://127.0.0.1:8000';
+    }
+    // Em produção, as chamadas são relativas à própria origem, então retornamos uma string vazia.
+    return '';
+};
+
+const API_URL = getApiBaseUrl();
+// --- FIM DA ALTERAÇÃO ---
 
 // --- ELEMENTOS DO DOM ---
 const userDataForm = document.getElementById('user-data-form');
@@ -60,7 +76,7 @@ async function fetchUserData() {
     }
 
     try {
-        const response = await fetch(`${API_URL}/users/me`, {
+        const response = await fetch(`${API_URL}/api/users/me`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         if (!response.ok) throw new Error('Não foi possível carregar os dados do usuário.');
@@ -85,7 +101,7 @@ async function handlePasswordConfirmSubmit(event) {
     errorMessage.classList.add('hidden');
 
     try {
-        const response = await fetch(`${API_URL}/users/verify-password`, {
+        const response = await fetch(`${API_URL}/api/users/verify-password`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({ password: password })
@@ -119,7 +135,7 @@ async function handleUserDataFormSubmit(event) {
     };
 
     try {
-        const response = await fetch(`${API_URL}/users/me`, {
+        const response = await fetch(`${API_URL}/api/users/me`, {
             method: 'PUT',
             headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
             body: JSON.stringify(updatedData)
@@ -147,7 +163,7 @@ async function handlePasswordChangeFormSubmit(event) {
     }
 
     try {
-        const response = await fetch(`${API_URL}/users/me/password`, {
+        const response = await fetch(`${API_URL}/api/users/me/password`, {
             method: 'PUT',
             headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -173,7 +189,7 @@ async function handleDeleteAccount() {
 
     const token = localStorage.getItem('accessToken');
     try {
-        const response = await fetch(`${API_URL}/users/me`, {
+        const response = await fetch(`${API_URL}/api/users/me`, {
             method: 'DELETE',
             headers: { 'Authorization': `Bearer ${token}` }
         });

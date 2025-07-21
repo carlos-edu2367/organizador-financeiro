@@ -1,4 +1,22 @@
-const API_URL = '/api';
+// --- INÍCIO DA ALTERAÇÃO ---
+/**
+ * Determina a URL base da API com base no ambiente (desenvolvimento ou produção).
+ * @returns {string} A URL base para as chamadas da API.
+ */
+const getApiBaseUrl = () => {
+    const hostname = window.location.hostname;
+    // Se estiver em ambiente de desenvolvimento local, aponta para a porta do Uvicorn.
+    // CORREÇÃO: O IP '12-7.0.0.1' foi corrigido para '127.0.0.1'.
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        return 'http://127.0.0.1:8000';
+    }
+    // Em produção, as chamadas são relativas à própria origem, então retornamos uma string vazia.
+    return '';
+};
+
+// Define a URL base da API dinamicamente.
+const API_URL = getApiBaseUrl();
+// --- FIM DA ALTERAÇÃO ---
 
 // --- Variáveis Globais ---
 let allGoals = [];
@@ -69,7 +87,7 @@ async function openFullHistoryModal() {
     toggleModal('full-history-modal', true);
 
     try {
-        const response = await fetch(`${API_URL}/transactions/group/${groupId}/full_history`, {
+        const response = await fetch(`${API_URL}/api/transactions/group/${groupId}/full_history`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         if (!response.ok) throw new Error('Não foi possível carregar o histórico completo.');
@@ -214,16 +232,16 @@ async function fetchDashboardData(retries = 3) {
     }
 
     try {
-        const dashboardResponse = await fetch(`${API_URL}/groups/${groupId}/dashboard`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const dashboardResponse = await fetch(`${API_URL}/api/groups/${groupId}/dashboard`, { headers: { 'Authorization': `Bearer ${token}` } });
         if (dashboardResponse.status === 401) { logout({ preventDefault: () => {} }); return; }
         if (!dashboardResponse.ok) throw new Error('Falha ao carregar dados do dashboard.');
         const dashboardData = await dashboardResponse.json();
 
-        const goalsResponse = await fetch(`${API_URL}/groups/${groupId}/goals`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const goalsResponse = await fetch(`${API_URL}/api/groups/${groupId}/goals`, { headers: { 'Authorization': `Bearer ${token}` } });
         if (!goalsResponse.ok) throw new Error('Falha ao carregar metas.');
         allGoals = await goalsResponse.json();
 
-        const chartResponse = await fetch(`${API_URL}/groups/${groupId}/chart_data`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const chartResponse = await fetch(`${API_URL}/api/groups/${groupId}/chart_data`, { headers: { 'Authorization': `Bearer ${token}` } });
         if (!chartResponse.ok) throw new Error('Falha ao carregar dados do gráfico.');
         const chartData = await chartResponse.json();
         
@@ -257,7 +275,7 @@ async function handleInviteClick() {
     inviteError.classList.add('hidden');
 
     try {
-        const response = await fetch(`${API_URL}/groups/${groupId}/invites`, {
+        const response = await fetch(`${API_URL}/api/groups/${groupId}/invites`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -292,7 +310,7 @@ async function handleRemoveMember(memberId) {
     const groupId = localStorage.getItem('activeGroupId');
 
     try {
-        const response = await fetch(`${API_URL}/groups/${groupId}/members/${memberId}`, {
+        const response = await fetch(`${API_URL}/api/groups/${groupId}/members/${memberId}`, {
             method: 'DELETE',
             headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -346,7 +364,7 @@ async function handleTransactionFormSubmit(event) {
     };
 
     const isEditing = !!transactionId;
-    const url = isEditing ? `${API_URL}/transactions/${transactionId}` : `${API_URL}/transactions/group/${groupId}`;
+    const url = isEditing ? `${API_URL}/api/transactions/${transactionId}` : `${API_URL}/api/transactions/group/${groupId}`;
     const method = isEditing ? 'PUT' : 'POST';
 
     if (isEditing) {
@@ -375,7 +393,7 @@ async function handleDeleteTransaction(transactionId) {
     
     const token = localStorage.getItem('accessToken');
     try {
-        const response = await fetch(`${API_URL}/transactions/${transactionId}`, {
+        const response = await fetch(`${API_URL}/api/transactions/${transactionId}`, {
             method: 'DELETE',
             headers: { 'Authorization': `Bearer ${token}` },
         });
@@ -421,7 +439,7 @@ async function handleGoalFormSubmit(event) {
     };
 
     const isEditing = !!goalId;
-    const url = isEditing ? `${API_URL}/groups/goals/${goalId}` : `${API_URL}/groups/${groupId}/goals`;
+    const url = isEditing ? `${API_URL}/api/groups/goals/${goalId}` : `${API_URL}/api/groups/${groupId}/goals`;
     const method = isEditing ? 'PUT' : 'POST';
 
     try {
@@ -446,7 +464,7 @@ async function handleDeleteGoal(goalId) {
     
     const token = localStorage.getItem('accessToken');
     try {
-        const response = await fetch(`${API_URL}/groups/goals/${goalId}`, {
+        const response = await fetch(`${API_URL}/api/groups/goals/${goalId}`, {
             method: 'DELETE',
             headers: { 'Authorization': `Bearer ${token}` },
         });
@@ -471,7 +489,7 @@ async function handleAddFundsSubmit(event) {
     const fundsData = { valor: parseFloat(document.getElementById('funds-amount').value) };
 
     try {
-        const response = await fetch(`${API_URL}/groups/goals/${goalId}/add_funds`, {
+        const response = await fetch(`${API_URL}/api/groups/goals/${goalId}/add_funds`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
             body: JSON.stringify(fundsData),
@@ -498,7 +516,7 @@ async function handleWithdrawFormSubmit(event) {
     const withdrawData = { valor: parseFloat(document.getElementById('withdraw-amount').value) };
 
     try {
-        const response = await fetch(`${API_URL}/groups/goals/${goalId}/withdraw_funds`, {
+        const response = await fetch(`${API_URL}/api/groups/goals/${goalId}/withdraw_funds`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
             body: JSON.stringify(withdrawData),
@@ -531,7 +549,7 @@ async function handleAITransactionParse() {
     button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Analisando...';
     
     try {
-        const response = await fetch(`${API_URL}/ai/parse-transaction`, {
+        const response = await fetch(`${API_URL}/api/ai/parse-transaction`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({ text: userText })
@@ -623,7 +641,7 @@ async function handleSaveAITransactions() {
         };
 
         if (transactionData.valor > 0 && transactionData.descricao) {
-            const promise = fetch(`${API_URL}/transactions/group/${groupId}`, {
+            const promise = fetch(`${API_URL}/api/transactions/group/${groupId}`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify(transactionData),

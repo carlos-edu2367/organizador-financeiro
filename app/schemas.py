@@ -20,9 +20,16 @@ class User(UserBase):
     id: uuid.UUID
     class Config:
         from_attributes = True
-class UserSessionData(User):
+class UserSessionData(BaseModel):
+    id: uuid.UUID
+    email: EmailStr
+    nome: str
     plano: str
-    grupo_id: Optional[uuid.UUID] = None
+    grupo_id: Optional[uuid.UUID]
+    grupos_disponiveis: List[dict] = []
+    
+    class Config:
+        from_attributes = True
 class UserUpdate(BaseModel):
     nome: Optional[str] = None
     email: Optional[EmailStr] = None
@@ -119,7 +126,7 @@ class ChartMonthData(BaseModel):
     investimentos: float
     saldo: float
 
-# --- Schemas de Colaborador (existentes) ---
+# --- Schemas de Colaborador ---
 class ColaboradorBase(BaseModel):
     nome: str
     email: EmailStr
@@ -142,20 +149,41 @@ class ColaboradorTokenData(BaseModel):
 class DashboardStats(BaseModel):
     total_usuarios: int
     total_premium: int
-    novos_hoje: int
-    novos_semana: int
-    novos_mes: int
-    # NOVO: Campo para novos usuários no ano
-    novos_ano: int
+class ChartDataPoint(BaseModel):
+    label: str
+    total: int
+    premium: int
+class DashboardChartData(BaseModel):
+    data: List[ChartDataPoint]
+
+# --- NOVO: Schemas para Suporte ---
+class SuporteChamadoCreate(BaseModel):
+    titulo: str = Field(..., min_length=5, max_length=100)
+    descricao: str = Field(..., min_length=10, max_length=1000)
+    prioridade: str = "normal"
+
 class SuporteChamado(BaseModel):
     id: uuid.UUID
     titulo: str
+    descricao: str
     status: str
     prioridade: str
     criado_em: datetime.datetime
     nome_usuario: str
+    email_usuario: EmailStr
+    resolvido_por: Optional[str] = None
+
     class Config:
         from_attributes = True
+
+class TicketInfo(BaseModel):
+    id: uuid.UUID
+    titulo: str
+
+class SuporteStats(BaseModel):
+    colaborador_id: uuid.UUID
+    nome_colaborador: str
+    tickets_resolvidos: List[TicketInfo]
 
 # --- Schemas para Gerenciamento de Usuários (Admin) ---
 class AdminUserList(BaseModel):
