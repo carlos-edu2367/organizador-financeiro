@@ -38,9 +38,13 @@ async function handleSupportFormSubmit(event) {
     const descriptionInput = document.getElementById('ticket-description');
     const submitButton = event.target.querySelector('button[type="submit"]');
 
+    const userPlan = localStorage.getItem('userPlan');
+    const prioridade = userPlan === 'premium' ? 'alta' : 'normal';
+
     const ticketData = {
         titulo: titleInput.value.trim(),
         descricao: descriptionInput.value.trim(),
+        prioridade: prioridade,
     };
 
     if (!ticketData.titulo || !ticketData.descricao) {
@@ -64,7 +68,19 @@ async function handleSupportFormSubmit(event) {
 
         if (!response.ok) {
             const errorData = await response.json();
-            throw new Error(errorData.detail || 'Não foi possível enviar o ticket.');
+            // --- INÍCIO DA ALTERAÇÃO: Tratamento de erro aprimorado ---
+            let errorMessage = 'Não foi possível enviar o ticket.';
+            // Erros de validação do FastAPI vêm como um array em 'detail'
+            if (errorData.detail && Array.isArray(errorData.detail)) {
+                const firstError = errorData.detail[0];
+                const field = firstError.loc ? firstError.loc.slice(-1)[0] : 'campo';
+                errorMessage = `Erro no ${field}: ${firstError.msg}`;
+            } else if (errorData.detail) {
+                // Outros erros que vêm como uma string em 'detail'
+                errorMessage = errorData.detail;
+            }
+            throw new Error(errorMessage);
+            // --- FIM DA ALTERAÇÃO ---
         }
 
         // Limpa o formulário e exibe a mensagem de sucesso
