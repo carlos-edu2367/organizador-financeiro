@@ -19,6 +19,27 @@ const API_URL = getApiBaseUrl();
 // --- Variáveis Globais ---
 let usersChart = null;
 let allUsers = []; 
+let userCargo = null;
+
+function logout() {
+    localStorage.removeItem('collaboratorToken');
+    window.location.href = './login.html';
+}
+
+// --- Decodificar Token para Obter Cargo ---
+try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    if (payload && payload.cargo) {
+        userCargo = payload.cargo;
+        console.log("Cargo do colaborador detectado no token:", userCargo);
+    } else {
+        console.warn("O token não contém a informação de 'cargo'. Faça logout e login novamente.");
+        userCargo = null;
+    }
+} catch (e) {
+    console.error("Erro ao decodificar token:", e);
+    logout();
+}
 
 // --- Navegação ---
 const navLinks = document.querySelectorAll('.nav-link');
@@ -40,6 +61,10 @@ navLinks.forEach(link => {
             document.getElementById('user-detail-view').classList.add('hidden');
             document.getElementById('users-list-view').classList.remove('hidden');
             fetchUsers();
+        } else if (targetId === 'suporte') {
+            fetchSupportTickets();
+        } else if (targetId === 'gestao') {
+            fetchManagementData();
         }
     });
 });
@@ -304,19 +329,175 @@ async function executePremiumGrant(userId, meses) {
         
         toggleModal('generic-modal', false);
         showCustomAlert('Sucesso', data.message);
-        showUserDetails(userId); // Recarrega os detalhes para mostrar o plano atualizado
+        showUserDetails(userId);
     } catch (error) {
-        // Exibe o erro dentro do modal para não fechá-lo
         const modalContent = document.getElementById('generic-modal-content');
         modalContent.innerHTML += `<p class="text-red-400 text-sm mt-2">${error.message}</p>`;
     }
 }
 
+// --- Lógica de Suporte ---
+
+const priorityMap = {
+    normal: { text: 'Normal', color: 'bg-normal' },
+    baixa: { text: 'Baixa', color: 'bg-low' },
+    alta: { text: 'Alta', color: 'bg-high' },
+    urgente: { text: 'Urgente', color: 'bg-urgent' }
+};
+
+async function fetchSupportTickets() {
+    const container = document.getElementById('tickets-container');
+    container.innerHTML = `<p class="text-center text-gray-400">Carregando chamados...</p>`;
+
+    try {
+        const response = await fetch(`${API_URL}/collaborators/support/tickets`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) throw new Error('Não foi possível carregar os chamados.');
+        const tickets = await response.json();
+        renderTickets(tickets);
+    } catch (error) {
+        container.innerHTML = `<p class="text-center text-red-400">${error.message}</p>`;
+    }
+}
+
+function renderTickets(tickets) {
+    const container = document.getElementById('tickets-container');
+    container.innerHTML = '';
+    if (tickets.length === 0) {
+        container.innerHTML = `<p class="text-center text-gray-500">Nenhum chamado aberto no momento. Bom trabalho!</p>`;
+        return;
+    }
+
+    tickets.forEach(ticket => {
+        const priority = priorityMap[ticket.prioridade] || { text: 'Normal', color: 'bg-normal' };
+        const ticketElement = document.createElement('div');
+        ticketElement.className = 'bg-background rounded-lg';
+        ticketElement.innerHTML = `
+            <div class="ticket-header grid grid-cols-10 gap-4 items-center p-4 cursor-pointer hover:bg-surface/50">
+                <div class="col-span-2 md:col-span-1 text-sm text-gray-400">${new Date(ticket.criado_em).toLocaleDateString('pt-BR')}</div>
+                <div class="col-span-5 md:col-span-6 font-medium">${ticket.titulo}</div>
+                <div class="col-span-3 md:col-span-1 text-sm">${ticket.nome_usuario}</div>
+                <div class="hidden md:flex col-span-1 items-center justify-center">
+                    <span class="px-2 py-0.5 text-xs rounded-full text-white ${priority.color}">${priority.text}</span>
+                </div>
+                <div class="col-span-2 md:col-span-1 text-right">
+                    <i class="fas fa-chevron-down transition-transform"></i>
+                </div>
+            </div>
+            <div class="details-content">
+                <div class="border-t border-gray-700 p-4">
+                    <h4 class="font-bold mb-2">Detalhes do Chamado</h4>
+                    <p class="text-gray-300 mb-4 whitespace-pre-wrap">${ticket.descricao}</p>
+                    <div class="text-sm text-gray-400 mb-4">
+                        <p><strong>Cliente:</strong> ${ticket.nome_usuario}</p>
+                        <p><strong>Email:</strong> ${ticket.email_usuario}</p>
+                    </div>
+                    <button onclick="markTicketAsComplete('${ticket.id}')" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">
+                        Marcar como Concluída
+                    </button>
+                </div>
+            </div>
+        `;
+        container.appendChild(ticketElement);
+    });
+
+    document.querySelectorAll('.ticket-header').forEach(header => {
+        header.addEventListener('click', () => {
+            const content = header.nextElementSibling;
+            const icon = header.querySelector('.fa-chevron-down');
+            
+            if (content.style.maxHeight) {
+                content.style.maxHeight = null;
+                icon.classList.remove('rotate-180');
+            } else {
+                content.style.maxHeight = content.scrollHeight + "px";
+                icon.classList.add('rotate-180');
+            }
+        });
+    });
+}
+
+async function markTicketAsComplete(ticketId) {
+    const confirmed = await showCustomAlert('Confirmar Conclusão', 'Tem certeza que deseja marcar este chamado como concluído?', 'confirm');
+    if (!confirmed) return;
+
+    try {
+        const response = await fetch(`${API_URL}/collaborators/support/tickets/${ticketId}/complete`, {
+            method: 'PUT',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) {
+            const data = await response.json();
+            throw new Error(data.detail || 'Não foi possível concluir o chamado.');
+        }
+        await showCustomAlert('Sucesso!', 'O chamado foi marcado como concluído.');
+        fetchSupportTickets();
+    } catch (error) {
+        await showCustomAlert('Erro', error.message);
+    }
+}
+
+// --- Lógica de Gestão ---
+async function fetchManagementData() {
+    const container = document.getElementById('management-container');
+    container.innerHTML = '';
+
+    if (userCargo === 'adm') {
+        container.innerHTML = `
+            <h2 class="text-2xl font-semibold mb-4">Estatísticas de Suporte por Colaborador</h2>
+            <div id="support-stats-container"><p class="text-center text-gray-400">Carregando estatísticas...</p></div>
+        `;
+        fetchSupportStats();
+    } else {
+        container.innerHTML = `<p class="text-center text-gray-500">Você não tem permissão para visualizar esta seção.</p>`;
+    }
+}
+
+async function fetchSupportStats() {
+    const container = document.getElementById('support-stats-container');
+    try {
+        const response = await fetch(`${API_URL}/collaborators/support/stats`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) throw new Error('Não foi possível carregar as estatísticas de suporte.');
+        const stats = await response.json();
+        
+        let statsHtml = '<div class="space-y-4 text-left">';
+        stats.forEach(collab => {
+            statsHtml += `
+                <details class="bg-background p-3 rounded-lg">
+                    <summary class="font-medium cursor-pointer flex justify-between">
+                        <span>${collab.nome_colaborador}</span>
+                        <span class="text-primary">${collab.tickets_resolvidos.length} resolvido(s)</span>
+                    </summary>
+                    <div class="border-t border-gray-700 mt-2 pt-2 pl-2 text-sm space-y-1">
+                        ${collab.tickets_resolvidos.length > 0 ? 
+                            // --- INÍCIO DA ALTERAÇÃO: Adicionada a data de resolução ---
+                            collab.tickets_resolvidos.map(t => `
+                                <div class="flex justify-between items-center">
+                                    <p class="text-gray-400 truncate" title="${t.titulo}">- ${t.titulo}</p>
+                                    <span class="text-xs text-gray-500 flex-shrink-0 ml-4">${new Date(t.data_resolucao).toLocaleDateString('pt-BR')}</span>
+                                </div>
+                            `).join('') :
+                            // --- FIM DA ALTERAÇÃO ---
+                            '<p class="text-gray-500">Nenhum chamado resolvido.</p>'
+                        }
+                    </div>
+                </details>
+            `;
+        });
+        statsHtml += '</div>';
+        container.innerHTML = statsHtml;
+
+    } catch (error) {
+        container.innerHTML = `<p class="text-red-400">${error.message}</p>`;
+    }
+}
+
+
 // --- Logout ---
-document.getElementById('logout-button').addEventListener('click', () => {
-    localStorage.removeItem('collaboratorToken');
-    window.location.href = './login.html';
-});
+document.getElementById('logout-button').addEventListener('click', logout);
 
 // --- Funções Utilitárias ---
 function toggleModal(modalId, show) {
@@ -324,21 +505,34 @@ function toggleModal(modalId, show) {
     if(modal) modal.classList.toggle('hidden', !show);
 }
 
-function showCustomAlert(title, message) {
-    const modalTitle = document.getElementById('generic-modal-title');
-    const modalContent = document.getElementById('generic-modal-content');
-    const modalButtons = document.getElementById('generic-modal-buttons');
-    
-    modalTitle.textContent = title;
-    modalContent.innerHTML = `<p>${message}</p>`;
-    modalButtons.innerHTML = `<button id="ok-alert-btn" class="py-2 px-6 bg-primary hover:bg-primary-dark rounded-lg font-medium text-white">OK</button>`;
-    
-    document.getElementById('ok-alert-btn').onclick = () => toggleModal('generic-modal', false);
-    
-    toggleModal('generic-modal', true);
+function showCustomAlert(title, message, type = 'alert') {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('generic-modal');
+        const modalTitle = document.getElementById('generic-modal-title');
+        const modalContent = document.getElementById('generic-modal-content');
+        const modalButtons = document.getElementById('generic-modal-buttons');
+        
+        modalTitle.textContent = title;
+        modalContent.innerHTML = `<p>${message}</p>`;
+        
+        modalButtons.innerHTML = '';
+        if (type === 'confirm') {
+            modalButtons.innerHTML = `
+                <button id="cancel-alert-btn" class="py-2 px-4 text-gray-300 hover:text-white">Cancelar</button>
+                <button id="ok-alert-btn" class="py-2 px-6 bg-primary hover:bg-primary-dark rounded-lg font-medium text-white">Confirmar</button>
+            `;
+            document.getElementById('ok-alert-btn').onclick = () => { toggleModal('generic-modal', false); resolve(true); };
+            document.getElementById('cancel-alert-btn').onclick = () => { toggleModal('generic-modal', false); resolve(false); };
+        } else {
+            modalButtons.innerHTML = `<button id="ok-alert-btn" class="py-2 px-6 bg-primary hover:bg-primary-dark rounded-lg font-medium text-white">OK</button>`;
+            document.getElementById('ok-alert-btn').onclick = () => { toggleModal('generic-modal', false); resolve(true); };
+        }
+        
+        toggleModal('generic-modal', true);
+    });
 }
 
 
 // --- Inicialização ---
 fetchDashboardStats();
-fetchChartData(); // Carrega o gráfico inicial (padrão: mês)
+fetchChartData();

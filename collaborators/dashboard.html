@@ -16,6 +16,11 @@
             sidebar: '#131c31',
             danger: '#ef4444',
             gold: '#facc15',
+            // Cores para prioridades
+            low: '#22c55e', // green
+            normal: '#3b82f6', // blue
+            high: '#f97316', // orange
+            urgent: '#ef4444', // red
           },
           fontFamily: { sans: ['Inter', 'sans-serif'] },
         }
@@ -25,6 +30,14 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    /* Estilo para a transição suave do expandir/recolher */
+    .details-content {
+        transition: max-height 0.3s ease-out;
+        overflow: hidden;
+        max-height: 0;
+    }
+  </style>
 </head>
 <body class="bg-background text-white font-sans flex">
 
@@ -44,6 +57,11 @@
       <a href="#suporte" class="nav-link flex items-center p-3 rounded-lg hover:bg-surface transition">
         <i class="fas fa-headset w-6 text-center"></i><span class="ml-3">Suporte</span>
       </a>
+      <!-- INÍCIO DA ALTERAÇÃO: Nova aba de Gestão -->
+      <a href="#gestao" class="nav-link flex items-center p-3 rounded-lg hover:bg-surface transition">
+        <i class="fas fa-cogs w-6 text-center"></i><span class="ml-3">Gestão</span>
+      </a>
+      <!-- FIM DA ALTERAÇÃO -->
     </nav>
     <div class="mt-auto">
       <a href="#" id="logout-button" class="flex items-center p-3 rounded-lg hover:bg-surface transition text-gray-400">
@@ -65,12 +83,10 @@
       <div class="bg-surface p-6 rounded-xl">
         <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-4">
           <h2 class="text-xl font-bold">Novos Usuários</h2>
-          <!-- NOVO: Filtro de lista suspensa -->
           <select id="user-chart-filter" class="bg-background p-2 rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-primary">
-            <option value="mes">Este Mês</option>
-            <option value="semana">Esta Semana</option>
-            <option value="hoje">Hoje</option>
-            <option value="ano">Este Ano</option>
+            <option value="semana">Última Semana</option>
+            <option value="mes" selected>Últimos 30 dias</option>
+            <option value="ano">Último Ano</option>
           </select>
         </div>
         <div class="h-80"><canvas id="users-chart"></canvas></div>
@@ -105,18 +121,28 @@
     <!-- Página Suporte -->
     <div id="suporte" class="page-content hidden">
       <h1 class="text-3xl font-bold mb-8">Chamados de Suporte</h1>
-      <div class="bg-surface p-6 rounded-xl">
-        <p class="text-center text-gray-500">A funcionalidade de suporte será implementada em breve.</p>
+      <div id="tickets-container" class="bg-surface p-6 rounded-xl space-y-3">
+        <!-- Chamados serão inseridos aqui pelo JS -->
       </div>
     </div>
+    
+    <!-- INÍCIO DA ALTERAÇÃO: Nova página de Gestão -->
+    <div id="gestao" class="page-content hidden">
+        <h1 class="text-3xl font-bold mb-8">Gestão de Colaboradores</h1>
+        <div id="management-container" class="bg-surface p-6 rounded-xl">
+            <!-- Conteúdo de gestão será inserido aqui pelo JS -->
+        </div>
+    </div>
+    <!-- FIM DA ALTERAÇÃO -->
+
   </main>
 
   <!-- Modais -->
   <div id="generic-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
-    <div class="bg-surface rounded-xl shadow-lg w-full max-w-sm p-6 text-center">
+    <div class="bg-surface rounded-xl shadow-lg w-full max-w-lg p-6">
         <h3 id="generic-modal-title" class="text-xl font-bold text-white mb-4"></h3>
-        <div id="generic-modal-content" class="text-gray-300 mb-6"></div>
-        <div id="generic-modal-buttons" class="flex justify-center space-x-4"></div>
+        <div id="generic-modal-content" class="text-gray-300 mb-6 max-h-[70vh] overflow-y-auto"></div>
+        <div id="generic-modal-buttons" class="flex justify-end space-x-4 mt-4"></div>
     </div>
   </div>
 

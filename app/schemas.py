@@ -149,18 +149,14 @@ class ColaboradorTokenData(BaseModel):
 class DashboardStats(BaseModel):
     total_usuarios: int
     total_premium: int
-
-# --- INÍCIO DA ALTERAÇÃO ---
 class ChartDataPoint(BaseModel):
     label: str
     new_users: int
     new_premiums: int
-# --- FIM DA ALTERAÇÃO ---
-
 class DashboardChartData(BaseModel):
     data: List[ChartDataPoint]
 
-# --- NOVO: Schemas para Suporte ---
+# --- Schemas para Suporte ---
 class SuporteChamadoCreate(BaseModel):
     titulo: str = Field(..., min_length=5, max_length=100)
     descricao: str = Field(..., min_length=10, max_length=1000)
@@ -183,6 +179,7 @@ class SuporteChamado(BaseModel):
 class TicketInfo(BaseModel):
     id: uuid.UUID
     titulo: str
+    data_resolucao: datetime.datetime
 
 class SuporteStats(BaseModel):
     colaborador_id: uuid.UUID
