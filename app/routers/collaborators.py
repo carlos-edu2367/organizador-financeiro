@@ -4,7 +4,6 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
 from datetime import datetime, timedelta
 
-# CORREÇÃO: A importação relativa foi ajustada de '...' para '..'
 from .. import database, schemas, models, security
 
 router = APIRouter(
@@ -42,15 +41,20 @@ def get_dashboard_stats(db: Session = Depends(database.get_db), current_user: mo
     today = datetime.utcnow().date()
     start_of_week = today - timedelta(days=today.weekday())
     start_of_month = today.replace(day=1)
+    # NOVO: Cálculo para o início do ano
+    start_of_year = today.replace(day=1, month=1)
 
     novos_hoje = db.query(models.Usuario).filter(func.date(models.Usuario.criado_em) == today).count()
     novos_semana = db.query(models.Usuario).filter(func.date(models.Usuario.criado_em) >= start_of_week).count()
     novos_mes = db.query(models.Usuario).filter(func.date(models.Usuario.criado_em) >= start_of_month).count()
+    # NOVO: Contagem de novos usuários no ano
+    novos_ano = db.query(models.Usuario).filter(func.date(models.Usuario.criado_em) >= start_of_year).count()
 
     return {
         "total_usuarios": total_usuarios,
         "total_premium": total_premium,
         "novos_hoje": novos_hoje,
         "novos_semana": novos_semana,
-        "novos_mes": novos_mes
+        "novos_mes": novos_mes,
+        "novos_ano": novos_ano
     }

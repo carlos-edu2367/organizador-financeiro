@@ -6,7 +6,6 @@ from decimal import Decimal
 from .models import CargoColaboradorEnum
 
 # --- Schemas de Cliente (existentes) ---
-
 class Token(BaseModel):
     access_token: str
     token_type: str
@@ -38,10 +37,8 @@ class GoalBase(BaseModel):
     titulo: str
     valor_meta: Decimal = Field(..., max_digits=10, decimal_places=2, gt=0)
     data_limite: Optional[datetime.date] = None
-class GoalCreate(GoalBase):
-    pass
-class GoalUpdate(GoalBase):
-    pass
+class GoalCreate(GoalBase): pass
+class GoalUpdate(GoalBase): pass
 class GoalAddFunds(BaseModel):
     valor: Decimal = Field(..., max_digits=10, decimal_places=2, gt=0)
 class GoalWithdrawFunds(BaseModel):
@@ -58,8 +55,7 @@ class TransactionBase(BaseModel):
     valor: Decimal = Field(..., max_digits=10, decimal_places=2, gt=0)
     data_transacao: datetime.date
     responsavel_id: uuid.UUID
-class TransactionCreate(TransactionBase):
-    pass
+class TransactionCreate(TransactionBase): pass
 class TransactionUpdate(BaseModel):
     tipo: Optional[str] = None
     descricao: Optional[str] = None
@@ -123,39 +119,34 @@ class ChartMonthData(BaseModel):
     investimentos: float
     saldo: float
 
-# --- NOVOS SCHEMAS DE COLABORADOR ---
-
+# --- Schemas de Colaborador (existentes) ---
 class ColaboradorBase(BaseModel):
     nome: str
     email: EmailStr
     cpf: str
-
 class ColaboradorCreate(ColaboradorBase):
     senha: str
     cargo: CargoColaboradorEnum
     endereco: Optional[str] = None
     sexo: Optional[str] = None
-
 class Colaborador(ColaboradorBase):
     id: uuid.UUID
     cargo: CargoColaboradorEnum
     class Config:
         from_attributes = True
-
 class ColaboradorLogin(BaseModel):
-    login: str # Pode ser email ou CPF
+    login: str
     senha: str
-
 class ColaboradorTokenData(BaseModel):
-    sub: str # ID do colaborador
-    
+    sub: str
 class DashboardStats(BaseModel):
     total_usuarios: int
     total_premium: int
     novos_hoje: int
     novos_semana: int
     novos_mes: int
-
+    # NOVO: Campo para novos usuários no ano
+    novos_ano: int
 class SuporteChamado(BaseModel):
     id: uuid.UUID
     titulo: str
@@ -165,3 +156,24 @@ class SuporteChamado(BaseModel):
     nome_usuario: str
     class Config:
         from_attributes = True
+
+# --- Schemas para Gerenciamento de Usuários (Admin) ---
+class AdminUserList(BaseModel):
+    id: uuid.UUID
+    nome: str
+    email: str
+    criado_em: datetime.datetime
+    plano: str
+    class Config:
+        from_attributes = True
+class AdminUserDetails(AdminUserList):
+    movimentacoes: List[Movimentacao]
+    class Config:
+        from_attributes = True
+class AdminUserUpdate(BaseModel):
+    nome: Optional[str] = None
+    email: Optional[EmailStr] = None
+class AdminPasswordUpdate(BaseModel):
+    nova_senha: str
+class AdminGrantPremium(BaseModel):
+    meses: int = Field(..., gt=0)

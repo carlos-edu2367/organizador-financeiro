@@ -14,6 +14,8 @@
             background: '#0f172a',
             surface: '#1e293b',
             sidebar: '#131c31',
+            danger: '#ef4444',
+            gold: '#facc15',
           },
           fontFamily: { sans: ['Inter', 'sans-serif'] },
         }
@@ -36,6 +38,9 @@
       <a href="#inicio" class="nav-link active flex items-center p-3 rounded-lg hover:bg-surface transition">
         <i class="fas fa-home w-6 text-center"></i><span class="ml-3">Início</span>
       </a>
+      <a href="#usuarios" class="nav-link flex items-center p-3 rounded-lg hover:bg-surface transition">
+        <i class="fas fa-users w-6 text-center"></i><span class="ml-3">Usuários</span>
+      </a>
       <a href="#suporte" class="nav-link flex items-center p-3 rounded-lg hover:bg-surface transition">
         <i class="fas fa-headset w-6 text-center"></i><span class="ml-3">Suporte</span>
       </a>
@@ -49,6 +54,7 @@
 
   <!-- Conteúdo Principal -->
   <main class="flex-grow p-8 overflow-y-auto">
+    <!-- Página Início -->
     <div id="inicio" class="page-content">
       <h1 class="text-3xl font-bold mb-8">Dashboard de Métricas</h1>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -57,26 +63,63 @@
         <div class="bg-surface p-6 rounded-xl"><h3 class="text-gray-400">Taxa de Conversão</h3><p id="taxa-conversao" class="text-3xl font-bold mt-2">0%</p></div>
       </div>
       <div class="bg-surface p-6 rounded-xl">
-        <div class="flex justify-between items-center mb-4">
+        <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-4">
           <h2 class="text-xl font-bold">Novos Usuários</h2>
-          <div id="user-chart-filter" class="flex space-x-1 bg-background p-1 rounded-lg">
-            <button class="filter-btn active" data-period="hoje">Hoje</button>
-            <button class="filter-btn" data-period="semana">Semana</button>
-            <button class="filter-btn" data-period="mes">Mês</button>
-          </div>
+          <!-- NOVO: Filtro de lista suspensa -->
+          <select id="user-chart-filter" class="bg-background p-2 rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-primary">
+            <option value="mes">Este Mês</option>
+            <option value="semana">Esta Semana</option>
+            <option value="hoje">Hoje</option>
+            <option value="ano">Este Ano</option>
+          </select>
         </div>
         <div class="h-80"><canvas id="users-chart"></canvas></div>
       </div>
     </div>
 
+    <!-- Página de Usuários -->
+    <div id="usuarios" class="page-content hidden">
+      <div id="users-list-view">
+        <h1 class="text-3xl font-bold mb-8">Gerenciamento de Usuários</h1>
+        <div class="bg-surface p-6 rounded-xl">
+          <input type="text" id="user-search-input" placeholder="Buscar por nome ou e-mail..." class="w-full p-3 bg-background rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-primary">
+          <div class="overflow-x-auto mt-4">
+            <table class="w-full text-left">
+              <thead>
+                <tr class="border-b border-gray-700">
+                  <th class="p-3">Nome</th>
+                  <th class="p-3">E-mail</th>
+                  <th class="p-3">Plano</th>
+                  <th class="p-3">Data de Cadastro</th>
+                  <th class="p-3">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="users-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div id="user-detail-view" class="hidden"></div>
+    </div>
+
+    <!-- Página Suporte -->
     <div id="suporte" class="page-content hidden">
       <h1 class="text-3xl font-bold mb-8">Chamados de Suporte</h1>
       <div class="bg-surface p-6 rounded-xl">
-        <!-- Tabela de chamados será inserida aqui -->
         <p class="text-center text-gray-500">A funcionalidade de suporte será implementada em breve.</p>
       </div>
     </div>
   </main>
+
+  <!-- Modais -->
+  <div id="generic-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
+    <div class="bg-surface rounded-xl shadow-lg w-full max-w-sm p-6 text-center">
+        <h3 id="generic-modal-title" class="text-xl font-bold text-white mb-4"></h3>
+        <div id="generic-modal-content" class="text-gray-300 mb-6"></div>
+        <div id="generic-modal-buttons" class="flex justify-center space-x-4"></div>
+    </div>
+  </div>
+
   <script src="./dashboard.js"></script>
 </body>
 </html>

@@ -42,7 +42,7 @@ class Grupo(Base):
     __tablename__ = 'grupos'
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     nome = Column(String(100), nullable=False)
-    plano = Column(String(20), nullable=False, default='gratuito')
+    plano = Column(String(20), nullable=False, default='gratuito') # Mantido para compatibilidade
     criado_em = Column(DateTime(timezone=True), server_default=func.now())
     meses_positivos_consecutivos = Column(Integer, nullable=False, default=0)
     associacoes_membros = relationship("GrupoMembro", back_populates="grupo", cascade="all, delete-orphan")
@@ -51,9 +51,22 @@ class Grupo(Base):
     convites = relationship("Convite", back_populates="grupo", cascade="all, delete-orphan")
     conquistas = relationship("Conquista", back_populates="grupo", cascade="all, delete-orphan", order_by="desc(Conquista.data_conquista)")
     ai_usages = relationship("AIUsage", back_populates="grupo", cascade="all, delete-orphan")
+    # NOVO: Relacionamento com a tabela de assinaturas
+    assinatura = relationship("Assinatura", back_populates="grupo", uselist=False, cascade="all, delete-orphan")
     @property
     def member_list(self):
         return [assoc.usuario for assoc in self.associacoes_membros]
+
+# NOVO: Tabela para gerenciar assinaturas Premium
+class Assinatura(Base):
+    __tablename__ = 'assinaturas'
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    grupo_id = Column(UUID(as_uuid=True), ForeignKey('grupos.id', ondelete="CASCADE"), unique=True, nullable=False)
+    status = Column(String(50), nullable=False, default='ativa') # ex: ativa, expirada, cancelada
+    data_fim = Column(DateTime(timezone=True), nullable=False)
+    criado_em = Column(DateTime(timezone=True), server_default=func.now())
+    atualizado_em = Column(DateTime(timezone=True), onupdate=func.now())
+    grupo = relationship("Grupo", back_populates="assinatura")
 
 class Movimentacao(Base):
     __tablename__ = 'movimentacoes'
@@ -104,7 +117,7 @@ class AIUsage(Base):
     timestamp = Column(DateTime(timezone=True), server_default=func.now())
     grupo = relationship("Grupo", back_populates="ai_usages")
 
-# --- NOVOS MODELOS DE COLABORADOR ---
+# --- Modelos de Colaborador ---
 
 class CargoColaboradorEnum(str, enum.Enum):
     adm = "adm"
