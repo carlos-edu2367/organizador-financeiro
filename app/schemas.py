@@ -149,10 +149,14 @@ class ColaboradorTokenData(BaseModel):
 class DashboardStats(BaseModel):
     total_usuarios: int
     total_premium: int
+
+# --- INÍCIO DA ALTERAÇÃO ---
 class ChartDataPoint(BaseModel):
     label: str
-    total: int
-    premium: int
+    new_users: int
+    new_premiums: int
+# --- FIM DA ALTERAÇÃO ---
+
 class DashboardChartData(BaseModel):
     data: List[ChartDataPoint]
 
