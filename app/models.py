@@ -36,6 +36,10 @@ class Usuario(Base):
     email = Column(String(255), unique=True, nullable=False, index=True)
     senha = Column(Text, nullable=False)
     criado_em = Column(DateTime(timezone=True), server_default=func.now())
+
+    reset_token = Column(String, unique=True, index=True, nullable=True)
+    reset_token_expires = Column(DateTime(timezone=True), nullable=True)
+    
     associacoes_grupo = relationship("GrupoMembro", back_populates="usuario", cascade="all, delete-orphan")
     movimentacoes = relationship("Movimentacao", back_populates="responsavel")
 

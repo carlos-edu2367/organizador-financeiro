@@ -7,8 +7,6 @@ load_dotenv()
 class Settings:
     """
     Classe para centralizar as configurações da aplicação.
-    Ela lê as variáveis do ambiente, garantindo que as configurações
-    estejam disponíveis de forma organizada em todo o projeto.
     """
     # URL de conexão com o banco de dados PostgreSQL.
     DATABASE_URL: str = os.getenv("DATABASE_URL")
@@ -16,8 +14,14 @@ class Settings:
     # Chave secreta para a criação e validação de tokens JWT.
     SECRET_KEY: str = os.getenv("SECRET_KEY")
     
-    # (NOVO) Adiciona a chave da API do Gemini a partir do .env
+    # Chave da API do Gemini
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY")
+
+    # --- INÍCIO DA ALTERAÇÃO ---
+    # Chave da API do SendGrid e e-mail remetente
+    SENDGRID_API_KEY: str = os.getenv("SENDGRID_API_KEY")
+    SENDGRID_FROM_EMAIL: str = "clarifybr@gmail.com" # e-mail verificado no SendGrid
+    # --- FIM DA ALTERAÇÃO ---
     
     # Algoritmo usado para assinar o JWT.
     ALGORITHM: str = "HS256"
@@ -27,10 +31,3 @@ class Settings:
 
 # Instancia as configurações para que possam ser importadas em outros arquivos.
 settings = Settings()
-
-# Verificações para ajudar na depuração
-if settings.DATABASE_URL is None:
-    print("⚠️  Atenção: A variável de ambiente DATABASE_URL não foi definida no seu ficheiro .env.")
-
-if settings.GEMINI_API_KEY is None:
-    print("⚠️  Atenção: A variável de ambiente GEMINI_API_KEY não foi definida no seu ficheiro .env.")

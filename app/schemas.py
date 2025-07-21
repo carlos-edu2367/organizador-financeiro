@@ -40,6 +40,21 @@ class PasswordVerifyResponse(BaseModel):
 class PasswordUpdate(BaseModel):
     current_password: str
     new_password: str
+
+# --- INÍCIO DA ALTERAÇÃO: Schemas para recuperação de senha ---
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+class VerifyCodeRequest(BaseModel):
+    email: EmailStr
+    code: str
+
+class ResetPasswordRequest(BaseModel):
+    email: EmailStr
+    code: str
+    new_password: str
+# --- FIM DA ALTERAÇÃO ---
+
 class GoalBase(BaseModel):
     titulo: str
     valor_meta: Decimal = Field(..., max_digits=10, decimal_places=2, gt=0)
