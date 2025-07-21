@@ -18,7 +18,7 @@
           },
           fontFamily: { sans: ['Inter', 'sans-serif'] },
           boxShadow: {
-            'glow-gold': '0 0 20px rgba(250, 204, 21, 0.4)',
+            'glow-gold': '0 0 25px rgba(250, 204, 21, 0.5)',
           }
         }
       }
@@ -92,77 +92,77 @@
         </div>
     </section>
 
-    <!-- Features Comparison -->
+    <!-- INÍCIO DA REATORAÇÃO: Seção de Comparação Responsiva -->
     <section class="py-20 px-4 bg-surface">
-      <div class="container mx-auto max-w-5xl">
+      <div class="container mx-auto max-w-4xl">
         <div class="text-center mb-12">
           <h2 class="text-3xl md:text-4xl font-bold">Compare os Planos</h2>
           <p class="mt-4 text-gray-400">Veja tudo o que você ganha com o Premium.</p>
         </div>
 
         <div class="bg-background rounded-xl shadow-lg overflow-hidden">
-          <table class="w-full text-left">
-            <thead>
-              <tr class="border-b border-gray-700">
-                <th class="p-4 sm:p-6 text-lg font-bold">Funcionalidade</th>
-                <th class="p-4 sm:p-6 text-center text-lg font-bold">Gratuito</th>
-                <th class="p-4 sm:p-6 text-center text-lg font-bold bg-primary/20 text-primary-light">Premium 💎</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-700">
-              <!-- Membros -->
-              <tr class="hover:bg-white/5">
-                <td class="p-4 sm:p-6 font-medium">Membros no grupo</td>
-                <td class="p-4 sm:p-6 text-center text-gray-400">Até 2</td>
-                <td class="p-4 sm:p-6 text-center font-bold text-white">Até 4</td>
-              </tr>
-              <!-- Metas Ativas -->
-              <tr class="hover:bg-white/5">
-                <td class="p-4 sm:p-6 font-medium">Metas ativas simultâneas</td>
-                <td class="p-4 sm:p-6 text-center text-gray-400">1</td>
-                <td class="p-4 sm:p-6 text-center font-bold text-white">Ilimitadas</td>
-              </tr>
-              <!-- Uso da IA -->
-              <tr class="hover:bg-white/5">
-                <td class="p-4 sm:p-6 font-medium">Análise de transações com IA</td>
-                <td class="p-4 sm:p-6 text-center text-gray-400">2 por dia</td>
-                <td class="p-4 sm:p-6 text-center font-bold text-white">Ilimitado</td>
-              </tr>
-              <!-- Lembretes de Pagamento -->
-              <tr class="hover:bg-white/5">
-                <td class="p-4 sm:p-6 font-medium">Lembretes de Pagamento</td>
-                <td class="p-4 sm:p-6 text-center text-gray-400"><i class="fas fa-times-circle"></i></td>
-                <td class="p-4 sm:p-6 text-center font-bold text-white"><i class="fas fa-check-circle text-green-400"></i></td>
-              </tr>
-              <!-- Histórico -->
-              <tr class="hover:bg-white/5">
-                <td class="p-4 sm:p-6 font-medium">Histórico de transações</td>
-                <td class="p-4 sm:p-6 text-center text-gray-400">Últimos 30 dias</td>
-                <td class="p-4 sm:p-6 text-center font-bold text-white">Completo</td>
-              </tr>
-              <!-- Whatsapp -->
-              <tr class="hover:bg-white/5">
-                <td class="p-4 sm:p-6 font-medium">Integrado ao Whatsapp</td>
-                <td class="p-4 sm:p-6 text-center text-gray-400"><i class="fas fa-times-circle"></i></td>
-                <td class="p-4 sm:p-6 text-center font-bold text-white"><i class="fas fa-check-circle text-green-400"></i></td>
-              </tr>
-              <!-- Relatórios -->
-              <tr class="hover:bg-white/5">
-                <td class="p-4 sm:p-6 font-medium">Exportar relatórios (PDF, CSV)</td>
-                <td class="p-4 sm:p-6 text-center text-gray-400"><i class="fas fa-times-circle"></i></td>
-                <td class="p-4 sm:p-6 text-center font-bold text-white"><i class="fas fa-check-circle text-green-400"></i></td>
-              </tr>
-              <!-- Suporte -->
-               <tr class="hover:bg-white/5">
-                <td class="p-4 sm:p-6 font-medium">Suporte ao cliente</td>
-                <td class="p-4 sm:p-6 text-center text-gray-400">Padrão</td>
-                <td class="p-4 sm:p-6 text-center font-bold text-white">Prioritário</td>
-              </tr>
-            </tbody>
-          </table>
+          <!-- Cabeçalho para telas maiores -->
+          <div class="hidden md:grid md:grid-cols-3 gap-4 p-4 sm:p-6 border-b border-gray-700">
+            <h3 class="text-lg font-bold col-span-1">Funcionalidade</h3>
+            <h3 class="text-lg font-bold text-center col-span-1">Gratuito</h3>
+            <h3 class="text-lg font-bold text-center col-span-1 bg-primary/20 text-primary-light rounded-lg py-1">Premium 💎</h3>
+          </div>
+
+          <!-- Lista de Funcionalidades -->
+          <div class="divide-y divide-gray-700">
+            <!-- Item: Membros -->
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-4 p-4 sm:p-6 items-center hover:bg-white/5">
+              <p class="font-medium col-span-2 md:col-span-1">Membros no grupo</p>
+              <p class="text-center text-gray-400"><span class="md:hidden font-bold text-gray-500 text-xs block">Gratuito</span>Até 2</p>
+              <p class="text-center font-bold text-white"><span class="md:hidden font-bold text-primary-light text-xs block">Premium</span>Até 4</p>
+            </div>
+            <!-- Item: Metas -->
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-4 p-4 sm:p-6 items-center hover:bg-white/5">
+              <p class="font-medium col-span-2 md:col-span-1">Metas ativas simultâneas</p>
+              <p class="text-center text-gray-400"><span class="md:hidden font-bold text-gray-500 text-xs block">Gratuito</span>1</p>
+              <p class="text-center font-bold text-white"><span class="md:hidden font-bold text-primary-light text-xs block">Premium</span>Ilimitadas</p>
+            </div>
+            <!-- Item: IA -->
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-4 p-4 sm:p-6 items-center hover:bg-white/5">
+              <p class="font-medium col-span-2 md:col-span-1">Análise de transações com IA</p>
+              <p class="text-center text-gray-400"><span class="md:hidden font-bold text-gray-500 text-xs block">Gratuito</span>2 por dia</p>
+              <p class="text-center font-bold text-white"><span class="md:hidden font-bold text-primary-light text-xs block">Premium</span>Ilimitado</p>
+            </div>
+            <!-- Item: Lembretes -->
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-4 p-4 sm:p-6 items-center hover:bg-white/5">
+              <p class="font-medium col-span-2 md:col-span-1">Lembretes de Pagamento</p>
+              <p class="text-center text-gray-400"><span class="md:hidden font-bold text-gray-500 text-xs block">Gratuito</span><i class="fas fa-times-circle"></i></p>
+              <p class="text-center font-bold text-white"><span class="md:hidden font-bold text-primary-light text-xs block">Premium</span><i class="fas fa-check-circle text-green-400"></i></p>
+            </div>
+            <!-- Item: Histórico -->
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-4 p-4 sm:p-6 items-center hover:bg-white/5">
+              <p class="font-medium col-span-2 md:col-span-1">Histórico de transações</p>
+              <p class="text-center text-gray-400"><span class="md:hidden font-bold text-gray-500 text-xs block">Gratuito</span>Últimos 30 dias</p>
+              <p class="text-center font-bold text-white"><span class="md:hidden font-bold text-primary-light text-xs block">Premium</span>Completo</p>
+            </div>
+            <!-- Item: WhatsApp -->
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-4 p-4 sm:p-6 items-center hover:bg-white/5">
+              <p class="font-medium col-span-2 md:col-span-1">Integrado ao WhatsApp</p>
+              <p class="text-center text-gray-400"><span class="md:hidden font-bold text-gray-500 text-xs block">Gratuito</span><i class="fas fa-times-circle"></i></p>
+              <p class="text-center font-bold text-white"><span class="md:hidden font-bold text-primary-light text-xs block">Premium</span><i class="fas fa-check-circle text-green-400"></i></p>
+            </div>
+            <!-- Item: Relatórios -->
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-4 p-4 sm:p-6 items-center hover:bg-white/5">
+              <p class="font-medium col-span-2 md:col-span-1">Exportar relatórios (PDF, CSV)</p>
+              <p class="text-center text-gray-400"><span class="md:hidden font-bold text-gray-500 text-xs block">Gratuito</span><i class="fas fa-times-circle"></i></p>
+              <p class="text-center font-bold text-white"><span class="md:hidden font-bold text-primary-light text-xs block">Premium</span><i class="fas fa-check-circle text-green-400"></i></p>
+            </div>
+            <!-- Item: Suporte -->
+             <div class="grid grid-cols-2 md:grid-cols-3 gap-4 p-4 sm:p-6 items-center hover:bg-white/5">
+              <p class="font-medium col-span-2 md:col-span-1">Suporte ao cliente</p>
+              <p class="text-center text-gray-400"><span class="md:hidden font-bold text-gray-500 text-xs block">Gratuito</span>Padrão</p>
+              <p class="text-center font-bold text-white"><span class="md:hidden font-bold text-primary-light text-xs block">Premium</span>Prioritário</p>
+            </div>
+          </div>
         </div>
       </div>
     </section>
+    <!-- FIM DA REATORAÇÃO -->
 
     <!-- Testimonial -->
     <section class="py-20 px-4">
