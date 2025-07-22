@@ -26,8 +26,13 @@ class Settings:
     # Algoritmo usado para assinar o JWT.
     ALGORITHM: str = "HS256"
     
-    # Tempo de expiração do token de acesso em minutos.
+    # Tempo de expiração do token de acesso em minutos para usuários (clientes).
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 # 24 horas
+
+    # INÍCIO DA ALTERAÇÃO: Tempo de expiração do token de acesso em minutos para colaboradores.
+    COLLABORATOR_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 # 1 hora
+    # FIM DA ALTERAÇÃO
 
 # Instancia as configurações para que possam ser importadas em outros arquivos.
 settings = Settings()
+

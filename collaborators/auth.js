@@ -31,10 +31,7 @@ loginForm.addEventListener('submit', async (event) => {
     const senha = document.getElementById('senha').value;
 
     try {
-        // --- INÍCIO DA ALTERAÇÃO ---
-        // Adiciona a variável API_URL no início da chamada fetch
         const response = await fetch(`${API_URL}/collaborators/token`, {
-        // --- FIM DA ALTERAÇÃO ---
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ login, senha }),
@@ -57,3 +54,16 @@ forgotPasswordLink.addEventListener('click', (e) => {
     e.preventDefault();
     showMessage('Entre em contato com a equipe de TI para redefinir sua senha.', false);
 });
+
+// INÍCIO DA ALTERAÇÃO: Verifica se há uma mensagem de logout na URL
+document.addEventListener('DOMContentLoaded', () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const logoutMessage = urlParams.get('message');
+    if (logoutMessage) {
+        showMessage(decodeURIComponent(logoutMessage), false); // Exibe a mensagem como sucesso
+        // Limpa a URL para evitar que a mensagem apareça novamente ao recarregar
+        history.replaceState(null, '', window.location.pathname);
+    }
+});
+// FIM DA ALTERAÇÃO
+

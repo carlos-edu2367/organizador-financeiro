@@ -1,7 +1,9 @@
 const token = localStorage.getItem('collaboratorToken');
+// INÍCIO DA ALTERAÇÃO: Adiciona uma mensagem amigável ao redirecionar para o login
 if (!token) {
-    window.location.href = './login.html';
+    window.location.href = './login.html?message=' + encodeURIComponent('Descanse um pouco e faça login novamente!');
 }
+// FIM DA ALTERAÇÃO
 
 /**
  * Determina a URL base da API com base no ambiente (desenvolvimento ou produção).
@@ -19,27 +21,44 @@ const API_URL = getApiBaseUrl();
 // --- Variáveis Globais ---
 let usersChart = null;
 let allUsers = []; 
-let userCargo = null;
+let userCargo = null; // Armazenará o cargo do colaborador logado
 
 function logout() {
     localStorage.removeItem('collaboratorToken');
-    window.location.href = './login.html';
+    // INÍCIO DA ALTERAÇÃO: Adiciona uma mensagem amigável ao fazer logout
+    window.location.href = './login.html?message=' + encodeURIComponent('Você foi desconectado. Descanse um pouco e faça login novamente!');
+    // FIM DA ALTERAÇÃO
 }
 
-// --- Decodificar Token para Obter Cargo ---
+// --- Decodificar Token para Obter Cargo e Inicializar UI ---
 try {
     const payload = JSON.parse(atob(token.split('.')[1]));
     if (payload && payload.cargo) {
         userCargo = payload.cargo;
         console.log("Cargo do colaborador detectado no token:", userCargo);
+        // Chamar função para ajustar UI com base no cargo
+        adjustUIForCargo(userCargo); 
     } else {
         console.warn("O token não contém a informação de 'cargo'. Faça logout e login novamente.");
-        userCargo = null;
+        logout(); // Força logout se o cargo não for encontrado
     }
 } catch (e) {
     console.error("Erro ao decodificar token:", e);
-    logout();
+    logout(); // Força logout em caso de erro na decodificação
 }
+
+// Função para ajustar a UI com base no cargo
+function adjustUIForCargo(cargo) {
+    const navLinkGestao = document.getElementById('nav-link-gestao');
+    if (navLinkGestao) {
+        if (cargo !== 'adm') {
+            navLinkGestao.classList.add('hidden'); // Esconde a aba "Gestão" se não for admin
+        } else {
+            navLinkGestao.classList.remove('hidden');
+        }
+    }
+}
+
 
 // --- Navegação ---
 const navLinks = document.querySelectorAll('.nav-link');
@@ -50,6 +69,12 @@ navLinks.forEach(link => {
         e.preventDefault();
         const targetId = link.getAttribute('href').substring(1);
 
+        // Se o link de gestão for clicado por um não-admin, previne a navegação
+        if (targetId === 'gestao' && userCargo !== 'adm') {
+            showCustomAlert('Acesso Negado', 'Você não tem permissão para acessar esta seção.', 'alert');
+            return;
+        }
+
         navLinks.forEach(l => l.classList.remove('active', 'bg-surface'));
         link.classList.add('active', 'bg-surface');
 
@@ -57,6 +82,7 @@ navLinks.forEach(link => {
             content.classList.toggle('hidden', content.id !== targetId);
         });
 
+        // Carrega dados específicos para cada página
         if (targetId === 'usuarios') {
             document.getElementById('user-detail-view').classList.add('hidden');
             document.getElementById('users-list-view').classList.remove('hidden');
@@ -64,7 +90,7 @@ navLinks.forEach(link => {
         } else if (targetId === 'suporte') {
             fetchSupportTickets();
         } else if (targetId === 'gestao') {
-            fetchManagementData();
+            fetchManagementData(); // Esta função já verifica o cargo internamente
         }
     });
 });
@@ -78,6 +104,12 @@ async function fetchDashboardStats() {
         const response = await fetch(`${API_URL}/collaborators/dashboard/stats`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
+        // INÍCIO DA ALTERAÇÃO: Tratamento de erro para token inválido/expirado
+        if (response.status === 401 || response.status === 403) {
+            logout(); // Redireciona para login com mensagem
+            return;
+        }
+        // FIM DA ALTERAÇÃO
         if (!response.ok) throw new Error('Falha ao carregar estatísticas.');
         const data = await response.json();
         
@@ -97,6 +129,12 @@ async function fetchChartData(period = 'mes') {
         const response = await fetch(`${API_URL}/collaborators/dashboard/chart-data?period=${period}`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
+        // INÍCIO DA ALTERAÇÃO: Tratamento de erro para token inválido/expirado
+        if (response.status === 401 || response.status === 403) {
+            logout(); // Redireciona para login com mensagem
+            return;
+        }
+        // FIM DA ALTERAÇÃO
         if (!response.ok) throw new Error('Falha ao carregar dados do gráfico.');
         const chartData = await response.json();
         updateUsersChart(chartData.data);
@@ -180,9 +218,17 @@ async function fetchUsers() {
     const tableBody = document.getElementById('users-table-body');
     tableBody.innerHTML = '<tr><td colspan="5" class="text-center p-4">Carregando usuários...</td></tr>';
     try {
-        const response = await fetch(`${API_URL}/api/admin/users/`, {
+        // INÍCIO DA ALTERAÇÃO: Correção do endpoint da API para usuários
+        const response = await fetch(`${API_URL}/collaborators/admin/users/`, {
+        // FIM DA ALTERAÇÃO
             headers: { 'Authorization': `Bearer ${token}` }
         });
+        // INÍCIO DA ALTERAÇÃO: Tratamento de erro para token inválido/expirado
+        if (response.status === 401 || response.status === 403) {
+            logout(); // Redireciona para login com mensagem
+            return;
+        }
+        // FIM DA ALTERAÇÃO
         if (!response.ok) throw new Error('Não foi possível carregar a lista de usuários.');
         allUsers = await response.json();
         renderUsersTable(allUsers);
@@ -222,9 +268,17 @@ async function showUserDetails(userId) {
     detailView.classList.remove('hidden');
 
     try {
-        const response = await fetch(`${API_URL}/api/admin/users/${userId}`, {
+        // INÍCIO DA ALTERAÇÃO: Correção do endpoint da API para detalhes do usuário
+        const response = await fetch(`${API_URL}/collaborators/admin/users/${userId}`, {
+        // FIM DA ALTERAÇÃO
             headers: { 'Authorization': `Bearer ${token}` }
         });
+        // INÍCIO DA ALTERAÇÃO: Tratamento de erro para token inválido/expirado
+        if (response.status === 401 || response.status === 403) {
+            logout(); // Redireciona para login com mensagem
+            return;
+        }
+        // FIM DA ALTERAÇÃO
         if (!response.ok) throw new Error('Não foi possível carregar os detalhes do usuário.');
         const user = await response.json();
 
@@ -262,7 +316,7 @@ async function showUserDetails(userId) {
             <div class="bg-surface p-6 rounded-xl">
                 <div class="flex flex-col md:flex-row justify-between md:items-center">
                     <div>
-                        <h2 class="text-2xl font-bold">${user.nome}</h2>
+                        <h2 class="2xl font-bold">${user.nome}</h2>
                         <p class="text-gray-400">${user.email}</p>
                         <p class="mt-1">Plano: <span class="${planClass}">${user.plano.charAt(0).toUpperCase() + user.plano.slice(1)}</span></p>
                     </div>
@@ -315,15 +369,23 @@ function openPremiumGrantModal(userId, userName) {
 
 async function executePremiumGrant(userId, meses) {
     if (!meses || parseInt(meses) < 1) {
-        alert("Por favor, insira um número válido de meses.");
+        alert("Por favor, insira um número válido de meses."); // Usar showCustomAlert
         return;
     }
     try {
-        const response = await fetch(`${API_URL}/api/admin/users/${userId}/grant-premium`, {
+        // INÍCIO DA ALTERAÇÃO: Correção do endpoint da API para conceder premium
+        const response = await fetch(`${API_URL}/collaborators/admin/users/${userId}/grant-premium`, {
+        // FIM DA ALTERAÇÃO
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({ meses: parseInt(meses) })
         });
+        // INÍCIO DA ALTERAÇÃO: Tratamento de erro para token inválido/expirado
+        if (response.status === 401 || response.status === 403) {
+            logout(); // Redireciona para login com mensagem
+            return;
+        }
+        // FIM DA ALTERAÇÃO
         const data = await response.json();
         if (!response.ok) throw new Error(data.detail);
         
@@ -353,6 +415,12 @@ async function fetchSupportTickets() {
         const response = await fetch(`${API_URL}/collaborators/support/tickets`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
+        // INÍCIO DA ALTERAÇÃO: Tratamento de erro para token inválido/expirado
+        if (response.status === 401 || response.status === 403) {
+            logout(); // Redireciona para login com mensagem
+            return;
+        }
+        // FIM DA ALTERAÇÃO
         if (!response.ok) throw new Error('Não foi possível carregar os chamados.');
         const tickets = await response.json();
         renderTickets(tickets);
@@ -427,6 +495,12 @@ async function markTicketAsComplete(ticketId) {
             method: 'PUT',
             headers: { 'Authorization': `Bearer ${token}` }
         });
+        // INÍCIO DA ALTERAÇÃO: Tratamento de erro para token inválido/expirado
+        if (response.status === 401 || response.status === 403) {
+            logout(); // Redireciona para login com mensagem
+            return;
+        }
+        // FIM DA ALTERAÇÃO
         if (!response.ok) {
             const data = await response.json();
             throw new Error(data.detail || 'Não foi possível concluir o chamado.');
@@ -460,6 +534,12 @@ async function fetchSupportStats() {
         const response = await fetch(`${API_URL}/collaborators/support/stats`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
+        // INÍCIO DA ALTERAÇÃO: Tratamento de erro para token inválido/expirado
+        if (response.status === 401 || response.status === 403) {
+            logout(); // Redireciona para login com mensagem
+            return;
+        }
+        // FIM DA ALTERAÇÃO
         if (!response.ok) throw new Error('Não foi possível carregar as estatísticas de suporte.');
         const stats = await response.json();
         
@@ -473,14 +553,13 @@ async function fetchSupportStats() {
                     </summary>
                     <div class="border-t border-gray-700 mt-2 pt-2 pl-2 text-sm space-y-1">
                         ${collab.tickets_resolvidos.length > 0 ? 
-                            // --- INÍCIO DA ALTERAÇÃO: Adicionada a data de resolução ---
+                            // Adicionada a data de resolução
                             collab.tickets_resolvidos.map(t => `
                                 <div class="flex justify-between items-center">
                                     <p class="text-gray-400 truncate" title="${t.titulo}">- ${t.titulo}</p>
                                     <span class="text-xs text-gray-500 flex-shrink-0 ml-4">${new Date(t.data_resolucao).toLocaleDateString('pt-BR')}</span>
                                 </div>
                             `).join('') :
-                            // --- FIM DA ALTERAÇÃO ---
                             '<p class="text-gray-500">Nenhum chamado resolvido.</p>'
                         }
                     </div>
@@ -536,3 +615,4 @@ function showCustomAlert(title, message, type = 'alert') {
 // --- Inicialização ---
 fetchDashboardStats();
 fetchChartData();
+

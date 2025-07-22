@@ -13,16 +13,25 @@ router = APIRouter(
 
 # Helper para verificar se o colaborador é um administrador
 def require_admin(current_user: models.Colaborador = Depends(security.get_current_collaborator)):
+    """
+    Verifica se o usuário autenticado é um administrador.
+    Levanta uma HTTPException 403 se o cargo não for 'adm'.
+    """
     if current_user.cargo != models.CargoColaboradorEnum.adm:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso restrito a administradores.")
     return current_user
 
 @router.post("/token", response_model=schemas.Token)
 def login_for_access_token(form_data: schemas.ColaboradorLogin, db: Session = Depends(database.get_db)):
+    """
+    Endpoint para login de colaboradores.
+    Autentica o colaborador e retorna um token JWT.
+    """
     colaborador = db.query(models.Colaborador).filter(
         (models.Colaborador.email == form_data.login) | (models.Colaborador.cpf == form_data.login)
     ).first()
 
+    # Verifica se o colaborador existe e se a senha está correta
     if not colaborador or not security.verify_password(form_data.senha, colaborador.senha):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -30,17 +39,23 @@ def login_for_access_token(form_data: schemas.ColaboradorLogin, db: Session = De
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    # Adiciona o cargo ao payload do token para uso no frontend
+    # Adiciona o cargo ao payload do token para uso no frontend e em validações futuras no backend
+    # INÍCIO DA ALTERAÇÃO: Passando is_collaborator=True para usar o tempo de expiração correto
     access_token = security.create_access_token(
-        data={"sub": str(colaborador.id), "scope": "collaborator", "cargo": colaborador.cargo.value}
+        data={"sub": str(colaborador.id), "scope": "collaborator", "cargo": colaborador.cargo.value},
+        is_collaborator=True
     )
+    # FIM DA ALTERAÇÃO
     
     return {"access_token": access_token, "token_type": "bearer"}
 
 
 @router.get("/dashboard/stats", response_model=schemas.DashboardStats)
 def get_dashboard_stats(db: Session = Depends(database.get_db), admin: models.Colaborador = Depends(require_admin)):
-    """ Retorna as estatísticas gerais para os cards do topo do dashboard. """
+    """ 
+    Retorna as estatísticas gerais para os cards do topo do dashboard do administrador.
+    Requer privilégios de administrador.
+    """
     total_usuarios = db.query(models.Usuario).count()
     
     # Conta assinaturas ativas
@@ -59,9 +74,8 @@ def get_chart_data(
 ):
     """
     Retorna dados agregados para os gráficos do dashboard do colaborador.
-    - semana: Últimos 7 dias.
-    - mes: Últimos 30 dias.
-    - ano: Últimos 12 meses.
+    Filtra por período: semana (últimos 7 dias), mês (últimos 30 dias), ano (últimos 12 meses).
+    Requer privilégios de administrador.
     """
     today = date.today()
     data_points = []
@@ -152,7 +166,10 @@ def get_chart_data(
 
 @router.get("/support/tickets", response_model=List[schemas.SuporteChamado])
 def get_all_tickets(db: Session = Depends(database.get_db), current_user: models.Colaborador = Depends(security.get_current_collaborator)):
-    """ Lista todos os chamados de suporte abertos. """
+    """ 
+    Lista todos os chamados de suporte abertos.
+    Acessível por qualquer colaborador, mas a lógica de atribuição pode ser adicionada aqui.
+    """
     tickets = db.query(models.SuporteChamado).options(
         joinedload(models.SuporteChamado.usuario),
         joinedload(models.SuporteChamado.atribuido_a)
@@ -175,13 +192,16 @@ def complete_ticket(
     db: Session = Depends(database.get_db), 
     current_user: models.Colaborador = Depends(security.get_current_collaborator)
 ):
-    """ Marca um chamado de suporte como concluído. """
+    """ 
+    Marca um chamado de suporte como concluído.
+    Qualquer colaborador pode concluir um chamado.
+    """
     ticket = db.query(models.SuporteChamado).options(joinedload(models.SuporteChamado.usuario)).filter(models.SuporteChamado.id == ticket_id).first()
     if not ticket:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chamado não encontrado.")
     
     ticket.status = 'concluido'
-    ticket.colaborador_id = current_user.id
+    ticket.colaborador_id = current_user.id # Atribui o chamado ao colaborador que o concluiu
     ticket.atualizado_em = datetime.utcnow()
     db.commit()
     db.refresh(ticket)
@@ -195,14 +215,17 @@ def complete_ticket(
 
 @router.get("/support/stats", response_model=List[schemas.SuporteStats])
 def get_support_stats(db: Session = Depends(database.get_db), admin: models.Colaborador = Depends(require_admin)):
-    """ Retorna estatísticas de chamados resolvidos por cada colaborador. """
+    """ 
+    Retorna estatísticas de chamados resolvidos por cada colaborador.
+    Requer privilégios de administrador.
+    """
     collaborators = db.query(models.Colaborador).options(
         joinedload(models.Colaborador.chamados_atribuidos)
     ).all()
     
     stats = []
     for c in collaborators:
-        # Filtra apenas os chamados concluídos e ordena
+        # Filtra apenas os chamados concluídos e ordena pelos mais recentes
         resolved_tickets = [t for t in c.chamados_atribuidos if t.status == 'concluido']
         sorted_tickets = sorted(resolved_tickets, key=lambda x: x.atualizado_em, reverse=True)
         
@@ -216,3 +239,4 @@ def get_support_stats(db: Session = Depends(database.get_db), admin: models.Cola
             "tickets_resolvidos": tickets_info
         })
     return stats
+
