@@ -1,9 +1,16 @@
 import uuid
 import datetime
-from pydantic import BaseModel, EmailStr, Field
-from typing import Optional, List
+from pydantic import BaseModel, EmailStr, Field, constr, field_validator # INÍCIO DA ALTERAÇÃO: Importa field_validator
+from typing import Optional, List, Annotated
 from decimal import Decimal
 from .models import CargoColaboradorEnum
+
+# Define um tipo de senha forte reutilizável
+# Removemos o 'pattern' daqui para usar um validador personalizado
+StrongPassword = Annotated[
+    str,
+    Field(min_length=8) # Define apenas o comprimento mínimo aqui
+]
 
 # --- Schemas de Cliente (existentes) ---
 class Token(BaseModel):
@@ -15,9 +22,27 @@ class UserBase(BaseModel):
     email: EmailStr
     nome: str
 class UserCreate(UserBase):
-    senha: str
-class User(UserBase):
+    senha: StrongPassword
+
+    # INÍCIO DA ALTERAÇÃO: Adiciona um validador de campo para a senha
+    @field_validator('senha')
+    @classmethod
+    def validate_strong_password(cls, v: str):
+        if not any(char.isupper() for char in v):
+            raise ValueError('A senha deve conter pelo menos uma letra maiúscula.')
+        if not any(char.islower() for char in v):
+            raise ValueError('A senha deve conter pelo menos uma letra minúscula.')
+        if not any(char.isdigit() for char in v):
+            raise ValueError('A senha deve conter pelo menos um número.')
+        if not any(char in "!@#$%^&*()_+-=[]{}|;':\",.<>/?`~" for char in v): # Lista de caracteres especiais
+            raise ValueError('A senha deve conter pelo menos um caractere especial.')
+        return v
+    # FIM DA ALTERAÇÃO
+
+class User(BaseModel):
     id: uuid.UUID
+    email: EmailStr
+    nome: str
     class Config:
         from_attributes = True
 class UserSessionData(BaseModel):
@@ -38,7 +63,22 @@ class PasswordVerifyResponse(BaseModel):
     verified: bool
 class PasswordUpdate(BaseModel):
     current_password: str
-    new_password: str
+    new_password: StrongPassword
+
+    # INÍCIO DA ALTERAÇÃO: Adiciona o validador de campo para a nova senha
+    @field_validator('new_password')
+    @classmethod
+    def validate_new_strong_password(cls, v: str):
+        if not any(char.isupper() for char in v):
+            raise ValueError('A nova senha deve conter pelo menos uma letra maiúscula.')
+        if not any(char.islower() for char in v):
+            raise ValueError('A nova senha deve conter pelo menos uma letra minúscula.')
+        if not any(char.isdigit() for char in v):
+            raise ValueError('A nova senha deve conter pelo menos um número.')
+        if not any(char in "!@#$%^&*()_+-=[]{}|;':\",.<>/?`~" for char in v): # Lista de caracteres especiais
+            raise ValueError('A nova senha deve conter pelo menos um caractere especial.')
+        return v
+    # FIM DA ALTERAÇÃO
 
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr
@@ -50,7 +90,22 @@ class VerifyCodeRequest(BaseModel):
 class ResetPasswordRequest(BaseModel):
     email: EmailStr
     code: str
-    new_password: str
+    new_password: StrongPassword
+
+    # INÍCIO DA ALTERAÇÃO: Adiciona o validador de campo para a nova senha
+    @field_validator('new_password')
+    @classmethod
+    def validate_reset_strong_password(cls, v: str):
+        if not any(char.isupper() for char in v):
+            raise ValueError('A nova senha deve conter pelo menos uma letra maiúscula.')
+        if not any(char.islower() for char in v):
+            raise ValueError('A nova senha deve conter pelo menos uma letra minúscula.')
+        if not any(char.isdigit() for char in v):
+            raise ValueError('A nova senha deve conter pelo menos um número.')
+        if not any(char in "!@#$%^&*()_+-=[]{}|;':\",.<>/?`~" for char in v): # Lista de caracteres especiais
+            raise ValueError('A nova senha deve conter pelo menos um caractere especial.')
+        return v
+    # FIM DA ALTERAÇÃO
 
 class GoalBase(BaseModel):
     titulo: str
@@ -83,6 +138,7 @@ class TransactionUpdate(BaseModel):
 class Movimentacao(BaseModel):
     id: uuid.UUID
     tipo: str
+
     descricao: Optional[str]
     valor: Decimal
     data_transacao: datetime.datetime
@@ -245,3 +301,4 @@ class PagamentoAgendado(PagamentoAgendadoBase):
     
     class Config:
         from_attributes = True
+
