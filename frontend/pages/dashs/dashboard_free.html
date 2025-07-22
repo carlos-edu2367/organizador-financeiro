@@ -225,11 +225,8 @@
   </div>
 
   <script src="../../scripts/dashboard.js" defer></script>
-  <script>
-    const menuButton = document.getElementById('menu-button');
-    const menuCard = document.getElementById('menu-card');
-    menuButton.addEventListener('click', (e) => { e.stopPropagation(); menuCard.classList.toggle('hidden'); });
-    window.addEventListener('click', (e) => { if (!menuCard.classList.contains('hidden')) { menuCard.classList.add('hidden'); } });
-  </script>
+  <!-- --- INÍCIO DA ALTERAÇÃO: Script inline removido --- -->
+  <!-- O script que estava aqui foi movido para dentro de dashboard.js -->
+  <!-- --- FIM DA ALTERAÇÃO --- -->
 </body>
 </html>

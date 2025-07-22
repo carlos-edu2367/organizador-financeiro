@@ -76,7 +76,6 @@
               </div>
             </div>
 
-            <!-- INÍCIO DA ALTERAÇÃO: Seção de Lembretes de Pagamento Melhorada -->
             <div class="bg-surface p-6 rounded-xl shadow-lg">
               <div class="flex justify-between items-center mb-4">
                   <h3 class="text-xl font-bold text-gray-200">Próximos Pagamentos</h3>
@@ -85,13 +84,11 @@
                   </button>
               </div>
               <div id="payment-reminders-container" class="space-y-2">
-                  <!-- Lembretes (os 3 mais próximos) serão inseridos aqui -->
               </div>
               <div id="view-all-reminders-container" class="text-center mt-4 hidden">
                   <button id="view-all-reminders-button" class="text-sm font-medium text-primary-light hover:underline">Ver todos os lembretes</button>
               </div>
             </div>
-            <!-- FIM DA ALTERAÇÃO -->
 
             <div class="bg-surface p-6 rounded-xl shadow-lg">
               <div class="flex justify-between items-center mb-4">
@@ -141,7 +138,6 @@
   </main>
   
   <!-- Modais -->
-  <!-- (Outros modais existentes permanecem aqui...) -->
   <div id="full-history-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 z-50 flex items-center justify-center p-4">
     <div class="bg-surface rounded-xl shadow-lg w-full max-w-4xl p-6 flex flex-col" style="height: 90vh;">
         <div class="flex justify-between items-center mb-4 flex-shrink-0">
@@ -180,7 +176,8 @@
                         <th class="py-2 px-2">Data</th>
                     </tr>
                 </thead>
-                <tbody id="full-history-table-body"></tbody>
+                <tbody id="full-history-table-body">
+                </tbody>
             </table>
         </div>
         <div class="flex justify-end space-x-4 pt-4 mt-4 border-t border-gray-700 flex-shrink-0">
@@ -190,7 +187,6 @@
     </div>
   </div>
 
-  <!-- INÍCIO DA ALTERAÇÃO: Novo Modal para ver todos os lembretes -->
   <div id="all-reminders-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 z-50 flex items-center justify-center p-4">
     <div class="bg-surface rounded-xl shadow-lg w-full max-w-2xl p-6 flex flex-col" style="height: 80vh;">
         <div class="flex justify-between items-center mb-4 flex-shrink-0">
@@ -198,11 +194,9 @@
             <button id="close-all-reminders-modal" class="text-gray-400 hover:text-white text-3xl font-bold">&times;</button>
         </div>
         <div id="all-reminders-list" class="overflow-y-auto flex-grow space-y-2">
-            <!-- Lista completa de lembretes será inserida aqui -->
         </div>
     </div>
   </div>
-  <!-- FIM DA ALTERAÇÃO -->
 
   <div id="payment-reminder-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
     <div class="bg-surface rounded-xl shadow-lg w-full max-w-md p-6">
@@ -235,7 +229,7 @@
       </form>
     </div>
   </div>
-  <!-- (O restante dos modais continua aqui) -->
+  
   <div id="invite-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
     <div class="bg-surface rounded-xl shadow-lg w-full max-w-md p-6">
         <div class="flex justify-between items-center mb-4">
@@ -327,5 +321,8 @@
   </div>
 
   <script src="../../scripts/dashboard.js" defer></script>
+  <!-- --- INÍCIO DA ALTERAÇÃO: Script inline removido --- -->
+  <!-- O script que estava aqui foi movido para dentro de dashboard.js -->
+  <!-- --- FIM DA ALTERAÇÃO --- -->
 </body>
 </html>

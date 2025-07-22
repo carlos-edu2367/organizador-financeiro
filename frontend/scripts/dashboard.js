@@ -26,7 +26,7 @@ let groupMembers = [];
 let allTransactions = []; // Armazena as transações recentes (página principal)
 let fullTransactionHistory = []; // Armazena TODAS as transações para o modal
 let filteredTransactionHistory = []; // Armazena as transações filtradas para exportação
-let allPaymentReminders = []; // INÍCIO DA ALTERAÇÃO: Armazena todos os lembretes
+let allPaymentReminders = [];
 let monthlyChart = null;
 let currentUserId = null;
 let aiUsageTimer = null;
@@ -49,14 +49,24 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function setupEventListeners() {
-    // Menu Dropdown
+    // --- INÍCIO DA ALTERAÇÃO: Lógica do menu aprimorada ---
     const menuButton = document.getElementById('menu-button');
     const menuCard = document.getElementById('menu-card');
-    if (menuButton) {
-        menuButton.addEventListener('click', (e) => { e.stopPropagation(); menuCard.classList.toggle('hidden'); });
-        window.addEventListener('click', () => { if (!menuCard.classList.contains('hidden')) { menuCard.classList.add('hidden'); } });
+    if (menuButton && menuCard) {
+        menuButton.addEventListener('click', (e) => {
+            e.stopPropagation(); // Impede que o clique no botão feche o menu imediatamente
+            menuCard.classList.toggle('hidden');
+        });
+
+        // Fecha o menu se o usuário clicar fora dele
+        window.addEventListener('click', (e) => {
+            if (!menuCard.classList.contains('hidden') && !menuButton.contains(e.target) && !menuCard.contains(e.target)) {
+                menuCard.classList.add('hidden');
+            }
+        });
     }
     document.getElementById('logout-button')?.addEventListener('click', logout);
+    // --- FIM DA ALTERAÇÃO ---
 
     // Botões principais
     document.getElementById('add-transaction-button')?.addEventListener('click', () => openTransactionModal());
@@ -80,13 +90,12 @@ function setupEventListeners() {
     document.getElementById('export-csv-button')?.addEventListener('click', exportToCSV);
     document.getElementById('export-pdf-button')?.addEventListener('click', exportToPDF);
 
-    // --- INÍCIO DA ALTERAÇÃO: Lembretes de Pagamento Melhorados ---
+    // Lembretes de Pagamento (Premium)
     setupModalEventListeners('payment-reminder-modal', 'cancel-payment-reminder-button');
     setupModalEventListeners('all-reminders-modal', 'close-all-reminders-modal');
     document.getElementById('add-payment-reminder-button')?.addEventListener('click', () => openPaymentReminderModal());
     document.getElementById('payment-reminder-form')?.addEventListener('submit', handlePaymentReminderFormSubmit);
     document.getElementById('view-all-reminders-button')?.addEventListener('click', openAllRemindersModal);
-    // --- FIM DA ALTERAÇÃO ---
 
 
     // Formulários
@@ -149,7 +158,7 @@ async function loadDashboardData() {
         renderMascote(data.ganhos_mes_atual, data.gastos_mes_atual);
         renderStats(data.total_investido, data.saldo_total);
         renderTransactions(data.movimentacoes_recentes);
-        renderGoals(data.meta_ativa ? [data.meta_ativa] : []);
+        renderGoals(data.meta_ativa ? [data.meta_ativa] : [], data.plano);
         renderAchievements(data.conquistas_recentes);
         renderGroupMembers(data.membros, data.plano);
         renderAiUsage(data.plano, data.ai_usage_count_today, data.ai_first_usage_timestamp_today);
@@ -182,7 +191,7 @@ function renderMascote(ganhos, gastos) {
         mascoteTitle.textContent = 'Situação Financeira: Estável';
         mascoteText.textContent = 'Ótimo trabalho! Seus gastos estão controlados este mês.';
     } else {
-        mascoteImg.src = '../../assets/mascote_triste.png';
+        mascoteImg.src = '../../assets/mascote_desesperado.png';
         mascoteTitle.textContent = 'Situação Financeira: Atenção!';
         mascoteText.textContent = 'Cuidado! Seus gastos superaram seus ganhos este mês.';
     }
@@ -222,43 +231,58 @@ function renderTransactions(transactions) {
     });
 }
 
-function renderGoals(goals) {
+function renderGoals(goals, plan) {
     allGoals = goals;
     const container = document.getElementById('goals-list-container');
-    if (!container) return;
+    const addButtonContainer = document.getElementById('add-goal-button-container');
+    if (!container || !addButtonContainer) return;
+    
     container.innerHTML = '';
 
     if (goals.length === 0) {
         container.innerHTML = '<p class="text-center text-gray-500 text-sm">Nenhuma meta ativa. Crie uma para começar a poupar!</p>';
-        return;
-    }
-
-    goals.forEach(goal => {
-        const percentage = (goal.valor_meta > 0) ? (goal.valor_atual / goal.valor_meta) * 100 : 0;
-        const goalCard = document.createElement('div');
-        goalCard.className = 'bg-background p-4 rounded-lg';
-        goalCard.innerHTML = `
-            <div class="flex justify-between items-start">
-                <div>
-                    <h4 class="font-bold">${goal.titulo}</h4>
-                    <p class="text-sm text-gray-400">${formatCurrency(goal.valor_atual)} / ${formatCurrency(goal.valor_meta)}</p>
-                </div>
-                <div class="relative">
-                    <button onclick="toggleGoalMenu('${goal.id}')" class="text-gray-400 hover:text-white p-1"><i class="fas fa-ellipsis-v"></i></button>
-                    <div id="goal-menu-${goal.id}" class="hidden absolute right-0 mt-2 w-40 bg-surface rounded-lg shadow-xl py-1 z-10">
-                        <a href="#" onclick="openGoalModal('${goal.id}')" class="block px-3 py-1 text-sm text-gray-300 hover:bg-primary hover:text-white">Editar Meta</a>
-                        <a href="#" onclick="openWithdrawFundsModal('${goal.id}')" class="block px-3 py-1 text-sm text-gray-300 hover:bg-primary hover:text-white">Retirar Fundos</a>
-                        <a href="#" onclick="handleDeleteGoal('${goal.id}')" class="block px-3 py-1 text-sm text-red-400 hover:bg-red-500 hover:text-white">Apagar Meta</a>
+    } else {
+        goals.forEach(goal => {
+            const percentage = (goal.valor_meta > 0) ? (goal.valor_atual / goal.valor_meta) * 100 : 0;
+            const goalCard = document.createElement('div');
+            goalCard.className = 'bg-background p-4 rounded-lg';
+            goalCard.innerHTML = `
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h4 class="font-bold">${goal.titulo}</h4>
+                        <p class="text-sm text-gray-400">${formatCurrency(goal.valor_atual)} / ${formatCurrency(goal.valor_meta)}</p>
+                    </div>
+                    <div class="relative">
+                        <button onclick="toggleGoalMenu('${goal.id}')" class="text-gray-400 hover:text-white p-1"><i class="fas fa-ellipsis-v"></i></button>
+                        <div id="goal-menu-${goal.id}" class="hidden absolute right-0 mt-2 w-40 bg-surface rounded-lg shadow-xl py-1 z-10">
+                            <a href="#" onclick="openGoalModal('${goal.id}')" class="block px-3 py-1 text-sm text-gray-300 hover:bg-primary hover:text-white">Editar Meta</a>
+                            <a href="#" onclick="openWithdrawFundsModal('${goal.id}')" class="block px-3 py-1 text-sm text-gray-300 hover:bg-primary hover:text-white">Retirar Fundos</a>
+                            <a href="#" onclick="handleDeleteGoal('${goal.id}')" class="block px-3 py-1 text-sm text-red-400 hover:bg-red-500 hover:text-white">Apagar Meta</a>
+                        </div>
                     </div>
                 </div>
+                <div class="w-full bg-gray-700 rounded-full h-2.5 mt-2">
+                    <div class="bg-primary h-2.5 rounded-full" style="width: ${Math.min(percentage, 100)}%"></div>
+                </div>
+                <button onclick="openAddFundsModal('${goal.id}')" class="w-full mt-3 py-1.5 bg-primary/80 hover:bg-primary transition text-white rounded-lg text-sm font-medium">Adicionar Fundos</button>
+            `;
+            container.appendChild(goalCard);
+        });
+    }
+
+    if (plan === 'gratuito' && goals.length > 0) {
+        addButtonContainer.innerHTML = `
+            <div class="text-center mt-4 p-3 bg-background rounded-lg">
+                <p class="text-sm text-gray-400">O plano gratuito permite apenas uma meta ativa.</p>
+                <a href="./premium.html" class="text-sm font-medium text-primary-light hover:underline">Faça upgrade para metas ilimitadas 💎</a>
             </div>
-            <div class="w-full bg-gray-700 rounded-full h-2.5 mt-2">
-                <div class="bg-primary h-2.5 rounded-full" style="width: ${Math.min(percentage, 100)}%"></div>
-            </div>
-            <button onclick="openAddFundsModal('${goal.id}')" class="w-full mt-3 py-1.5 bg-primary/80 hover:bg-primary transition text-white rounded-lg text-sm font-medium">Adicionar Fundos</button>
         `;
-        container.appendChild(goalCard);
-    });
+    } else {
+        addButtonContainer.innerHTML = `
+            <button id="add-goal-button" class="w-full text-center mt-4 py-2 bg-primary/80 hover:bg-primary transition text-white rounded-lg">Adicionar Nova Meta</button>
+        `;
+        document.getElementById('add-goal-button')?.addEventListener('click', () => openGoalModal());
+    }
 }
 
 function renderAchievements(achievements) {
@@ -573,13 +597,11 @@ async function handleDeleteGoal(goalId) {
 }
 
 function toggleGoalMenu(goalId) {
-    // Fecha todos os outros menus abertos
     document.querySelectorAll('[id^="goal-menu-"]').forEach(menu => {
         if (menu.id !== `goal-menu-${goalId}`) {
             menu.classList.add('hidden');
         }
     });
-    // Alterna o menu clicado
     const menu = document.getElementById(`goal-menu-${goalId}`);
     if (menu) {
         menu.classList.toggle('hidden');
@@ -929,7 +951,6 @@ function exportToPDF() {
     doc.save('historico_clarify.pdf');
 }
 
-// --- INÍCIO DA ALTERAÇÃO: Funções de Lembretes de Pagamento Atualizadas ---
 async function fetchPaymentReminders(groupId) {
     const container = document.getElementById('payment-reminders-container');
     if (!container) return;
@@ -939,7 +960,7 @@ async function fetchPaymentReminders(groupId) {
         });
         if (!response.ok) throw new Error('Não foi possível carregar lembretes.');
         const reminders = await response.json();
-        allPaymentReminders = reminders; // Armazena todos globalmente
+        allPaymentReminders = reminders; 
         renderPaymentReminders(reminders);
     } catch (error) {
         container.innerHTML = `<p class="text-xs text-red-400">${error.message}</p>`;
@@ -1108,7 +1129,6 @@ async function handleMarkAsPaid(reminderId, isCurrentlyPaid) {
         showCustomAlert('Erro', 'Não foi possível marcar como pago.');
     }
 }
-// --- FIM DA ALTERAÇÃO ---
 
 
 // --- Funções de Logout e Utilitárias ---
