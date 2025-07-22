@@ -26,6 +26,7 @@ let groupMembers = [];
 let allTransactions = []; // Armazena as transações recentes (página principal)
 let fullTransactionHistory = []; // Armazena TODAS as transações para o modal
 let filteredTransactionHistory = []; // Armazena as transações filtradas para exportação
+let allPaymentReminders = []; // INÍCIO DA ALTERAÇÃO: Armazena todos os lembretes
 let monthlyChart = null;
 let currentUserId = null;
 let aiUsageTimer = null;
@@ -79,10 +80,13 @@ function setupEventListeners() {
     document.getElementById('export-csv-button')?.addEventListener('click', exportToCSV);
     document.getElementById('export-pdf-button')?.addEventListener('click', exportToPDF);
 
-    // Lembretes de Pagamento (Premium)
+    // --- INÍCIO DA ALTERAÇÃO: Lembretes de Pagamento Melhorados ---
     setupModalEventListeners('payment-reminder-modal', 'cancel-payment-reminder-button');
+    setupModalEventListeners('all-reminders-modal', 'close-all-reminders-modal');
     document.getElementById('add-payment-reminder-button')?.addEventListener('click', () => openPaymentReminderModal());
     document.getElementById('payment-reminder-form')?.addEventListener('submit', handlePaymentReminderFormSubmit);
+    document.getElementById('view-all-reminders-button')?.addEventListener('click', openAllRemindersModal);
+    // --- FIM DA ALTERAÇÃO ---
 
 
     // Formulários
@@ -314,10 +318,10 @@ function renderGroupMembers(members, plan) {
 
 function renderAiUsage(plan, count, firstUsageTimestamp) {
     const statusEl = document.getElementById('ai-usage-status');
-    if (!statusEl) return; // Se não for a página free, o elemento não existe
+    if (!statusEl) return;
 
     if (plan !== 'gratuito') {
-        statusEl.parentElement.style.display = 'none'; // Esconde a caixa de status
+        statusEl.parentElement.style.display = 'none';
         return;
     };
 
@@ -333,7 +337,7 @@ function renderAiUsage(plan, count, firstUsageTimestamp) {
         if (firstUsageTimestamp) {
             const resetTime = new Date(new Date(firstUsageTimestamp).getTime() + 24 * 60 * 60 * 1000);
             if (aiUsageTimer) clearInterval(aiUsageTimer);
-            aiUsageTimer = setInterval(() => {
+            const updateTimer = () => {
                 const now = new Date();
                 const diff = resetTime - now;
                 if (diff <= 0) {
@@ -344,12 +348,9 @@ function renderAiUsage(plan, count, firstUsageTimestamp) {
                     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
                     statusEl.textContent = `Limite atingido. Tente novamente em ${hours}h ${minutes}m.`;
                 }
-            }, 60000);
-            // Executa uma vez imediatamente
-            const diff = resetTime - new Date();
-            const hours = Math.floor(diff / (1000 * 60 * 60));
-            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-            statusEl.textContent = `Limite atingido. Tente novamente em ${hours}h ${minutes}m.`;
+            };
+            aiUsageTimer = setInterval(updateTimer, 60000);
+            updateTimer();
         }
     } else {
         statusEl.textContent = `Usos hoje: ${count}/2. Upgrade para ilimitado!`;
@@ -572,6 +573,13 @@ async function handleDeleteGoal(goalId) {
 }
 
 function toggleGoalMenu(goalId) {
+    // Fecha todos os outros menus abertos
+    document.querySelectorAll('[id^="goal-menu-"]').forEach(menu => {
+        if (menu.id !== `goal-menu-${goalId}`) {
+            menu.classList.add('hidden');
+        }
+    });
+    // Alterna o menu clicado
     const menu = document.getElementById(`goal-menu-${goalId}`);
     if (menu) {
         menu.classList.toggle('hidden');
@@ -661,7 +669,7 @@ async function handleInviteClick() {
     } catch (error) {
         inviteError.textContent = error.message;
         inviteError.classList.remove('hidden');
-        toggleModal('invite-modal', true); // Mostra o modal mesmo com erro para exibir a mensagem
+        toggleModal('invite-modal', true);
     }
 }
 
@@ -786,7 +794,7 @@ function setupSpeechRecognition() {
         recognition.onresult = (event) => {
             const speechResult = event.results[0][0].transcript;
             document.getElementById('ai-textarea').value = speechResult;
-            handleAiTextAnalysis(); // Analisa automaticamente após a fala
+            handleAiTextAnalysis();
         };
 
         recognition.onspeechend = () => {
@@ -839,7 +847,7 @@ async function fetchFullHistory() {
         });
         if (!response.ok) throw new Error('Não foi possível carregar o histórico.');
         fullTransactionHistory = await response.json();
-        filteredTransactionHistory = [...fullTransactionHistory]; // Inicializa com todos
+        filteredTransactionHistory = [...fullTransactionHistory];
         renderFullHistoryTable(fullTransactionHistory);
     } catch (error) {
         tableBody.innerHTML = `<tr><td colspan="4" class="text-center p-4 text-red-400">${error.message}</td></tr>`;
@@ -921,6 +929,7 @@ function exportToPDF() {
     doc.save('historico_clarify.pdf');
 }
 
+// --- INÍCIO DA ALTERAÇÃO: Funções de Lembretes de Pagamento Atualizadas ---
 async function fetchPaymentReminders(groupId) {
     const container = document.getElementById('payment-reminders-container');
     if (!container) return;
@@ -930,6 +939,7 @@ async function fetchPaymentReminders(groupId) {
         });
         if (!response.ok) throw new Error('Não foi possível carregar lembretes.');
         const reminders = await response.json();
+        allPaymentReminders = reminders; // Armazena todos globalmente
         renderPaymentReminders(reminders);
     } catch (error) {
         container.innerHTML = `<p class="text-xs text-red-400">${error.message}</p>`;
@@ -938,52 +948,123 @@ async function fetchPaymentReminders(groupId) {
 
 function renderPaymentReminders(reminders) {
     const container = document.getElementById('payment-reminders-container');
+    const viewAllContainer = document.getElementById('view-all-reminders-container');
     container.innerHTML = '';
-    if (reminders.length === 0) {
-        container.innerHTML = '<p class="text-center text-gray-500 text-sm">Nenhum lembrete de pagamento agendado.</p>';
+
+    const upcomingReminders = reminders
+        .filter(r => r.status !== 'pago')
+        .sort((a, b) => new Date(a.data_vencimento) - new Date(b.data_vencimento));
+
+    if (upcomingReminders.length === 0) {
+        container.innerHTML = '<p class="text-center text-gray-500 text-sm">Nenhum pagamento pendente. Tudo em dia!</p>';
+        viewAllContainer.classList.add('hidden');
         return;
     }
-    reminders.forEach(r => {
-        const isPaid = r.status === 'pago';
-        const isOverdue = new Date(r.data_vencimento) < new Date() && !isPaid;
-        const reminderEl = document.createElement('div');
-        reminderEl.className = `flex items-center justify-between p-2 rounded ${isPaid ? 'bg-green-900/30' : 'bg-background'}`;
-        reminderEl.innerHTML = `
-            <div class="flex items-center space-x-3">
-                <button onclick="handleMarkAsPaid('${r.id}', ${isPaid})" class="w-5 h-5 flex-shrink-0 rounded border ${isPaid ? 'bg-primary border-primary' : 'border-gray-500'} flex items-center justify-center">
-                    ${isPaid ? '<i class="fas fa-check text-xs"></i>' : ''}
-                </button>
-                <div>
-                    <p class="font-medium ${isPaid ? 'line-through text-gray-500' : ''}">${r.titulo}</p>
-                    <p class="text-xs ${isPaid ? 'text-gray-600' : isOverdue ? 'text-red-400' : 'text-gray-400'}">
-                        Vence em ${new Date(r.data_vencimento).toLocaleDateString('pt-BR')}
-                        ${r.valor ? ` - ${formatCurrency(r.valor)}` : ''}
-                    </p>
-                </div>
-            </div>
-            <button onclick="handleDeletePaymentReminder('${r.id}')" class="text-gray-500 hover:text-danger text-xs p-1"><i class="fas fa-times"></i></button>
-        `;
-        container.appendChild(reminderEl);
-    });
+
+    const remindersToShow = upcomingReminders.slice(0, 3);
+    remindersToShow.forEach(r => container.appendChild(createReminderElement(r)));
+
+    if (upcomingReminders.length > 3) {
+        viewAllContainer.classList.remove('hidden');
+    } else {
+        viewAllContainer.classList.add('hidden');
+    }
 }
 
-function openPaymentReminderModal() {
-    document.getElementById('payment-reminder-form').reset();
+function createReminderElement(reminder, isModal = false) {
+    const isPaid = reminder.status === 'pago';
+    const isOverdue = new Date(reminder.data_vencimento) < new Date() && !isPaid;
+    
+    const reminderEl = document.createElement('div');
+    reminderEl.className = `flex items-center justify-between p-3 rounded-lg ${isPaid ? 'bg-green-900/20' : 'bg-background'}`;
+    
+    let actionsHtml = `
+        <div class="flex items-center space-x-2">
+            <button onclick="openPaymentReminderModal('${reminder.id}')" class="text-gray-400 hover:text-primary p-1" title="Editar"><i class="fas fa-pencil-alt text-xs"></i></button>
+            <button onclick="handleDeletePaymentReminder('${reminder.id}')" class="text-gray-400 hover:text-danger p-1" title="Apagar"><i class="fas fa-times text-xs"></i></button>
+        </div>
+    `;
+
+    reminderEl.innerHTML = `
+        <div class="flex items-center space-x-4">
+            <button onclick="handleMarkAsPaid('${reminder.id}', ${isPaid})" class="w-6 h-6 flex-shrink-0 rounded-md border ${isPaid ? 'bg-primary border-primary' : 'border-gray-500'} flex items-center justify-center transition-colors" title="Marcar como pago">
+                ${isPaid ? '<i class="fas fa-check text-sm"></i>' : ''}
+            </button>
+            <div>
+                <p class="font-medium ${isPaid ? 'line-through text-gray-500' : ''}">${reminder.titulo}</p>
+                <p class="text-xs ${isPaid ? 'text-gray-600' : isOverdue ? 'text-red-400 font-semibold' : 'text-gray-400'}">
+                    Vence em ${new Date(reminder.data_vencimento + 'T00:00:00-03:00').toLocaleDateString('pt-BR')}
+                    ${reminder.valor ? ` - ${formatCurrency(reminder.valor)}` : ''}
+                </p>
+            </div>
+        </div>
+        ${actionsHtml}
+    `;
+    return reminderEl;
+}
+
+function openAllRemindersModal() {
+    const listContainer = document.getElementById('all-reminders-list');
+    listContainer.innerHTML = '';
+    
+    const sortedReminders = [...allPaymentReminders].sort((a, b) => {
+        if (a.status === b.status) {
+            return new Date(a.data_vencimento) - new Date(b.data_vencimento);
+        }
+        return a.status === 'pago' ? 1 : -1;
+    });
+
+    if (sortedReminders.length === 0) {
+        listContainer.innerHTML = '<p class="text-center text-gray-500">Nenhum lembrete encontrado.</p>';
+    } else {
+        sortedReminders.forEach(r => listContainer.appendChild(createReminderElement(r, true)));
+    }
+    toggleModal('all-reminders-modal', true);
+}
+
+function openPaymentReminderModal(reminderId = null) {
+    const form = document.getElementById('payment-reminder-form');
+    form.reset();
+    document.getElementById('payment-reminder-id').value = '';
+    document.getElementById('payment-reminder-error-message').classList.add('hidden');
+    const title = document.getElementById('payment-reminder-form-title');
+
+    if (reminderId) {
+        title.textContent = 'Editar Lembrete';
+        const reminder = allPaymentReminders.find(r => r.id === reminderId);
+        if (reminder) {
+            document.getElementById('payment-reminder-id').value = reminder.id;
+            document.getElementById('payment-reminder-title').value = reminder.titulo;
+            document.getElementById('payment-reminder-value').value = reminder.valor;
+            document.getElementById('payment-reminder-due-date').value = reminder.data_vencimento;
+            document.getElementById('payment-reminder-description').value = reminder.descricao;
+        }
+    } else {
+        title.textContent = 'Novo Lembrete de Pagamento';
+    }
     toggleModal('payment-reminder-modal', true);
 }
 
 async function handlePaymentReminderFormSubmit(event) {
     event.preventDefault();
     const groupId = localStorage.getItem('activeGroupId');
+    const reminderId = document.getElementById('payment-reminder-id').value;
+
     const reminderData = {
         titulo: document.getElementById('payment-reminder-title').value,
         valor: parseFloat(document.getElementById('payment-reminder-value').value) || null,
         data_vencimento: document.getElementById('payment-reminder-due-date').value,
         descricao: document.getElementById('payment-reminder-description').value,
     };
+
+    const method = reminderId ? 'PUT' : 'POST';
+    const url = reminderId 
+        ? `${API_URL}/api/pagamentos/${reminderId}`
+        : `${API_URL}/api/pagamentos/grupo/${groupId}`;
+    
     try {
-        const response = await fetch(`${API_URL}/api/pagamentos/grupo/${groupId}`, {
-            method: 'POST',
+        const response = await fetch(url, {
+            method: method,
             headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
             body: JSON.stringify(reminderData)
         });
@@ -1015,7 +1096,7 @@ async function handleDeletePaymentReminder(reminderId) {
 }
 
 async function handleMarkAsPaid(reminderId, isCurrentlyPaid) {
-    if (isCurrentlyPaid) return; // Não faz nada se já está pago
+    if (isCurrentlyPaid) return;
     const groupId = localStorage.getItem('activeGroupId');
     try {
         await fetch(`${API_URL}/api/pagamentos/${reminderId}/marcar-pago`, {
@@ -1027,6 +1108,7 @@ async function handleMarkAsPaid(reminderId, isCurrentlyPaid) {
         showCustomAlert('Erro', 'Não foi possível marcar como pago.');
     }
 }
+// --- FIM DA ALTERAÇÃO ---
 
 
 // --- Funções de Logout e Utilitárias ---

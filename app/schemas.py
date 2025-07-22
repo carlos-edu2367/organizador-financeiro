@@ -26,7 +26,6 @@ class UserSessionData(BaseModel):
     nome: str
     plano: str
     grupo_id: Optional[uuid.UUID]
-    grupos_disponiveis: List[dict] = []
     
     class Config:
         from_attributes = True
@@ -41,7 +40,6 @@ class PasswordUpdate(BaseModel):
     current_password: str
     new_password: str
 
-# --- INÍCIO DA ALTERAÇÃO: Schemas para recuperação de senha ---
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr
 
@@ -53,7 +51,6 @@ class ResetPasswordRequest(BaseModel):
     email: EmailStr
     code: str
     new_password: str
-# --- FIM DA ALTERAÇÃO ---
 
 class GoalBase(BaseModel):
     titulo: str
@@ -105,18 +102,18 @@ class ParsedTransaction(BaseModel):
     descricao: str
 class ParsedTransactionResponse(BaseModel):
     transactions: List[ParsedTransaction]
-class GrupoMembro(BaseModel):
+
+class MembroInfo(BaseModel):
     id: uuid.UUID
     nome: str
     papel: str
-    class Config:
-        from_attributes = True
+
 class DashboardData(BaseModel):
     current_user_id: uuid.UUID
     nome_utilizador: str
     nome_grupo: str
     plano: str
-    membros: List[GrupoMembro]
+    membros: List[MembroInfo]
     movimentacoes_recentes: List[Movimentacao]
     meta_ativa: Optional[Meta] = None
     total_investido: Decimal = Field(default=0.0, max_digits=10, decimal_places=2)
@@ -222,7 +219,7 @@ class AdminPasswordUpdate(BaseModel):
 class AdminGrantPremium(BaseModel):
     meses: int = Field(..., gt=0)
 
-    
+# --- Schemas para Pagamentos Agendados ---
 class PagamentoAgendadoBase(BaseModel):
     titulo: str = Field(..., min_length=3, max_length=100)
     descricao: Optional[str] = None
@@ -231,6 +228,14 @@ class PagamentoAgendadoBase(BaseModel):
 
 class PagamentoAgendadoCreate(PagamentoAgendadoBase):
     pass
+
+# --- INÍCIO DA ALTERAÇÃO: Novo schema para atualização ---
+class PagamentoAgendadoUpdate(BaseModel):
+    titulo: Optional[str] = Field(None, min_length=3, max_length=100)
+    descricao: Optional[str] = None
+    valor: Optional[Decimal] = Field(None, max_digits=10, decimal_places=2, gt=0)
+    data_vencimento: Optional[datetime.date] = None
+# --- FIM DA ALTERAÇÃO ---
 
 class PagamentoAgendado(PagamentoAgendadoBase):
     id: uuid.UUID

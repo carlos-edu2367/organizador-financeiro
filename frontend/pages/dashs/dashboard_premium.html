@@ -26,7 +26,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- Bibliotecas para exportação de PDF -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
   <style>
@@ -77,18 +76,22 @@
               </div>
             </div>
 
-            <!-- Seção de Lembretes de Pagamento -->
+            <!-- INÍCIO DA ALTERAÇÃO: Seção de Lembretes de Pagamento Melhorada -->
             <div class="bg-surface p-6 rounded-xl shadow-lg">
               <div class="flex justify-between items-center mb-4">
-                  <h3 class="text-xl font-bold text-gray-200">Lembretes de Pagamento</h3>
+                  <h3 class="text-xl font-bold text-gray-200">Próximos Pagamentos</h3>
                   <button id="add-payment-reminder-button" class="text-sm font-medium bg-primary hover:bg-primary-dark text-white py-2 px-3 rounded-lg flex items-center">
-                      <i class="fas fa-plus mr-2"></i>Adicionar Lembrete
+                      <i class="fas fa-plus mr-2"></i>Adicionar
                   </button>
               </div>
               <div id="payment-reminders-container" class="space-y-2">
-                  <!-- Lembretes serão inseridos aqui pelo JS -->
+                  <!-- Lembretes (os 3 mais próximos) serão inseridos aqui -->
+              </div>
+              <div id="view-all-reminders-container" class="text-center mt-4 hidden">
+                  <button id="view-all-reminders-button" class="text-sm font-medium text-primary-light hover:underline">Ver todos os lembretes</button>
               </div>
             </div>
+            <!-- FIM DA ALTERAÇÃO -->
 
             <div class="bg-surface p-6 rounded-xl shadow-lg">
               <div class="flex justify-between items-center mb-4">
@@ -138,13 +141,13 @@
   </main>
   
   <!-- Modais -->
+  <!-- (Outros modais existentes permanecem aqui...) -->
   <div id="full-history-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 z-50 flex items-center justify-center p-4">
     <div class="bg-surface rounded-xl shadow-lg w-full max-w-4xl p-6 flex flex-col" style="height: 90vh;">
         <div class="flex justify-between items-center mb-4 flex-shrink-0">
             <h3 class="text-2xl font-bold text-white">Histórico Completo</h3>
             <button id="close-history-modal" class="text-gray-400 hover:text-white text-3xl font-bold">&times;</button>
         </div>
-        <!-- Filtros -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4 flex-shrink-0">
             <div>
                 <label for="filter-start-date" class="text-xs text-gray-400">De</label>
@@ -167,7 +170,6 @@
                 <button id="apply-filters-button" class="w-full py-2 bg-primary hover:bg-primary-dark transition rounded-lg font-medium text-white">Filtrar</button>
             </div>
         </div>
-        <!-- Tabela de Histórico -->
         <div class="overflow-y-auto flex-grow">
             <table class="w-full text-left">
                 <thead class="sticky top-0 bg-surface">
@@ -178,18 +180,29 @@
                         <th class="py-2 px-2">Data</th>
                     </tr>
                 </thead>
-                <tbody id="full-history-table-body">
-                    <!-- Conteúdo será preenchido via JS -->
-                </tbody>
+                <tbody id="full-history-table-body"></tbody>
             </table>
         </div>
-        <!-- Ações de Exportação -->
         <div class="flex justify-end space-x-4 pt-4 mt-4 border-t border-gray-700 flex-shrink-0">
             <button id="export-csv-button" class="text-sm font-medium bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 rounded-lg flex items-center"><i class="fas fa-file-csv mr-2"></i>Exportar CSV</button>
             <button id="export-pdf-button" class="text-sm font-medium bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg flex items-center"><i class="fas fa-file-pdf mr-2"></i>Exportar PDF</button>
         </div>
     </div>
   </div>
+
+  <!-- INÍCIO DA ALTERAÇÃO: Novo Modal para ver todos os lembretes -->
+  <div id="all-reminders-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 z-50 flex items-center justify-center p-4">
+    <div class="bg-surface rounded-xl shadow-lg w-full max-w-2xl p-6 flex flex-col" style="height: 80vh;">
+        <div class="flex justify-between items-center mb-4 flex-shrink-0">
+            <h3 class="text-2xl font-bold text-white">Todos os Lembretes</h3>
+            <button id="close-all-reminders-modal" class="text-gray-400 hover:text-white text-3xl font-bold">&times;</button>
+        </div>
+        <div id="all-reminders-list" class="overflow-y-auto flex-grow space-y-2">
+            <!-- Lista completa de lembretes será inserida aqui -->
+        </div>
+    </div>
+  </div>
+  <!-- FIM DA ALTERAÇÃO -->
 
   <div id="payment-reminder-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
     <div class="bg-surface rounded-xl shadow-lg w-full max-w-md p-6">
@@ -222,8 +235,7 @@
       </form>
     </div>
   </div>
-
-  <!-- Outros modais (convite, transação, etc.) permanecem aqui -->
+  <!-- (O restante dos modais continua aqui) -->
   <div id="invite-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
     <div class="bg-surface rounded-xl shadow-lg w-full max-w-md p-6">
         <div class="flex justify-between items-center mb-4">
@@ -315,11 +327,5 @@
   </div>
 
   <script src="../../scripts/dashboard.js" defer></script>
-  <script>
-    const menuButton = document.getElementById('menu-button');
-    const menuCard = document.getElementById('menu-card');
-    menuButton.addEventListener('click', (e) => { e.stopPropagation(); menuCard.classList.toggle('hidden'); });
-    window.addEventListener('click', (e) => { if (!menuCard.classList.contains('hidden')) { menuCard.classList.add('hidden'); } });
-  </script>
 </body>
 </html>
