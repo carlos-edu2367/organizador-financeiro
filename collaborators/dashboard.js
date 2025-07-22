@@ -1,9 +1,8 @@
 const token = localStorage.getItem('collaboratorToken');
-// INÍCIO DA ALTERAÇÃO: Adiciona uma mensagem amigável ao redirecionar para o login
+// Adiciona uma mensagem amigável ao redirecionar para o login
 if (!token) {
     window.location.href = './login.html?message=' + encodeURIComponent('Descanse um pouco e faça login novamente!');
 }
-// FIM DA ALTERAÇÃO
 
 /**
  * Determina a URL base da API com base no ambiente (desenvolvimento ou produção).
@@ -25,9 +24,8 @@ let userCargo = null; // Armazenará o cargo do colaborador logado
 
 function logout() {
     localStorage.removeItem('collaboratorToken');
-    // INÍCIO DA ALTERAÇÃO: Adiciona uma mensagem amigável ao fazer logout
+    // Adiciona uma mensagem amigável ao fazer logout
     window.location.href = './login.html?message=' + encodeURIComponent('Você foi desconectado. Descanse um pouco e faça login novamente!');
-    // FIM DA ALTERAÇÃO
 }
 
 // --- Decodificar Token para Obter Cargo e Inicializar UI ---
@@ -83,7 +81,10 @@ navLinks.forEach(link => {
         });
 
         // Carrega dados específicos para cada página
-        if (targetId === 'usuarios') {
+        if (targetId === 'inicio') {
+            fetchDashboardStats();
+            fetchChartData();
+        } else if (targetId === 'usuarios') {
             document.getElementById('user-detail-view').classList.add('hidden');
             document.getElementById('users-list-view').classList.remove('hidden');
             fetchUsers();
@@ -104,12 +105,11 @@ async function fetchDashboardStats() {
         const response = await fetch(`${API_URL}/collaborators/dashboard/stats`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        // INÍCIO DA ALTERAÇÃO: Tratamento de erro para token inválido/expirado
+        // Tratamento de erro para token inválido/expirado
         if (response.status === 401 || response.status === 403) {
             logout(); // Redireciona para login com mensagem
             return;
         }
-        // FIM DA ALTERAÇÃO
         if (!response.ok) throw new Error('Falha ao carregar estatísticas.');
         const data = await response.json();
         
@@ -129,12 +129,11 @@ async function fetchChartData(period = 'mes') {
         const response = await fetch(`${API_URL}/collaborators/dashboard/chart-data?period=${period}`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        // INÍCIO DA ALTERAÇÃO: Tratamento de erro para token inválido/expirado
+        // Tratamento de erro para token inválido/expirado
         if (response.status === 401 || response.status === 403) {
             logout(); // Redireciona para login com mensagem
             return;
         }
-        // FIM DA ALTERAÇÃO
         if (!response.ok) throw new Error('Falha ao carregar dados do gráfico.');
         const chartData = await response.json();
         updateUsersChart(chartData.data);
@@ -218,17 +217,14 @@ async function fetchUsers() {
     const tableBody = document.getElementById('users-table-body');
     tableBody.innerHTML = '<tr><td colspan="5" class="text-center p-4">Carregando usuários...</td></tr>';
     try {
-        // INÍCIO DA ALTERAÇÃO: Correção do endpoint da API para usuários
         const response = await fetch(`${API_URL}/collaborators/admin/users/`, {
-        // FIM DA ALTERAÇÃO
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        // INÍCIO DA ALTERAÇÃO: Tratamento de erro para token inválido/expirado
+        // Tratamento de erro para token inválido/expirado
         if (response.status === 401 || response.status === 403) {
             logout(); // Redireciona para login com mensagem
             return;
         }
-        // FIM DA ALTERAÇÃO
         if (!response.ok) throw new Error('Não foi possível carregar a lista de usuários.');
         allUsers = await response.json();
         renderUsersTable(allUsers);
@@ -268,17 +264,14 @@ async function showUserDetails(userId) {
     detailView.classList.remove('hidden');
 
     try {
-        // INÍCIO DA ALTERAÇÃO: Correção do endpoint da API para detalhes do usuário
         const response = await fetch(`${API_URL}/collaborators/admin/users/${userId}`, {
-        // FIM DA ALTERAÇÃO
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        // INÍCIO DA ALTERAÇÃO: Tratamento de erro para token inválido/expirado
+        // Tratamento de erro para token inválido/expirado
         if (response.status === 401 || response.status === 403) {
             logout(); // Redireciona para login com mensagem
             return;
         }
-        // FIM DA ALTERAÇÃO
         if (!response.ok) throw new Error('Não foi possível carregar os detalhes do usuário.');
         const user = await response.json();
 
@@ -311,6 +304,18 @@ async function showUserDetails(userId) {
         }
 
         const planClass = user.plano === 'premium' ? 'text-gold font-semibold' : 'text-gray-400';
+        
+        // INÍCIO DA ALTERAÇÃO: Renderiza botões de ação condicionalmente para administradores
+        let actionButtonsHtml = '';
+        if (userCargo === 'adm') {
+            actionButtonsHtml = `
+                <button onclick="openPremiumGrantModal('${user.id}', '${user.nome}')" class="bg-gold text-black font-bold py-2 px-4 rounded-lg hover:opacity-80">Conceder Premium</button>
+                <button onclick="openEditUserModal('${user.id}', '${user.nome}', '${user.email}')" class="bg-primary py-2 px-4 rounded-lg hover:bg-primary-dark">Editar Dados</button>
+                <button onclick="openResetPasswordModal('${user.id}', '${user.nome}')" class="bg-danger py-2 px-4 rounded-lg hover:opacity-80">Resetar Senha</button>
+            `;
+        }
+        // FIM DA ALTERAÇÃO
+
         detailView.innerHTML = `
             <button id="back-to-list-btn" class="text-primary-light hover:underline mb-6"><i class="fas fa-arrow-left mr-2"></i>Voltar para a lista</button>
             <div class="bg-surface p-6 rounded-xl">
@@ -321,9 +326,7 @@ async function showUserDetails(userId) {
                         <p class="mt-1">Plano: <span class="${planClass}">${user.plano.charAt(0).toUpperCase() + user.plano.slice(1)}</span></p>
                     </div>
                     <div class="flex space-x-2 mt-4 md:mt-0">
-                        <button onclick="openPremiumGrantModal('${user.id}', '${user.nome}')" class="bg-gold text-black font-bold py-2 px-4 rounded-lg hover:opacity-80">Conceder Premium</button>
-                        <button class="bg-primary py-2 px-4 rounded-lg hover:bg-primary-dark">Editar Dados</button>
-                        <button class="bg-danger py-2 px-4 rounded-lg hover:opacity-80">Resetar Senha</button>
+                        ${actionButtonsHtml}
                     </div>
                 </div>
                 <div class="mt-8 border-t border-gray-700 pt-6">
@@ -342,6 +345,193 @@ async function showUserDetails(userId) {
     }
 }
 
+// INÍCIO DA ALTERAÇÃO: Funções para modais de edição de usuário e reset de senha
+async function openEditUserModal(userId, currentName, currentEmail) {
+    const modalContent = document.getElementById('generic-modal-content');
+    const modalButtons = document.getElementById('generic-modal-buttons');
+    
+    document.getElementById('generic-modal-title').textContent = `Editar Dados do Usuário`;
+    
+    modalContent.innerHTML = `
+        <form id="edit-user-form" class="space-y-4">
+            <div>
+                <label for="edit-user-name" class="block text-sm font-medium text-gray-300">Nome</label>
+                <input type="text" id="edit-user-name" value="${currentName}" required class="mt-1 w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary">
+            </div>
+            <div>
+                <label for="edit-user-email" class="block text-sm font-medium text-gray-300">E-mail</label>
+                <input type="email" id="edit-user-email" value="${currentEmail}" required class="mt-1 w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary">
+            </div>
+            <div id="edit-user-error-message" class="hidden text-red-400 text-sm"></div>
+        </form>
+    `;
+    
+    modalButtons.innerHTML = `
+        <button id="cancel-edit-user-btn" class="py-2 px-4 text-gray-300 hover:text-white">Cancelar</button>
+        <button id="confirm-edit-user-btn" class="py-2 px-6 bg-primary hover:bg-primary-dark rounded-lg font-medium text-white">Salvar</button>
+    `;
+
+    document.getElementById('cancel-edit-user-btn').onclick = () => toggleModal('generic-modal', false);
+    document.getElementById('confirm-edit-user-btn').onclick = async () => {
+        const newName = document.getElementById('edit-user-name').value;
+        const newEmail = document.getElementById('edit-user-email').value;
+        await executeEditUser(userId, newName, newEmail);
+    };
+
+    toggleModal('generic-modal', true);
+}
+
+async function executeEditUser(userId, newName, newEmail) {
+    const errorMessageEl = document.getElementById('edit-user-error-message');
+    const confirmButton = document.getElementById('confirm-edit-user-btn');
+    confirmButton.disabled = true;
+    errorMessageEl.classList.add('hidden');
+
+    try {
+        const response = await fetch(`${API_URL}/collaborators/admin/users/${userId}/details`, {
+            method: 'PUT',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nome: newName, email: newEmail })
+        });
+
+        if (response.status === 401 || response.status === 403) {
+            logout();
+            return;
+        }
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.detail || 'Não foi possível atualizar os dados do usuário.');
+        }
+        
+        toggleModal('generic-modal', false);
+        await showCustomAlert('Sucesso', 'Dados do usuário atualizados com sucesso!');
+        showUserDetails(userId); // Recarrega os detalhes do usuário para refletir as mudanças
+    } catch (error) {
+        errorMessageEl.textContent = error.message;
+        errorMessageEl.classList.remove('hidden');
+    } finally {
+        confirmButton.disabled = false;
+    }
+}
+
+async function openResetPasswordModal(userId, userName) {
+    const modalContent = document.getElementById('generic-modal-content');
+    const modalButtons = document.getElementById('generic-modal-buttons');
+    
+    document.getElementById('generic-modal-title').textContent = `Redefinir Senha para ${userName}`;
+    
+    modalContent.innerHTML = `
+        <form id="reset-password-form" class="space-y-4">
+            <div>
+                <label for="new-password-reset" class="block text-sm font-medium text-gray-300">Nova Senha</label>
+                <input type="password" id="new-password-reset" required class="mt-1 w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary">
+            </div>
+            <div>
+                <label for="confirm-password-reset" class="block text-sm font-medium text-gray-300">Confirmar Nova Senha</label>
+                <input type="password" id="confirm-password-reset" required class="mt-1 w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-primary">
+            </div>
+            <div id="reset-password-error-message" class="hidden text-red-400 text-sm"></div>
+        </form>
+    `;
+    
+    modalButtons.innerHTML = `
+        <button id="cancel-reset-password-btn" class="py-2 px-4 text-gray-300 hover:text-white">Cancelar</button>
+        <button id="confirm-reset-password-btn" class="py-2 px-6 bg-danger hover:opacity-80 rounded-lg font-medium text-white">Redefinir</button>
+    `;
+
+    document.getElementById('cancel-reset-password-btn').onclick = () => toggleModal('generic-modal', false);
+    document.getElementById('confirm-reset-password-btn').onclick = async () => {
+        const newPassword = document.getElementById('new-password-reset').value;
+        const confirmPassword = document.getElementById('confirm-password-reset').value;
+        await executeResetPassword(userId, newPassword, confirmPassword);
+    };
+
+    toggleModal('generic-modal', true);
+}
+
+async function executeResetPassword(userId, newPassword, confirmPassword) {
+    const errorMessageEl = document.getElementById('reset-password-error-message');
+    const confirmButton = document.getElementById('confirm-reset-password-btn');
+    confirmButton.disabled = true;
+    errorMessageEl.classList.add('hidden');
+
+    if (newPassword !== confirmPassword) {
+        errorMessageEl.textContent = 'As senhas não coincidem.';
+        errorMessageEl.classList.remove('hidden');
+        confirmButton.disabled = false;
+        return;
+    }
+
+    // Validação de senha forte (mesma lógica do frontend de cliente)
+    const passwordError = validatePasswordStrength(newPassword);
+    if (passwordError) {
+        errorMessageEl.textContent = passwordError;
+        errorMessageEl.classList.remove('hidden');
+        confirmButton.disabled = false;
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_URL}/collaborators/admin/users/${userId}/password`, {
+            method: 'PUT',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nova_senha: newPassword })
+        });
+
+        if (response.status === 401 || response.status === 403) {
+            logout();
+            return;
+        }
+        const data = await response.json();
+        if (!response.ok) {
+            // INÍCIO DA ALTERAÇÃO: Tratamento de erro para 422 (validação de senha)
+            let detailMessage = data.detail || 'Não foi possível redefinir a senha.';
+            if (response.status === 422 && Array.isArray(data.detail) && data.detail.length > 0) {
+                // Pydantic validation errors
+                const passwordErrorDetail = data.detail.find(d => d.loc && d.loc.includes('nova_senha'));
+                if (passwordErrorDetail) {
+                    detailMessage = passwordErrorDetail.msg;
+                } else {
+                    detailMessage = data.detail[0].msg || 'Erro de validação.';
+                }
+            }
+            throw new Error(detailMessage);
+            // FIM DA ALTERAÇÃO
+        }
+        
+        toggleModal('generic-modal', false);
+        await showCustomAlert('Sucesso', 'Senha do usuário redefinida com sucesso!');
+        showUserDetails(userId); // Recarrega os detalhes do usuário
+    } catch (error) {
+        errorMessageEl.textContent = error.message;
+        errorMessageEl.classList.remove('hidden');
+    } finally {
+        confirmButton.disabled = false;
+    }
+}
+
+// Função para validar a força da senha (replicada do auth.js do cliente)
+function validatePasswordStrength(password) {
+    if (password.length < 8) {
+        return 'A senha deve ter pelo menos 8 caracteres.';
+    }
+    if (!/[A-Z]/.test(password)) {
+        return 'A senha deve conter pelo menos uma letra maiúscula.';
+    }
+    if (!/[a-z]/.test(password)) {
+        return 'A senha deve conter pelo menos uma letra minúscula.';
+    }
+    if (!/\d/.test(password)) {
+        return 'A senha deve conter pelo menos um número.';
+    }
+    // Caracteres especiais: !@#$%^&*()_+-=[]{}|;':",.<>/?`~
+    if (!/[!@#$%^&*()_+\-=\[\]{}|;':",.<>/?`~]/.test(password)) {
+        return 'A senha deve conter pelo menos um caractere especial.';
+    }
+    return null; // Senha válida
+}
+// FIM DA ALTERAÇÃO
+
 function openPremiumGrantModal(userId, userName) {
     const modalContent = document.getElementById('generic-modal-content');
     const modalButtons = document.getElementById('generic-modal-buttons');
@@ -359,9 +549,9 @@ function openPremiumGrantModal(userId, userName) {
     `;
 
     document.getElementById('cancel-grant-btn').onclick = () => toggleModal('generic-modal', false);
-    document.getElementById('confirm-grant-btn').onclick = () => {
+    document.getElementById('confirm-grant-btn').onclick = async () => {
         const meses = document.getElementById('premium-months-input').value;
-        executePremiumGrant(userId, meses);
+        await executePremiumGrant(userId, meses);
     };
 
     toggleModal('generic-modal', true);
@@ -369,32 +559,29 @@ function openPremiumGrantModal(userId, userName) {
 
 async function executePremiumGrant(userId, meses) {
     if (!meses || parseInt(meses) < 1) {
-        alert("Por favor, insira um número válido de meses."); // Usar showCustomAlert
+        await showCustomAlert("Erro", "Por favor, insira um número válido de meses."); 
         return;
     }
     try {
-        // INÍCIO DA ALTERAÇÃO: Correção do endpoint da API para conceder premium
         const response = await fetch(`${API_URL}/collaborators/admin/users/${userId}/grant-premium`, {
-        // FIM DA ALTERAÇÃO
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({ meses: parseInt(meses) })
         });
-        // INÍCIO DA ALTERAÇÃO: Tratamento de erro para token inválido/expirado
+        // Tratamento de erro para token inválido/expirado
         if (response.status === 401 || response.status === 403) {
             logout(); // Redireciona para login com mensagem
             return;
         }
-        // FIM DA ALTERAÇÃO
         const data = await response.json();
         if (!response.ok) throw new Error(data.detail);
         
         toggleModal('generic-modal', false);
-        showCustomAlert('Sucesso', data.message);
-        showUserDetails(userId);
+        await showCustomAlert('Sucesso', data.message);
+        showUserDetails(userId); // Recarrega os detalhes do usuário
     } catch (error) {
-        const modalContent = document.getElementById('generic-modal-content');
-        modalContent.innerHTML += `<p class="text-red-400 text-sm mt-2">${error.message}</p>`;
+        // Usa o modal de alerta para exibir o erro
+        await showCustomAlert('Erro', error.message);
     }
 }
 
@@ -415,12 +602,11 @@ async function fetchSupportTickets() {
         const response = await fetch(`${API_URL}/collaborators/support/tickets`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        // INÍCIO DA ALTERAÇÃO: Tratamento de erro para token inválido/expirado
+        // Tratamento de erro para token inválido/expirado
         if (response.status === 401 || response.status === 403) {
             logout(); // Redireciona para login com mensagem
             return;
         }
-        // FIM DA ALTERAÇÃO
         if (!response.ok) throw new Error('Não foi possível carregar os chamados.');
         const tickets = await response.json();
         renderTickets(tickets);
@@ -495,12 +681,11 @@ async function markTicketAsComplete(ticketId) {
             method: 'PUT',
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        // INÍCIO DA ALTERAÇÃO: Tratamento de erro para token inválido/expirado
+        // Tratamento de erro para token inválido/expirado
         if (response.status === 401 || response.status === 403) {
             logout(); // Redireciona para login com mensagem
             return;
         }
-        // FIM DA ALTERAÇÃO
         if (!response.ok) {
             const data = await response.json();
             throw new Error(data.detail || 'Não foi possível concluir o chamado.');
@@ -534,12 +719,11 @@ async function fetchSupportStats() {
         const response = await fetch(`${API_URL}/collaborators/support/stats`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        // INÍCIO DA ALTERAÇÃO: Tratamento de erro para token inválido/expirado
+        // Tratamento de erro para token inválido/expirado
         if (response.status === 401 || response.status === 403) {
             logout(); // Redireciona para login com mensagem
             return;
         }
-        // FIM DA ALTERAÇÃO
         if (!response.ok) throw new Error('Não foi possível carregar as estatísticas de suporte.');
         const stats = await response.json();
         
@@ -613,6 +797,11 @@ function showCustomAlert(title, message, type = 'alert') {
 
 
 // --- Inicialização ---
-fetchDashboardStats();
-fetchChartData();
-
+// Garante que a página "Início" seja carregada por padrão ou a página relevante
+document.addEventListener('DOMContentLoaded', () => {
+    // Ativa o primeiro link de navegação por padrão
+    const firstNavLink = document.querySelector('.nav-link');
+    if (firstNavLink) {
+        firstNavLink.click(); // Simula um clique para carregar o conteúdo inicial
+    }
+});
