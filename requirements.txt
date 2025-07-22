@@ -13,3 +13,4 @@ httpx
 gunicorn
 bcrypt==3.2.2
 sendgrid
+logging
