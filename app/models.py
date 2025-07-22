@@ -2,7 +2,7 @@ import uuid
 import enum
 from sqlalchemy import (
     Column, String, Text, DateTime, ForeignKey,
-    DECIMAL, Date, Enum as SQLAlchemyEnum, Integer
+    DECIMAL, Date, Enum as SQLAlchemyEnum, Integer # INÍCIO DA ALTERAÇÃO: Importa Integer
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship, declarative_base
@@ -38,6 +38,10 @@ class Usuario(Base):
     criado_em = Column(DateTime(timezone=True), server_default=func.now())
     reset_token = Column(String, unique=True, index=True, nullable=True)
     reset_token_expires = Column(DateTime(timezone=True), nullable=True)
+    # INÍCIO DA ALTERAÇÃO: Campos para bloqueio de conta
+    failed_login_attempts = Column(Integer, nullable=False, default=0)
+    locked_until = Column(DateTime(timezone=True), nullable=True)
+    # FIM DA ALTERAÇÃO
     associacoes_grupo = relationship("GrupoMembro", back_populates="usuario", cascade="all, delete-orphan")
     movimentacoes = relationship("Movimentacao", back_populates="responsavel")
 
@@ -178,3 +182,4 @@ class SuporteChamado(Base):
     
     usuario = relationship("Usuario")
     atribuido_a = relationship("Colaborador", back_populates="chamados_atribuidos")
+
