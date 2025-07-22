@@ -1,8 +1,24 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Request # Importado Request
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, extract
 from datetime import datetime, timedelta, date
 from typing import List
+
+# INÍCIO DA ALTERAÇÃO: Importações e variáveis para Rate Limiting
+import time
+from collections import defaultdict
+from threading import Lock
+
+# Dicionário em memória para armazenar tentativas de login por IP
+# defaultdict para criar uma lista vazia para novos IPs automaticamente
+login_attempts_cache = defaultdict(list)
+# Lock para garantir thread-safety ao acessar o cache em ambientes multi-threaded
+cache_lock = Lock()
+
+# Configurações do Rate Limiter
+MAX_LOGIN_ATTEMPTS = 5  # Número máximo de tentativas de login permitidas
+LOGIN_ATTEMPT_WINDOW_SECONDS = 60 # Janela de tempo em segundos (1 minuto)
+# FIM DA ALTERAÇÃO
 
 from .. import database, schemas, models, security
 
@@ -10,6 +26,32 @@ router = APIRouter(
     prefix="/collaborators",
     tags=['Collaborators']
 )
+
+# INÍCIO DA ALTERAÇÃO: Função de dependência para Rate Limiting
+def rate_limit_login(request: Request):
+    """
+    Dependência que implementa um Rate Limiter básico para tentativas de login.
+    Limita o número de requisições por IP dentro de uma janela de tempo.
+    """
+    client_ip = request.client.host # Obtém o endereço IP do cliente
+    current_time = time.time() # Obtém o timestamp atual
+
+    with cache_lock: # Usa um lock para evitar condições de corrida ao acessar o cache
+        # Remove tentativas antigas que estão fora da janela de tempo
+        login_attempts_cache[client_ip] = [
+            t for t in login_attempts_cache[client_ip] if t > current_time - LOGIN_ATTEMPT_WINDOW_SECONDS
+        ]
+
+        # Verifica se o número de tentativas excedeu o limite
+        if len(login_attempts_cache[client_ip]) >= MAX_LOGIN_ATTEMPTS:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS, # Código de status "Too Many Requests"
+                detail=f"Muitas tentativas de login. Tente novamente em {LOGIN_ATTEMPT_WINDOW_SECONDS} segundos."
+            )
+        
+        # Adiciona o timestamp da tentativa atual ao cache
+        login_attempts_cache[client_ip].append(current_time)
+# FIM DA ALTERAÇÃO
 
 # Helper para verificar se o colaborador é um administrador
 def require_admin(current_user: models.Colaborador = Depends(security.get_current_collaborator)):
@@ -21,7 +63,9 @@ def require_admin(current_user: models.Colaborador = Depends(security.get_curren
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso restrito a administradores.")
     return current_user
 
-@router.post("/token", response_model=schemas.Token)
+# INÍCIO DA ALTERAÇÃO: Adicionada a dependência de Rate Limiting ao endpoint de login
+@router.post("/token", dependencies=[Depends(rate_limit_login)], response_model=schemas.Token)
+# FIM DA ALTERAÇÃO
 def login_for_access_token(form_data: schemas.ColaboradorLogin, db: Session = Depends(database.get_db)):
     """
     Endpoint para login de colaboradores.
@@ -40,12 +84,10 @@ def login_for_access_token(form_data: schemas.ColaboradorLogin, db: Session = De
         )
     
     # Adiciona o cargo ao payload do token para uso no frontend e em validações futuras no backend
-    # INÍCIO DA ALTERAÇÃO: Passando is_collaborator=True para usar o tempo de expiração correto
     access_token = security.create_access_token(
         data={"sub": str(colaborador.id), "scope": "collaborator", "cargo": colaborador.cargo.value},
         is_collaborator=True
     )
-    # FIM DA ALTERAÇÃO
     
     return {"access_token": access_token, "token_type": "bearer"}
 
