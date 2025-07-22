@@ -5,6 +5,8 @@ from typing import List
 from decimal import Decimal
 from datetime import datetime, timezone, timedelta
 from dateutil.relativedelta import relativedelta
+import bleach
+import html # INÍCIO DA ALTERAÇÃO: Importa a biblioteca html
 
 from .. import database, schemas, models
 from ..models import Conquista, TipoMedalhaEnum
@@ -166,7 +168,12 @@ def create_goal_for_group(group_id: str, goal: schemas.GoalCreate, db: Session =
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso não permitido.")
     if group.plano == 'gratuito' and len([m for m in group.metas if m.status == 'ativa']) > 0:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="O plano gratuito permite apenas uma meta ativa.")
-    db_goal = models.Meta(titulo=goal.titulo, valor_meta=goal.valor_meta, data_limite=goal.data_limite, grupo_id=group_id)
+    
+    # INÍCIO DA ALTERAÇÃO: Decodifica entidades HTML antes de sanitizar
+    sanitized_title = bleach.clean(html.unescape(goal.titulo))
+    # FIM DA ALTERAÇÃO
+
+    db_goal = models.Meta(titulo=sanitized_title, valor_meta=goal.valor_meta, data_limite=goal.data_limite, grupo_id=group_id)
     db.add(db_goal)
     db.commit()
     db.refresh(db_goal)
@@ -176,7 +183,10 @@ def update_goal(goal_id: str, goal_update: schemas.GoalUpdate, db: Session = Dep
     db_goal = db.query(models.Meta).options(joinedload(models.Meta.grupo)).filter(models.Meta.id == goal_id).first()
     if not db_goal or current_user not in db_goal.grupo.member_list:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso não permitido.")
-    db_goal.titulo = goal_update.titulo
+    
+    # INÍCIO DA ALTERAÇÃO: Decodifica entidades HTML antes de sanitizar
+    db_goal.titulo = bleach.clean(html.unescape(goal_update.titulo))
+    # FIM DA ALTERAÇÃO
     db_goal.valor_meta = goal_update.valor_meta
     db_goal.data_limite = goal_update.data_limite
     db.commit()

@@ -3,6 +3,8 @@ from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
 from decimal import Decimal
 from datetime import date
+import bleach
+import html # INÍCIO DA ALTERAÇÃO: Importa a biblioteca html
 
 from .. import database, schemas, models
 from ..security import get_current_user_from_token
@@ -66,6 +68,10 @@ def create_transaction(
     transaction_data = transaction.model_dump()
     transaction_data['valor'] = Decimal(str(transaction_data['valor']))
 
+    # INÍCIO DA ALTERAÇÃO: Decodifica entidades HTML antes de sanitizar
+    transaction_data['descricao'] = bleach.clean(html.unescape(transaction_data['descricao'])) if transaction_data['descricao'] else None
+    # FIM DA ALTERAÇÃO
+
     db_transaction = models.Movimentacao(
         **transaction_data,
         grupo_id=group_id
@@ -97,6 +103,10 @@ def update_transaction(
     for key, value in update_data.items():
         if key == 'valor':
             setattr(db_transaction, key, Decimal(str(value)))
+        # INÍCIO DA ALTERAÇÃO: Decodifica entidades HTML antes de sanitizar
+        elif key == 'descricao':
+            setattr(db_transaction, key, bleach.clean(html.unescape(value)) if value else None)
+        # FIM DA ALTERAÇÃO
         else:
             setattr(db_transaction, key, value)
 
@@ -123,3 +133,4 @@ def delete_transaction(
     db.delete(db_transaction)
     db.commit()
     return
+

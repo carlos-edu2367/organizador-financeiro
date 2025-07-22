@@ -2,6 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, joinedload
 from typing import List
 from datetime import datetime, timezone
+import bleach
+import html # INÍCIO DA ALTERAÇÃO: Importa o módulo html
 
 from .. import database, schemas, models, security
 
@@ -58,13 +60,24 @@ def create_pagamento_agendado(
             detail="Esta funcionalidade está disponível apenas para assinantes do plano Premium."
         )
 
-    db_pagamento = models.PagamentoAgendado(**pagamento.model_dump(), grupo_id=group_id)
+    # INÍCIO DA ALTERAÇÃO: Decodifica entidades HTML antes de sanitizar
+    sanitized_titulo = bleach.clean(html.unescape(pagamento.titulo))
+    sanitized_descricao = bleach.clean(html.unescape(pagamento.descricao)) if pagamento.descricao else None
+    # FIM DA ALTERAÇÃO
+
+    db_pagamento = models.PagamentoAgendado(
+        titulo=sanitized_titulo,
+        descricao=sanitized_descricao,
+        valor=pagamento.valor,
+        data_vencimento=pagamento.data_vencimento,
+        grupo_id=group_id
+    )
     db.add(db_pagamento)
     db.commit()
     db.refresh(db_pagamento)
     return db_pagamento
 
-# --- INÍCIO DA ALTERAÇÃO: Endpoint para editar um lembrete ---
+# --- INÍCIO DA ALTERAÇÃO: Endpoint para editar um lembrete com sanitização ---
 @router.put("/{pagamento_id}", response_model=schemas.PagamentoAgendado)
 def update_pagamento_agendado(
     pagamento_id: str,
@@ -87,7 +100,14 @@ def update_pagamento_agendado(
 
     update_data = pagamento_update.model_dump(exclude_unset=True)
     for key, value in update_data.items():
-        setattr(db_pagamento, key, value)
+        # INÍCIO DA ALTERAÇÃO: Decodifica entidades HTML antes de sanitizar
+        if key == 'titulo':
+            setattr(db_pagamento, key, bleach.clean(html.unescape(value)))
+        elif key == 'descricao':
+            setattr(db_pagamento, key, bleach.clean(html.unescape(value)) if value else None)
+        # FIM DA ALTERAÇÃO
+        else:
+            setattr(db_pagamento, key, value)
     
     db.commit()
     db.refresh(db_pagamento)
@@ -141,3 +161,4 @@ def delete_pagamento_agendado(
     db.delete(db_pagamento)
     db.commit()
     return
+

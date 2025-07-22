@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+import bleach # INÍCIO DA ALTERAÇÃO: Importa a biblioteca bleach
 
 from .. import database, schemas, models, security
 
@@ -18,8 +19,15 @@ def create_support_ticket(
     """
     Cria um novo chamado de suporte para o usuário autenticado.
     """
+    # INÍCIO DA ALTERAÇÃO: Sanitiza o título e a descrição
+    sanitized_title = bleach.clean(ticket_data.titulo)
+    sanitized_description = bleach.clean(ticket_data.descricao)
+    # FIM DA ALTERAÇÃO
+
     new_ticket = models.SuporteChamado(
-        **ticket_data.model_dump(),
+        titulo=sanitized_title,
+        descricao=sanitized_description,
+        prioridade=ticket_data.prioridade,
         usuario_id=current_user.id
     )
     db.add(new_ticket)
@@ -38,3 +46,4 @@ def create_support_ticket(
         "email_usuario": current_user.email,
         "resolvido_por": None
     }
+
