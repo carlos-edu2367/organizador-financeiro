@@ -6,7 +6,9 @@ from starlette.exceptions import HTTPException
 
 from . import models
 from .database import engine
-from .routers import auth, users, support, groups, transactions, tasks, ai, collaborators, admin_users
+# INÍCIO DA ALTERAÇÃO: Importar o router de pagamentos que estava faltando
+from .routers import auth, users, support, groups, transactions, tasks, ai, collaborators, admin_users, pagamentos
+# FIM DA ALTERAÇÃO
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -16,22 +18,20 @@ app = FastAPI(
     version="0.1.0",
 )
 
-# --- INÍCIO DA ALTERAÇÃO: Configuração de CORS Melhorada ---
-# Lista de origens permitidas. Adicione a URL do seu frontend de produção aqui quando tiver uma.
+# Configuração de CORS
 origins = [
-    "http://localhost:5500",  # Origem comum para o Live Server
-    "http://127.0.0.1:5500", # Outra origem comum para o Live Server
-    # "https://sua-url-de-producao.com", # Exemplo de URL de produção
+    "http://localhost:5500",
+    "http://127.0.0.1:5500",
+    # Adicione aqui a URL do seu frontend de produção quando tiver uma.
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins, # Usa a lista de origens definida acima
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-# --- FIM DA ALTERAÇÃO ---
 
 # Rotas da API para clientes
 app.include_router(auth.router)
@@ -40,11 +40,16 @@ app.include_router(groups.router, prefix="/api")
 app.include_router(transactions.router, prefix="/api")
 app.include_router(tasks.router, prefix="/api")
 app.include_router(ai.router, prefix="/api")
-app.include_router(support.router, prefix="/api") 
+app.include_router(support.router, prefix="/api")
+# --- INÍCIO DA ALTERAÇÃO: Adicionar o router de pagamentos ao app ---
+app.include_router(pagamentos.router, prefix="/api")
+# --- FIM DA ALTERAÇÃO ---
 
 # Rotas da API para colaboradores
 app.include_router(collaborators.router)
-app.include_router(admin_users.router, prefix="/api")
+# A rota de admin de usuários deve estar sob o prefixo dos colaboradores
+app.include_router(admin_users.router, prefix="/collaborators")
+
 
 # Monta a pasta do frontend dos colaboradores
 app.mount("/collaborators", StaticFiles(directory="collaborators", html=True), name="collaborators")
