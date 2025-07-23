@@ -46,10 +46,7 @@ def get_dashboard_data(group_id: str, db: Session = Depends(database.get_db), cu
     total_gastos = get_total_for_type('gasto')
     saldo_total = total_ganhos - total_gastos
 
-    # --- INÍCIO DA ALTERAÇÃO: Lógica de cálculo do Total Investido ---
-    # Agora, o total investido é a soma do valor atual de todas as metas.
     total_investido = db.query(func.sum(models.Meta.valor_atual)).filter(models.Meta.grupo_id == group_id).scalar() or Decimal('0.0')
-    # --- FIM DA ALTERAÇÃO ---
 
     today = datetime.now(timezone.utc)
     
@@ -213,18 +210,15 @@ def delete_goal(goal_id: str, db: Session = Depends(database.get_db), current_us
     if not db_goal or current_user not in db_goal.grupo.member_list:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso não permitido.")
     
-    # --- INÍCIO DA ALTERAÇÃO: Lógica para retornar fundos ao apagar meta ---
     if db_goal.valor_atual > 0:
-        # Cria uma transação de "ganho" para retornar o valor ao saldo principal.
         return_transaction = models.Movimentacao(
             grupo_id=db_goal.grupo_id,
-            responsavel_id=current_user.id, # O usuário que apaga a meta é o responsável.
+            responsavel_id=current_user.id,
             tipo='ganho',
             descricao=f"Valor retornado da meta '{db_goal.titulo}' excluída.",
             valor=db_goal.valor_atual
         )
         db.add(return_transaction)
-    # --- FIM DA ALTERAÇÃO ---
         
     db.delete(db_goal)
     db.commit()
@@ -235,6 +229,17 @@ def add_funds_to_goal(goal_id: str, funds: schemas.GoalAddFunds, db: Session = D
     db_goal = db.query(models.Meta).options(joinedload(models.Meta.grupo)).filter(models.Meta.id == goal_id).first()
     if not db_goal or current_user not in db_goal.grupo.member_list:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso não permitido a esta meta.")
+    
+    # --- INÍCIO DA ALTERAÇÃO: Verificar se há saldo suficiente ---
+    # Calcula o saldo atual antes de tentar adicionar fundos
+    total_ganhos = db.query(func.sum(models.Movimentacao.valor)).filter(models.Movimentacao.grupo_id == db_goal.grupo_id, models.Movimentacao.tipo == 'ganho').scalar() or Decimal('0.0')
+    total_gastos = db.query(func.sum(models.Movimentacao.valor)).filter(models.Movimentacao.grupo_id == db_goal.grupo_id, models.Movimentacao.tipo == 'gasto').scalar() or Decimal('0.0')
+    saldo_atual = total_ganhos - total_gastos
+    
+    if funds.valor > saldo_atual:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Saldo insuficiente para investir. Saldo atual: {saldo_atual:.2f}")
+    # --- FIM DA ALTERAÇÃO ---
+
     db_goal.valor_atual += funds.valor
     if db_goal.valor_atual >= db_goal.valor_meta and db_goal.status == 'ativa':
         db_goal.status = 'concluida'
@@ -261,8 +266,16 @@ def add_funds_to_goal(goal_id: str, funds: schemas.GoalAddFunds, db: Session = D
                         )
                         db.add(nova_conquista)
                     break 
-        
-    db_transaction = models.Movimentacao(grupo_id=db_goal.grupo_id, responsavel_id=current_user.id, tipo='investimento', descricao=f"Aporte para a meta: {db_goal.titulo}", valor=funds.valor)
+    
+    # --- INÍCIO DA ALTERAÇÃO: Registrar aporte como GASTO ---
+    db_transaction = models.Movimentacao(
+        grupo_id=db_goal.grupo_id, 
+        responsavel_id=current_user.id, 
+        tipo='gasto', 
+        descricao=f"Investimento na meta: {db_goal.titulo}", 
+        valor=funds.valor
+    )
+    # --- FIM DA ALTERAÇÃO ---
     db.add(db_transaction)
     db.commit()
     db.refresh(db_goal)
