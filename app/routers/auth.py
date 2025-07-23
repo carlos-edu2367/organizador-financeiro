@@ -100,16 +100,14 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(database.get_db)
     """
     Registra um novo usuário no sistema.
     """
-    db_user = db.query(models.Usuario).filter(models.Usuario.email == user.email).first()
-    if db_user:
+    db_user_check = db.query(models.Usuario).filter(models.Usuario.email == user.email).first()
+    if db_user_check:
         logger.warning(f"REGISTER_FAILED: Tentativa de registro com e-mail já existente: {user.email}")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="E-mail já registado.")
     
     hashed_password = security.get_password_hash(user.senha)
-    # INÍCIO DA ALTERAÇÃO: Inicializa campos de bloqueio de conta
     db_user = models.Usuario(email=user.email, nome=user.nome, senha=hashed_password,
                              failed_login_attempts=0, locked_until=None)
-    # FIM DA ALTERAÇÃO
     
     # Cria um novo grupo para o usuário e o associa como dono
     new_group = models.Grupo(nome=f"Grupo de {user.nome}")
@@ -117,7 +115,13 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(database.get_db)
     db_user.associacoes_grupo.append(association)
     
     db.add(db_user)
+    db.commit() # Commit inicial para gerar o ID do usuário e do grupo
+    
+    # --- INÍCIO DA ALTERAÇÃO: Define o grupo recém-criado como o grupo ativo ---
+    db_user.grupo_ativo_id = new_group.id
     db.commit()
+    # --- FIM DA ALTERAÇÃO ---
+    
     db.refresh(db_user)
     logger.info(f"REGISTER_SUCCESS: Novo usuário registrado: '{db_user.id}' ({db_user.email})")
     return db_user
@@ -130,7 +134,6 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
     """
     user = db.query(models.Usuario).filter(models.Usuario.email == form_data.username).first()
     
-    # INÍCIO DA ALTERAÇÃO: Lógica de bloqueio de conta
     if user:
         now = datetime.now(timezone.utc)
         if user.locked_until and user.locked_until > now:
@@ -167,7 +170,6 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
         # Usuário não encontrado: logar e retornar erro genérico para evitar enumeração de usuários
         logger.warning(f"LOGIN_FAILED_UNKNOWN_USER: Tentativa de login para e-mail não existente: {form_data.username}")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="E-mail ou senha incorretos", headers={"WWW-Authenticate": "Bearer"})
-    # FIM DA ALTERAÇÃO
     
     access_token = security.create_access_token(data={"sub": user.email})
     return {"access_token": access_token, "token_type": "bearer"}
@@ -244,12 +246,9 @@ def reset_password(request: schemas.ResetPasswordRequest, db: Session = Depends(
     user.senha = security.get_password_hash(request.new_password)
     user.reset_token = None # Limpa o token de reset após o uso
     user.reset_token_expires = None # Limpa a expiração
-    # INÍCIO DA ALTERAÇÃO: Resetar tentativas falhas e bloqueio após redefinição de senha
     user.failed_login_attempts = 0
     user.locked_until = None
-    # FIM DA ALTERAÇÃO
     db.commit()
     logger.info(f"RESET_PASSWORD_SUCCESS: Senha redefinida com sucesso para usuário '{user.id}' ({user.email}).")
 
     return {"message": "Senha redefinida com sucesso."}
-

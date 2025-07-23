@@ -13,10 +13,8 @@ try:
     conn = psycopg2.connect(db_url)
     cursor = conn.cursor()
 
-    comando = """
-    ALTER TABLE usuarios
-    ADD COLUMN failed_login_attempts INTEGER NOT NULL DEFAULT 0,
-    ADD COLUMN locked_until TIMESTAMPTZ;
+    comando = """ALTER TABLE usuarios
+ADD COLUMN grupo_ativo_id UUID REFERENCES grupos(id);   
     """
     cursor.execute(comando)
     conn.commit()

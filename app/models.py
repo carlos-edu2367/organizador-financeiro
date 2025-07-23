@@ -2,7 +2,7 @@ import uuid
 import enum
 from sqlalchemy import (
     Column, String, Text, DateTime, ForeignKey,
-    DECIMAL, Date, Enum as SQLAlchemyEnum, Integer # INÍCIO DA ALTERAÇÃO: Importa Integer
+    DECIMAL, Date, Enum as SQLAlchemyEnum, Integer
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship, declarative_base
@@ -38,10 +38,13 @@ class Usuario(Base):
     criado_em = Column(DateTime(timezone=True), server_default=func.now())
     reset_token = Column(String, unique=True, index=True, nullable=True)
     reset_token_expires = Column(DateTime(timezone=True), nullable=True)
-    # INÍCIO DA ALTERAÇÃO: Campos para bloqueio de conta
     failed_login_attempts = Column(Integer, nullable=False, default=0)
     locked_until = Column(DateTime(timezone=True), nullable=True)
-    # FIM DA ALTERAÇÃO
+    
+    # --- INÍCIO DA ALTERAÇÃO: Campo para rastrear o grupo ativo ---
+    grupo_ativo_id = Column(UUID(as_uuid=True), ForeignKey('grupos.id'), nullable=True)
+    # --- FIM DA ALTERAÇÃO ---
+
     associacoes_grupo = relationship("GrupoMembro", back_populates="usuario", cascade="all, delete-orphan")
     movimentacoes = relationship("Movimentacao", back_populates="responsavel")
 
@@ -129,7 +132,6 @@ class AIUsage(Base):
     timestamp = Column(DateTime(timezone=True), server_default=func.now())
     grupo = relationship("Grupo", back_populates="ai_usages")
 
-# --- INÍCIO DA ALTERAÇÃO: Novo modelo para Pagamentos Agendados ---
 class StatusPagamentoEnum(str, enum.Enum):
     pendente = "pendente"
     pago = "pago"
@@ -148,7 +150,6 @@ class PagamentoAgendado(Base):
     data_pagamento = Column(DateTime(timezone=True))
     
     grupo = relationship("Grupo")
-# --- FIM DA ALTERAÇÃO ---
 
 class CargoColaboradorEnum(str, enum.Enum):
     adm = "adm"
@@ -182,4 +183,3 @@ class SuporteChamado(Base):
     
     usuario = relationship("Usuario")
     atribuido_a = relationship("Colaborador", back_populates="chamados_atribuidos")
-

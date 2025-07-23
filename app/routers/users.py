@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from .. import database, schemas, models, security
 
@@ -9,10 +9,13 @@ router = APIRouter(
 )
 
 @router.get("/me", response_model=schemas.UserSessionData)
-def read_users_me(current_user: models.Usuario = Depends(security.get_current_user_from_token)):
+def read_users_me(
+    db: Session = Depends(database.get_db), 
+    current_user: models.Usuario = Depends(security.get_current_user_from_token)
+):
     """
-    Retorna os dados do utilizador autenticado, incluindo o plano e o ID
-    do seu primeiro grupo. Prioriza o grupo onde o usuário é 'dono'.
+    Retorna os dados do usuário autenticado, incluindo o plano e o ID
+    do seu grupo ATIVO.
     """
     if not current_user:
         raise HTTPException(
@@ -20,27 +23,31 @@ def read_users_me(current_user: models.Usuario = Depends(security.get_current_us
             detail="Não foi possível validar as credenciais",
         )
     
+    # --- Lógica para carregar o grupo ativo ---
     user_plan = "gratuito"
-    group_id = None
+    group_id = current_user.grupo_ativo_id
+
+    if group_id:
+        # Busca o grupo ativo para obter o plano
+        active_group = db.query(models.Grupo).filter(models.Grupo.id == group_id).first()
+        if active_group:
+            user_plan = active_group.plano
+        else:
+            # Fallback: se o grupo ativo não for encontrado, limpa o ID
+            group_id = None
     
-    if current_user.associacoes_grupo:
-        # INÍCIO DA ALTERAÇÃO: Prioriza o grupo onde o usuário é o dono
+    # Se, por algum motivo, não houver grupo ativo, tenta encontrar o grupo do qual ele é dono
+    if not group_id and current_user.associacoes_grupo:
         owner_group_association = next(
             (assoc for assoc in current_user.associacoes_grupo if assoc.papel == 'dono'),
             None
         )
-        
         if owner_group_association:
-            # Se encontrou um grupo onde é dono, usa esse
             group_id = owner_group_association.grupo.id
             user_plan = owner_group_association.grupo.plano
-        else:
-            # Caso contrário, usa o primeiro grupo na lista (pode ser um grupo que ele foi convidado)
-            # A ordem aqui pode depender da forma como as associações são carregadas ou criadas.
-            first_association = current_user.associacoes_grupo[0]
-            group_id = first_association.grupo.id
-            user_plan = first_association.grupo.plano
-        # FIM DA ALTERAÇÃO
+            # Sincroniza o grupo ativo no banco de dados para consistência futura
+            current_user.grupo_ativo_id = group_id
+            db.commit()
 
     return {
         "id": current_user.id,
@@ -102,8 +109,6 @@ def delete_user_me(
     current_user: models.Usuario = Depends(security.get_current_user_from_token)
 ):
     """Apaga a conta do usuário autenticado."""
-    # O cascade no model deve apagar as associações e, consequentemente, o grupo se ele for o único dono.
     db.delete(current_user)
     db.commit()
     return
-

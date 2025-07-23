@@ -6,7 +6,7 @@ from decimal import Decimal
 from datetime import datetime, timezone, timedelta
 from dateutil.relativedelta import relativedelta
 import bleach
-import html # INÍCIO DA ALTERAÇÃO: Importa a biblioteca html
+import html
 
 from .. import database, schemas, models
 from ..models import Conquista, TipoMedalhaEnum
@@ -169,9 +169,7 @@ def create_goal_for_group(group_id: str, goal: schemas.GoalCreate, db: Session =
     if group.plano == 'gratuito' and len([m for m in group.metas if m.status == 'ativa']) > 0:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="O plano gratuito permite apenas uma meta ativa.")
     
-    # INÍCIO DA ALTERAÇÃO: Decodifica entidades HTML antes de sanitizar
     sanitized_title = bleach.clean(html.unescape(goal.titulo))
-    # FIM DA ALTERAÇÃO
 
     db_goal = models.Meta(titulo=sanitized_title, valor_meta=goal.valor_meta, data_limite=goal.data_limite, grupo_id=group_id)
     db.add(db_goal)
@@ -184,9 +182,7 @@ def update_goal(goal_id: str, goal_update: schemas.GoalUpdate, db: Session = Dep
     if not db_goal or current_user not in db_goal.grupo.member_list:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso não permitido.")
     
-    # INÍCIO DA ALTERAÇÃO: Decodifica entidades HTML antes de sanitizar
     db_goal.titulo = bleach.clean(html.unescape(goal_update.titulo))
-    # FIM DA ALTERAÇÃO
     db_goal.valor_meta = goal_update.valor_meta
     db_goal.data_limite = goal_update.data_limite
     db.commit()
@@ -277,6 +273,9 @@ def accept_invite(invite_token: str, db: Session = Depends(database.get_db), cur
     association = models.GrupoMembro(usuario_id=current_user.id, grupo_id=group.id, papel='membro')
     db.add(association)
     invite.status = 'aceito'
+    
+    current_user.grupo_ativo_id = group.id
+    
     db.commit()
     return {"message": "Convite aceite com sucesso! Você foi adicionado ao grupo.", "group_id": group.id}
 @router.delete("/{group_id}/members/{member_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -284,20 +283,47 @@ def remove_group_member(group_id: str, member_id: str, db: Session = Depends(dat
     group = db.query(models.Grupo).options(joinedload(models.Grupo.associacoes_membros)).filter(models.Grupo.id == group_id).first()
     if not group:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Grupo não encontrado.")
+    
     user_role = next((assoc.papel for assoc in group.associacoes_membros if assoc.usuario_id == current_user.id), None)
     if user_role != 'dono':
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas o dono do grupo pode remover membros.")
+    
     if str(current_user.id) == member_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="O dono não pode sair do grupo.")
+    
+    # --- INÍCIO DA ALTERAÇÃO: Lógica para reverter o grupo ativo ---
+    # Busca o usuário que será removido para poder alterar seu grupo ativo
+    user_to_remove = db.query(models.Usuario).options(
+        joinedload(models.Usuario.associacoes_grupo).joinedload(models.GrupoMembro.grupo)
+    ).filter(models.Usuario.id == member_id).first()
+    if not user_to_remove:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuário a ser removido não encontrado.")
+
     association_to_delete = db.query(models.GrupoMembro).filter(
         models.GrupoMembro.grupo_id == group_id,
         models.GrupoMembro.usuario_id == member_id
     ).first()
     if not association_to_delete:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Membro não encontrado no grupo.")
+    
     db.delete(association_to_delete)
+    
+    # Encontra o grupo original do usuário (onde ele é o dono)
+    owner_association = next(
+        (assoc for assoc in user_to_remove.associacoes_grupo if assoc.papel == 'dono' and str(assoc.grupo_id) != group_id),
+        None
+    )
+    
+    if owner_association:
+        user_to_remove.grupo_ativo_id = owner_association.grupo_id
+    else:
+        # Fallback caso não encontre o grupo original (improvável, mas seguro)
+        user_to_remove.grupo_ativo_id = None
+        
+    # --- FIM DA ALTERAÇÃO ---
     db.commit()
     return
+
 @router.get("/{group_id}/achievements", response_model=List[schemas.Conquista])
 def get_all_achievements_for_group(group_id: str, db: Session = Depends(database.get_db), current_user: models.Usuario = Depends(get_current_user_from_token)):
     """Lista todas as conquistas (medalhas) de um grupo."""
