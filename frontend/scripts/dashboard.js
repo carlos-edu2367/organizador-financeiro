@@ -21,7 +21,7 @@ if (!token) {
 }
 
 // --- Variáveis Globais ---
-let allGoals = [];
+let allGoals = []; // Agora armazena TODAS as metas
 let groupMembers = [];
 let allTransactions = []; // Armazena as transações recentes (página principal)
 let fullTransactionHistory = []; // Armazena TODAS as transações para o modal
@@ -66,6 +66,8 @@ function setupEventListeners() {
     document.getElementById('save-ai-results-button')?.addEventListener('click', saveAIResults);
     document.getElementById('cancel-ai-results-button')?.addEventListener('click', () => toggleModal('ai-results-modal', false));
     document.getElementById('close-ai-results-modal')?.addEventListener('click', () => toggleModal('ai-results-modal', false));
+    
+    // Botões de Metas
     document.getElementById('add-goal-button')?.addEventListener('click', () => openGoalModal('add'));
     document.getElementById('goal-form')?.addEventListener('submit', handleGoalFormSubmit);
     document.getElementById('cancel-goal-button')?.addEventListener('click', () => toggleModal('goal-form-modal', false));
@@ -73,19 +75,29 @@ function setupEventListeners() {
     document.getElementById('cancel-funds-button')?.addEventListener('click', () => toggleModal('add-funds-modal', false));
     document.getElementById('withdraw-funds-form')?.addEventListener('submit', handleWithdrawFundsSubmit);
     document.getElementById('cancel-withdraw-button')?.addEventListener('click', () => toggleModal('withdraw-funds-modal', false));
+    
+    // Botões de Convite
     document.getElementById('invite-button')?.addEventListener('click', handleInviteClick);
     document.getElementById('close-invite-modal')?.addEventListener('click', () => toggleModal('invite-modal', false));
     document.getElementById('copy-invite-link-button')?.addEventListener('click', copyInviteLink);
+    
+    // Botões de Histórico Completo (Premium)
     document.getElementById('full-history-button')?.addEventListener('click', openFullHistoryModal);
     document.getElementById('close-history-modal')?.addEventListener('click', () => toggleModal('full-history-modal', false));
     document.getElementById('apply-filters-button')?.addEventListener('click', fetchFullTransactionHistory);
     document.getElementById('export-csv-button')?.addEventListener('click', exportTransactionsToCSV);
     document.getElementById('export-pdf-button')?.addEventListener('click', exportTransactionsToPDF);
+    
+    // Botões de Lembretes de Pagamento (Premium)
     document.getElementById('add-payment-reminder-button')?.addEventListener('click', () => openPaymentReminderModal('add'));
     document.getElementById('payment-reminder-form')?.addEventListener('submit', handlePaymentReminderFormSubmit);
     document.getElementById('cancel-payment-reminder-button')?.addEventListener('click', () => toggleModal('payment-reminder-modal', false));
     document.getElementById('view-all-reminders-button')?.addEventListener('click', openAllRemindersModal);
     document.getElementById('close-all-reminders-modal')?.addEventListener('click', () => toggleModal('all-reminders-modal', false));
+    document.getElementById('apply-payment-filters-button')?.addEventListener('click', applyPaymentRemindersFilters); // NOVO: Botão de filtro do modal de pagamentos
+    document.getElementById('clear-payment-filters-button')?.addEventListener('click', clearPaymentRemindersFilters); // NOVO: Botão de limpar filtros
+    
+    // Reconhecimento de Fala
     document.getElementById('ai-record-button')?.addEventListener('click', toggleSpeechRecognition);
 }
 
@@ -105,7 +117,8 @@ function toggleMenu() {
 async function fetchDashboardData() {
     const groupId = localStorage.getItem('activeGroupId');
     if (!groupId) {
-        showCustomAlert('Erro', 'ID do grupo não encontrado. Por favor, faça login novamente.');
+        // Se não houver groupId, o usuário pode não estar em um grupo ou a sessão expirou
+        await showCustomAlert('Erro de Grupo', 'Não foi possível encontrar um grupo associado à sua conta. Por favor, faça login novamente ou crie/junte-se a um grupo.');
         logout();
         return;
     }
@@ -131,11 +144,32 @@ async function fetchDashboardData() {
         renderDashboard(data);
         fetchMonthlyChartData();
         fetchRecentAchievements(data.conquistas_recentes);
-        fetchPaymentReminders(); // Busca lembretes de pagamento
+        
+        // NOVO: Buscar todas as metas e lembretes de pagamento
+        fetchAllGoals();
+        fetchPaymentReminders(); 
+
     } catch (error) {
         showCustomAlert('Erro', error.message);
     }
 }
+
+async function fetchAllGoals() {
+    const groupId = localStorage.getItem('activeGroupId');
+    try {
+        const response = await fetch(`${API_URL}/api/groups/${groupId}/goals`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) {
+            throw new Error('Não foi possível carregar as metas.');
+        }
+        allGoals = await response.json();
+        renderGoals(); // Renderiza todas as metas
+    } catch (error) {
+        showCustomAlert('Erro ao carregar metas', error.message);
+    }
+}
+
 
 async function fetchMonthlyChartData() {
     const groupId = localStorage.getItem('activeGroupId');
@@ -189,6 +223,18 @@ async function fetchPaymentReminders() {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         if (!response.ok) {
+            // Se o plano não for premium, o backend pode retornar 403. Tratar isso.
+            if (response.status === 403) {
+                container.innerHTML = `
+                    <div class="bg-background p-4 rounded-lg text-center">
+                        <p class="text-sm text-gray-300">Lembretes de pagamento são um recurso Premium.</p>
+                        <a href="./premium.html" class="inline-block w-full sm:w-auto mt-3 py-2 px-6 bg-gold/80 hover:bg-gold text-black rounded-lg font-bold transition">Fazer Upgrade para Premium 💎</a>
+                    </div>
+                `;
+                document.getElementById('add-payment-reminder-button').classList.add('hidden');
+                document.getElementById('view-all-reminders-container').classList.add('hidden');
+                return;
+            }
             throw new Error('Não foi possível carregar os lembretes de pagamento.');
         }
         allPaymentReminders = await response.json();
@@ -271,7 +317,7 @@ function renderDashboard(data) {
 
     renderRecentTransactions(data.movimentacoes_recentes);
     renderGroupMembers(data.membros, data.plano);
-    renderGoals(data.meta_ativa);
+    // renderGoals(data.meta_ativa); // REMOVIDO: Agora renderGoals() usa allGoals global
     renderAIAssistantSection(data.plano, data.ai_usage_count_today, data.ai_first_usage_timestamp_today);
 }
 
@@ -453,27 +499,34 @@ function renderGroupMembers(members, plan) {
     }
 }
 
-function renderGoals(activeGoal) {
+// INÍCIO DA ALTERAÇÃO: Refatoração da função renderGoals
+function renderGoals() {
     const goalsListContainer = document.getElementById('goals-list-container');
     const addGoalButtonContainer = document.getElementById('add-goal-button-container');
-    const addGoalButton = document.getElementById('add-goal-button'); // Adiciona referência ao botão
+    const addGoalButton = document.getElementById('add-goal-button');
     const userPlan = localStorage.getItem('userPlan');
 
-    if (!goalsListContainer || !addGoalButtonContainer || !addGoalButton) return; // Adiciona verificação de nulidade
+    if (!goalsListContainer || !addGoalButtonContainer || !addGoalButton) return;
 
     goalsListContainer.innerHTML = ''; // Limpa antes de renderizar
 
-    if (activeGoal) {
-        const progress = (activeGoal.valor_atual / activeGoal.valor_meta) * 100;
-        const formattedCurrent = formatCurrency(activeGoal.valor_atual);
-        const formattedMeta = formatCurrency(activeGoal.valor_meta);
-        const remaining = activeGoal.valor_meta - activeGoal.valor_atual;
-        const formattedRemaining = formatCurrency(remaining > 0 ? remaining : 0);
-        const dueDate = activeGoal.data_limite ? new Date(activeGoal.data_limite).toLocaleDateString('pt-BR') : 'Sem data limite';
+    const activeGoals = allGoals.filter(g => g.status === 'ativa');
 
-        goalsListContainer.innerHTML = `
-            <div class="bg-background p-4 rounded-lg">
-                <h4 class="font-bold text-lg">${activeGoal.titulo}</h4>
+    if (activeGoals.length === 0) {
+        goalsListContainer.innerHTML = '<p class="text-center text-gray-400">Nenhuma meta ativa no momento.</p>';
+    } else {
+        activeGoals.forEach(goal => {
+            const progress = (goal.valor_atual / goal.valor_meta) * 100;
+            const formattedCurrent = formatCurrency(goal.valor_atual);
+            const formattedMeta = formatCurrency(goal.valor_meta);
+            const remaining = goal.valor_meta - goal.valor_atual;
+            const formattedRemaining = formatCurrency(remaining > 0 ? remaining : 0);
+            const dueDate = goal.data_limite ? new Date(goal.data_limite).toLocaleDateString('pt-BR') : 'Sem data limite';
+
+            const goalCard = document.createElement('div');
+            goalCard.className = 'bg-background p-4 rounded-lg';
+            goalCard.innerHTML = `
+                <h4 class="font-bold text-lg">${goal.titulo}</h4>
                 <p class="text-sm text-gray-400">Meta: ${formattedMeta} até ${dueDate}</p>
                 <div class="w-full bg-gray-700 rounded-full h-2.5 mt-3">
                     <div class="bg-primary h-2.5 rounded-full" style="width: ${progress > 100 ? 100 : progress}%;"></div>
@@ -484,88 +537,114 @@ function renderGoals(activeGoal) {
                 </div>
                 <p class="text-sm text-gray-400 mt-1">Faltam: <span class="font-medium text-primary">${formattedRemaining}</span></p>
                 <div class="flex space-x-2 mt-4">
-                    <button onclick="openAddFundsModal('${activeGoal.id}')" class="flex-1 py-2 bg-gain hover:opacity-80 rounded-lg font-medium text-white">Adicionar Fundos</button>
-                    <button onclick="openWithdrawFundsModal('${activeGoal.id}')" class="flex-1 py-2 bg-expense hover:opacity-80 rounded-lg font-medium text-white">Retirar Fundos</button>
-                    <button onclick="deleteGoal('${activeGoal.id}')" class="p-2 bg-danger hover:opacity-80 rounded-lg text-white" title="Apagar Meta"><i class="fas fa-trash"></i></button>
+                    <button onclick="openAddFundsModal('${goal.id}')" class="p-2 bg-gain hover:opacity-80 rounded-lg font-medium text-white" title="Adicionar Fundos"><i class="fas fa-plus"></i></button>
+                    <button onclick="openWithdrawFundsModal('${goal.id}')" class="p-2 bg-expense hover:opacity-80 rounded-lg font-medium text-white" title="Retirar Fundos"><i class="fas fa-minus"></i></button>
+                    <button onclick="openGoalModal('edit', '${goal.id}')" class="p-2 bg-primary/80 hover:bg-primary rounded-lg text-white" title="Editar Meta"><i class="fas fa-edit"></i></button>
+                    <button onclick="deleteGoal('${goal.id}')" class="p-2 bg-danger hover:opacity-80 rounded-lg text-white" title="Apagar Meta"><i class="fas fa-trash"></i></button>
                 </div>
-            </div>
-        `;
-        addGoalButtonContainer.classList.add('hidden'); // Esconde o botão se já houver uma meta ativa
-    } else {
-        goalsListContainer.innerHTML = '<p class="text-center text-gray-400">Nenhuma meta ativa no momento.</p>';
-        // Mostra o botão de adicionar meta
-        addGoalButtonContainer.classList.remove('hidden');
-        // Se for plano gratuito, desabilita o botão e mostra mensagem
-        if (userPlan === 'gratuito') {
-            addGoalButton.disabled = true;
-            addGoalButton.textContent = 'Adicionar Nova Meta (Premium)';
-            addGoalButton.classList.remove('bg-primary/80', 'hover:bg-primary');
-            addGoalButton.classList.add('bg-gray-600', 'cursor-not-allowed');
-            // Opcional: Adicionar uma mensagem extra ou link para premium
-        } else {
-            addGoalButton.disabled = false;
-            addGoalButton.textContent = 'Adicionar Nova Meta';
-            addGoalButton.classList.add('bg-primary/80', 'hover:bg-primary');
-            addGoalButton.classList.remove('bg-gray-600', 'cursor-not-allowed');
-        }
+            `;
+            goalsListContainer.appendChild(goalCard);
+        });
     }
-}
 
+    // Lógica para o botão "Adicionar Nova Meta"
+    if (userPlan === 'gratuito' && activeGoals.length > 0) {
+        addGoalButton.disabled = true;
+        addGoalButton.textContent = 'Adicionar Nova Meta (Premium para mais)';
+        addGoalButton.classList.remove('bg-primary/80', 'hover:bg-primary');
+        addGoalButton.classList.add('bg-gray-600', 'cursor-not-allowed');
+    } else {
+        addGoalButton.disabled = false;
+        addGoalButton.textContent = 'Adicionar Nova Meta';
+        addGoalButton.classList.add('bg-primary/80', 'hover:bg-primary');
+        addGoalButton.classList.remove('bg-gray-600', 'cursor-not-allowed');
+    }
+    addGoalButtonContainer.classList.remove('hidden'); // Garante que o container do botão esteja visível
+}
+// FIM DA ALTERAÇÃO: Refatoração da função renderGoals
+
+
+// INÍCIO DA ALTERAÇÃO: Refatoração da função renderPaymentReminders
 function renderPaymentReminders(reminders) {
     const container = document.getElementById('payment-reminders-container');
     const viewAllRemindersContainer = document.getElementById('view-all-reminders-container');
-    if (!container) return; // Adiciona verificação de nulidade
-    container.innerHTML = '';
+    const addPaymentReminderButton = document.getElementById('add-payment-reminder-button');
 
-    if (reminders.length === 0) {
-        container.innerHTML = '<p class="text-center text-gray-400">Nenhum lembrete de pagamento agendado.</p>';
-        if (viewAllRemindersContainer) viewAllRemindersContainer.classList.add('hidden'); // Adiciona verificação de nulidade
+    if (!container || !viewAllRemindersContainer || !addPaymentReminderButton) return;
+
+    container.innerHTML = ''; // Limpa antes de renderizar
+
+    // Filtra lembretes para mostrar apenas os pendentes e não pagos (e os 3 mais próximos)
+    const relevantReminders = reminders.filter(r => r.status !== 'pago').sort((a, b) => new Date(a.data_vencimento) - new Date(b.data_vencimento));
+    const remindersToShow = relevantReminders.slice(0, 3);
+
+    if (remindersToShow.length === 0) {
+        container.innerHTML = '<p class="text-center text-gray-400">Nenhum lembrete de pagamento pendente.</p>';
+        viewAllRemindersContainer.classList.add('hidden');
+        addPaymentReminderButton.classList.remove('hidden'); // Garante que o botão de adicionar apareça
         return;
     }
-
-    // Exibe apenas os 3 primeiros lembretes na dashboard principal
-    const remindersToShow = reminders.slice(0, 3);
 
     remindersToShow.forEach(reminder => {
         const reminderElement = document.createElement('div');
         const dueDate = new Date(reminder.data_vencimento).toLocaleDateString('pt-BR');
         const isOverdue = new Date(reminder.data_vencimento) < new Date() && reminder.status !== 'pago';
-        const statusClass = reminder.status === 'pago' ? 'text-gain' : (isOverdue ? 'text-expense' : 'text-primary');
-        const statusText = reminder.status === 'pago' ? 'Pago' : (isOverdue ? 'Atrasado' : 'Pendente');
+        const statusClass = isOverdue ? 'text-expense' : 'text-primary';
+        const statusText = isOverdue ? 'Atrasado' : 'Pendente';
         const valueDisplay = reminder.valor ? formatCurrency(reminder.valor) : 'Não especificado';
 
         reminderElement.className = `bg-background p-4 rounded-lg border ${isOverdue ? 'border-expense' : 'border-gray-700'}`;
         reminderElement.innerHTML = `
             <div class="flex justify-between items-center mb-2">
                 <h4 class="font-bold text-lg">${reminder.titulo}</h4>
-                <span class="text-sm ${statusClass}">${statusText}</span>
+                <div class="flex items-center space-x-2">
+                    <span class="text-sm ${statusClass}">${statusText}</span>
+                    <button onclick="togglePaymentReminderDetails(this, '${reminder.id}')" class="text-gray-400 hover:text-white text-lg ml-2">
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                </div>
             </div>
-            <p class="text-sm text-gray-400">Vencimento: ${dueDate}</p>
-            <p class="text-md font-semibold mt-1">Valor: ${valueDisplay}</p>
-            ${reminder.descricao ? `<p class="text-sm text-gray-500 mt-2">${reminder.descricao}</p>` : ''}
-            <div class="flex space-x-2 mt-4">
-                <button onclick="openPaymentReminderModal('edit', '${reminder.id}')" class="flex-1 py-2 bg-primary/80 hover:bg-primary rounded-lg font-medium text-white">Editar</button>
-                ${reminder.status !== 'pago' ? `<button onclick="markPaymentAsPaid('${reminder.id}')" class="flex-1 py-2 bg-gain hover:opacity-80 rounded-lg font-medium text-white">Marcar como Pago</button>` : ''}
-                <button onclick="deletePaymentReminder('${reminder.id}')" class="p-2 bg-danger hover:opacity-80 rounded-lg text-white" title="Apagar Lembrete"><i class="fas fa-trash"></i></button>
+            <p class="text-sm text-gray-400">Vencimento: ${dueDate} - Valor: ${valueDisplay}</p>
+            <div id="details-${reminder.id}" class="details-content mt-3 space-y-3 hidden">
+                ${reminder.descricao ? `<p class="text-sm text-gray-500">${reminder.descricao}</p>` : '<p class="text-sm text-gray-500 italic">Sem descrição.</p>'}
+                <div class="flex space-x-2 mt-4">
+                    ${reminder.status !== 'pago' ? `<button onclick="markPaymentAsPaid('${reminder.id}')" class="flex-1 py-2 bg-gain hover:opacity-80 rounded-lg font-medium text-white">Marcar como Pago</button>` : ''}
+                    <button onclick="openPaymentReminderModal('edit', '${reminder.id}')" class="flex-1 py-2 bg-primary/80 hover:bg-primary rounded-lg font-medium text-white">Editar</button>
+                    <button onclick="deletePaymentReminder('${reminder.id}')" class="flex-1 py-2 bg-danger hover:opacity-80 rounded-lg text-white">Apagar</button>
+                </div>
             </div>
         `;
         container.appendChild(reminderElement);
     });
 
-    if (reminders.length > 3) {
-        if (viewAllRemindersContainer) viewAllRemindersContainer.classList.remove('hidden'); // Adiciona verificação de nulidade
+    if (relevantReminders.length > 3) {
+        viewAllRemindersContainer.classList.remove('hidden');
     } else {
-        if (viewAllRemindersContainer) viewAllRemindersContainer.classList.add('hidden'); // Adiciona verificação de nulidade
+        viewAllRemindersContainer.classList.add('hidden');
+    }
+    addPaymentReminderButton.classList.remove('hidden'); // Garante que o botão de adicionar esteja visível
+}
+
+function togglePaymentReminderDetails(button, reminderId) {
+    const detailsDiv = document.getElementById(`details-${reminderId}`);
+    const icon = button.querySelector('i');
+    if (detailsDiv) {
+        detailsDiv.classList.toggle('hidden');
+        if (detailsDiv.classList.contains('hidden')) {
+            icon.classList.replace('fa-chevron-up', 'fa-chevron-down');
+        } else {
+            icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
+        }
     }
 }
 
 function renderAllPaymentReminders(reminders) {
     const container = document.getElementById('all-reminders-list');
-    if (!container) return; // Adiciona verificação de nulidade
+    if (!container) return;
     container.innerHTML = ''; // Limpa antes de adicionar
 
     if (reminders.length === 0) {
-        container.innerHTML = '<p class="text-center text-gray-400 p-4">Nenhum lembrete de pagamento agendado.</p>';
+        container.innerHTML = '<p class="text-center text-gray-400 p-4">Nenhum lembrete de pagamento agendado para os filtros selecionados.</p>';
         return;
     }
 
@@ -583,18 +662,18 @@ function renderAllPaymentReminders(reminders) {
                 <h4 class="font-bold text-lg">${reminder.titulo}</h4>
                 <span class="text-sm ${statusClass}">${statusText}</span>
             </div>
-            <p class="text-sm text-gray-400">Vencimento: ${dueDate}</p>
-            <p class="text-md font-semibold mt-1">Valor: ${valueDisplay}</p>
+            <p class="text-sm text-gray-400">Vencimento: ${dueDate} - Valor: ${valueDisplay}</p>
             ${reminder.descricao ? `<p class="text-sm text-gray-500 mt-2">${reminder.descricao}</p>` : ''}
             <div class="flex space-x-2 mt-4">
-                <button onclick="openPaymentReminderModal('edit', '${reminder.id}')" class="flex-1 py-2 bg-primary/80 hover:bg-primary rounded-lg font-medium text-white">Editar</button>
-                ${reminder.status !== 'pago' ? `<button onclick="markPaymentAsPaid('${reminder.id}')" class="flex-1 py-2 bg-gain hover:opacity-80 rounded-lg font-medium text-white">Marcar como Pago</button>` : ''}
-                <button onclick="deletePaymentReminder('${reminder.id}')" class="p-2 bg-danger hover:opacity-80 rounded-lg text-white" title="Apagar Lembrete"><i class="fas fa-trash"></i></button>
+                ${reminder.status !== 'pago' ? `<button onclick="markPaymentAsPaid('${reminder.id}'); toggleModal('all-reminders-modal', false);" class="flex-1 py-2 bg-gain hover:opacity-80 rounded-lg font-medium text-white">Marcar como Pago</button>` : ''}
+                <button onclick="openPaymentReminderModal('edit', '${reminder.id}'); toggleModal('all-reminders-modal', false);" class="flex-1 py-2 bg-primary/80 hover:bg-primary rounded-lg font-medium text-white">Editar</button>
+                <button onclick="deletePaymentReminder('${reminder.id}'); toggleModal('all-reminders-modal', false);" class="flex-1 py-2 bg-danger hover:opacity-80 rounded-lg text-white">Apagar</button>
             </div>
         `;
         container.appendChild(reminderElement);
     });
 }
+// FIM DA ALTERAÇÃO: Refatoração da função renderPaymentReminders
 
 
 function renderFullTransactionHistory(transactions) {
@@ -669,7 +748,7 @@ function renderAIAssistantSection(plan, usageCount, firstUsageTimestamp) {
 // --- Lógica de Modais e Formulários ---
 
 let currentTransactionId = null;
-let currentGoalId = null;
+// let currentGoalId = null; // REMOVIDO: Não é mais necessário com a refatoração de metas
 let currentPaymentReminderId = null;
 
 function openTransactionModal(mode, transactionId = null) {
@@ -947,13 +1026,14 @@ function openGoalModal(mode, goalId = null) {
         titleEl.textContent = 'Adicionar Nova Meta';
         submitButton.textContent = 'Adicionar';
         document.getElementById('goal-form')?.reset(); // Adiciona verificação de nulidade
-        currentGoalId = null;
+        // currentGoalId = null; // REMOVIDO: Não é mais necessário
     } else if (mode === 'edit') {
         titleEl.textContent = 'Editar Meta';
         submitButton.textContent = 'Salvar Alterações';
-        currentGoalId = goalId;
-        const goal = allGoals.find(g => g.id === goalId);
+        // currentGoalId = goalId; // REMOVIDO: Não é mais necessário
+        const goal = allGoals.find(g => g.id === goalId); // Busca no array global allGoals
         if (goal) {
+            document.getElementById('goal-id').value = goal.id; // Define o ID para o formulário
             document.getElementById('goal-title').value = goal.titulo;
             document.getElementById('goal-value').value = goal.valor_meta;
             document.getElementById('goal-date').value = goal.data_limite;
@@ -964,6 +1044,7 @@ function openGoalModal(mode, goalId = null) {
 
 async function handleGoalFormSubmit(event) {
     event.preventDefault();
+    const goalId = document.getElementById('goal-id')?.value; // Pega o ID do campo hidden
     const title = document.getElementById('goal-title')?.value; // Adiciona verificação de nulidade
     const value = parseFloat(document.getElementById('goal-value')?.value); // Adiciona verificação de nulidade
     const date = document.getElementById('goal-date')?.value; // Adiciona verificação de nulidade
@@ -988,13 +1069,13 @@ async function handleGoalFormSubmit(event) {
 
     try {
         let response;
-        if (currentGoalId) {
-            response = await fetch(`${API_URL}/api/groups/goals/${currentGoalId}`, {
+        if (goalId) { // Se o ID da meta existe, é uma atualização
+            response = await fetch(`${API_URL}/api/groups/goals/${goalId}`, {
                 method: 'PUT',
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify(goalData)
             });
-        } else {
+        } else { // Caso contrário, é uma nova meta
             response = await fetch(`${API_URL}/api/groups/${groupId}/goals`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -1009,13 +1090,14 @@ async function handleGoalFormSubmit(event) {
 
         toggleModal('goal-form-modal', false);
         await showCustomAlert('Sucesso', 'Meta salva com sucesso!');
-        fetchDashboardData(); // Recarrega os dados do dashboard
+        fetchAllGoals(); // Recarrega todas as metas
+        fetchDashboardData(); // Recarrega os dados do dashboard para atualizar o mascote, etc.
     } catch (error) {
         document.getElementById('goal-error-message').textContent = error.message;
         document.getElementById('goal-error-message').classList.remove('hidden');
     } finally {
         submitButton.disabled = false;
-        submitButton.textContent = currentGoalId ? 'Salvar Alterações' : 'Adicionar';
+        submitButton.textContent = goalId ? 'Salvar Alterações' : 'Adicionar';
     }
 }
 
@@ -1035,6 +1117,7 @@ async function deleteGoal(goalId) {
         }
 
         await showCustomAlert('Sucesso', 'Meta apagada com sucesso!');
+        fetchAllGoals(); // Recarrega todas as metas
         fetchDashboardData(); // Recarrega os dados do dashboard
     } catch (error) {
         await showCustomAlert('Erro', error.message);
@@ -1042,7 +1125,8 @@ async function deleteGoal(goalId) {
 }
 
 async function openAddFundsModal(goalId) {
-    currentGoalId = goalId;
+    // currentGoalId = goalId; // REMOVIDO: Não é mais necessário, usa o ID do botão
+    document.getElementById('add-funds-form').setAttribute('data-goal-id', goalId); // Armazena o ID no formulário
     document.getElementById('add-funds-form')?.reset(); // Adiciona verificação de nulidade
     document.getElementById('funds-error-message')?.classList.add('hidden'); // Adiciona verificação de nulidade
     toggleModal('add-funds-modal', true);
@@ -1050,6 +1134,7 @@ async function openAddFundsModal(goalId) {
 
 async function handleAddFundsSubmit(event) {
     event.preventDefault();
+    const goalId = event.target.getAttribute('data-goal-id'); // Pega o ID do formulário
     const amount = parseFloat(document.getElementById('funds-amount')?.value); // Adiciona verificação de nulidade
     const errorMessageEl = document.getElementById('funds-error-message'); // Adiciona verificação de nulidade
     if (isNaN(amount) || amount <= 0) {
@@ -1066,7 +1151,7 @@ async function handleAddFundsSubmit(event) {
     if (errorMessageEl) errorMessageEl.classList.add('hidden'); // Adiciona verificação de nulidade
 
     try {
-        const response = await fetch(`${API_URL}/api/groups/goals/${currentGoalId}/add_funds`, {
+        const response = await fetch(`${API_URL}/api/groups/goals/${goalId}/add_funds`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({ valor: amount })
@@ -1079,7 +1164,8 @@ async function handleAddFundsSubmit(event) {
 
         toggleModal('add-funds-modal', false);
         await showCustomAlert('Sucesso', 'Fundos adicionados à meta!');
-        fetchDashboardData();
+        fetchAllGoals(); // Recarrega todas as metas
+        fetchDashboardData(); // Recarrega o dashboard
     } catch (error) {
         if (errorMessageEl) { // Adiciona verificação de nulidade
             errorMessageEl.textContent = error.message;
@@ -1092,7 +1178,8 @@ async function handleAddFundsSubmit(event) {
 }
 
 async function openWithdrawFundsModal(goalId) {
-    currentGoalId = goalId;
+    // currentGoalId = goalId; // REMOVIDO: Não é mais necessário, usa o ID do botão
+    document.getElementById('withdraw-funds-form').setAttribute('data-goal-id', goalId); // Armazena o ID no formulário
     document.getElementById('withdraw-funds-form')?.reset(); // Adiciona verificação de nulidade
     document.getElementById('withdraw-error-message')?.classList.add('hidden'); // Adiciona verificação de nulidade
     toggleModal('withdraw-funds-modal', true);
@@ -1100,6 +1187,7 @@ async function openWithdrawFundsModal(goalId) {
 
 async function handleWithdrawFundsSubmit(event) {
     event.preventDefault();
+    const goalId = event.target.getAttribute('data-goal-id'); // Pega o ID do formulário
     const amount = parseFloat(document.getElementById('withdraw-amount')?.value); // Adiciona verificação de nulidade
     const errorMessageEl = document.getElementById('withdraw-error-message'); // Adiciona verificação de nulidade
     if (isNaN(amount) || amount <= 0) {
@@ -1116,7 +1204,7 @@ async function handleWithdrawFundsSubmit(event) {
     if (errorMessageEl) errorMessageEl.classList.add('hidden'); // Adiciona verificação de nulidade
 
     try {
-        const response = await fetch(`${API_URL}/api/groups/goals/${currentGoalId}/withdraw_funds`, {
+        const response = await fetch(`${API_URL}/api/groups/goals/${goalId}/withdraw_funds`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({ valor: amount })
@@ -1129,7 +1217,8 @@ async function handleWithdrawFundsSubmit(event) {
 
         toggleModal('withdraw-funds-modal', false);
         await showCustomAlert('Sucesso', 'Fundos retirados da meta!');
-        fetchDashboardData();
+        fetchAllGoals(); // Recarrega todas as metas
+        fetchDashboardData(); // Recarrega o dashboard
     } catch (error) {
         if (errorMessageEl) { // Adiciona verificação de nulidade
             errorMessageEl.textContent = error.message;
@@ -1169,8 +1258,14 @@ async function copyInviteLink() {
         await navigator.clipboard.writeText(inviteLinkInput.value);
         await showCustomAlert('Copiado!', 'O link de convite foi copiado para a área de transferência.');
     } catch (err) {
-        document.execCommand('copy'); // Fallback para navegadores mais antigos
-        await showCustomAlert('Copiado!', 'O link de convite foi copiado para a área de transferência.');
+        // Fallback para document.execCommand('copy') se navigator.clipboard.writeText falhar
+        const tempInput = document.createElement('textarea');
+        tempInput.value = inviteLinkInput.value;
+        document.body.appendChild(tempInput);
+        tempInput.select();
+        document.execCommand('copy');
+        document.body.removeChild(tempInput);
+        await showCustomAlert('Copiado!', 'O link de convite foi copiado para a área de transferência. (Método alternativo)');
     }
 }
 
@@ -1283,11 +1378,17 @@ async function handlePaymentReminderFormSubmit(event) {
     const description = document.getElementById('payment-reminder-description')?.value; // Adiciona verificação de nulidade
     const groupId = localStorage.getItem('activeGroupId');
 
-    if (!title || isNaN(value) || value <= 0 || !dueDate || !groupId) { // Adiciona validação básica
-        document.getElementById('payment-reminder-error-message').textContent = 'Por favor, preencha todos os campos corretamente.';
+    if (!title || !dueDate || !groupId) { // Adiciona validação básica
+        document.getElementById('payment-reminder-error-message').textContent = 'Por favor, preencha o título e a data de vencimento.';
         document.getElementById('payment-reminder-error-message').classList.remove('hidden');
         return;
     }
+    if (isNaN(value) && document.getElementById('payment-reminder-value')?.value !== '') { // Se tentou digitar algo mas não é número
+        document.getElementById('payment-reminder-error-message').textContent = 'Por favor, insira um valor numérico válido para o valor.';
+        document.getElementById('payment-reminder-error-message').classList.remove('hidden');
+        return;
+    }
+
 
     const reminderData = {
         titulo: title,
@@ -1382,8 +1483,43 @@ async function deletePaymentReminder(reminderId) {
 }
 
 function openAllRemindersModal() {
-    renderAllPaymentReminders(allPaymentReminders);
+    // Limpa os filtros antes de abrir o modal
+    document.getElementById('payment-filter-start-date').value = '';
+    document.getElementById('payment-filter-end-date').value = '';
+    document.getElementById('payment-filter-status').value = 'todos';
+    
+    applyPaymentRemindersFilters(); // Aplica os filtros (sem filtro inicial) para renderizar todos
     toggleModal('all-reminders-modal', true);
+}
+
+function applyPaymentRemindersFilters() {
+    const startDate = document.getElementById('payment-filter-start-date')?.value;
+    const endDate = document.getElementById('payment-filter-end-date')?.value;
+    const status = document.getElementById('payment-filter-status')?.value;
+
+    let filtered = allPaymentReminders;
+
+    if (startDate) {
+        filtered = filtered.filter(r => new Date(r.data_vencimento) >= new Date(startDate));
+    }
+    if (endDate) {
+        filtered = filtered.filter(r => new Date(r.data_vencimento) <= new Date(endDate));
+    }
+    if (status && status !== 'todos') {
+        if (status === 'vencidos') {
+            filtered = filtered.filter(r => new Date(r.data_vencimento) < new Date() && r.status !== 'pago');
+        } else {
+            filtered = filtered.filter(r => r.status === status);
+        }
+    }
+    renderAllPaymentReminders(filtered);
+}
+
+function clearPaymentRemindersFilters() {
+    document.getElementById('payment-filter-start-date').value = '';
+    document.getElementById('payment-filter-end-date').value = '';
+    document.getElementById('payment-filter-status').value = 'todos';
+    applyPaymentRemindersFilters(); // Re-renderiza com todos os lembretes
 }
 
 
@@ -1409,6 +1545,13 @@ function toggleModal(modalId, show) {
     if (modal) {
         if (show) {
             modal.classList.remove('hidden');
+            // Adiciona listener para fechar modal ao clicar fora
+            modal.addEventListener('click', function handler(event) {
+                if (event.target === modal) {
+                    toggleModal(modalId, false);
+                    modal.removeEventListener('click', handler); // Remove o listener para evitar duplicação
+                }
+            });
         } else {
             modal.classList.add('hidden');
         }
@@ -1517,3 +1660,4 @@ function stopSpeechRecognition() {
     if (aiRecordButton) aiRecordButton.innerHTML = '<i class="fas fa-microphone"></i>'; // Adiciona verificação de nulidade
     if (aiTextarea) aiTextarea.placeholder = "Ex: 'gastei 30 reais de uber e investi 50 reais hoje'"; // Adiciona verificação de nulidade
 }
+

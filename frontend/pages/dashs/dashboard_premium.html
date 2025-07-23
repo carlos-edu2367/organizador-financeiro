@@ -32,6 +32,16 @@
     ::-webkit-scrollbar { width: 8px; height: 8px; }
     ::-webkit-scrollbar-track { background: #0f172a; }
     ::-webkit-scrollbar-thumb { background-color: #3b82f6; border-radius: 10px; border: 2px solid #0f172a; }
+    ::-webkit-scrollbar-thumb:hover { background-color: #2563eb; }
+    /* Estilo para a transição suave do expandir/recolher */
+    .details-content {
+        transition: max-height 0.3s ease-out;
+        overflow: hidden;
+        max-height: 0;
+    }
+    .details-content.expanded {
+        max-height: 500px; /* Um valor grande o suficiente para conter o conteúdo */
+    }
   </style>
 </head>
 <body class="bg-background text-white font-sans">
@@ -203,16 +213,41 @@
     </div>
   </div>
 
+  <!-- INÍCIO DA ALTERAÇÃO: Modal para ver todos os lembretes de pagamento -->
   <div id="all-reminders-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 z-50 flex items-center justify-center p-4">
     <div class="bg-surface rounded-xl shadow-lg w-full max-w-2xl p-6 flex flex-col" style="height: 80vh;">
         <div class="flex justify-between items-center mb-4 flex-shrink-0">
             <h3 class="text-2xl font-bold text-white">Todos os Lembretes</h3>
             <button id="close-all-reminders-modal" class="text-gray-400 hover:text-white text-3xl font-bold">&times;</button>
         </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 flex-shrink-0">
+            <div>
+                <label for="payment-filter-start-date" class="text-xs text-gray-400">De</label>
+                <input type="date" id="payment-filter-start-date" class="w-full mt-1 px-3 py-2 rounded-lg bg-gray-800 border border-gray-600 text-white text-sm">
+            </div>
+            <div>
+                <label for="payment-filter-end-date" class="text-xs text-gray-400">Até</label>
+                <input type="date" id="payment-filter-end-date" class="w-full mt-1 px-3 py-2 rounded-lg bg-gray-800 border border-gray-600 text-white text-sm">
+            </div>
+            <div>
+                <label for="payment-filter-status" class="text-xs text-gray-400">Status</label>
+                <select id="payment-filter-status" class="w-full mt-1 px-3 py-2 rounded-lg bg-gray-800 border border-gray-600 text-white text-sm">
+                    <option value="todos">Todos</option>
+                    <option value="pendente">Pendente</option>
+                    <option value="pago">Pago</option>
+                    <option value="vencidos">Vencidos</option>
+                </select>
+            </div>
+        </div>
+        <div class="flex justify-end space-x-2 mb-4 flex-shrink-0">
+            <button id="clear-payment-filters-button" class="py-2 px-4 text-gray-300 hover:text-white rounded-lg">Limpar Filtros</button>
+            <button id="apply-payment-filters-button" class="py-2 px-6 bg-primary hover:bg-primary-dark rounded-lg font-medium text-white">Aplicar Filtros</button>
+        </div>
         <div id="all-reminders-list" class="overflow-y-auto flex-grow space-y-2">
         </div>
     </div>
   </div>
+  <!-- FIM DA ALTERAÇÃO: Modal para ver todos os lembretes de pagamento -->
 
   <div id="payment-reminder-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
     <div class="bg-surface rounded-xl shadow-lg w-full max-w-md p-6">
@@ -337,6 +372,5 @@
   </div>
 
   <script src="../../scripts/dashboard.js" defer></script>
-  <!-- O script que estava aqui foi movido para dentro de dashboard.js -->
 </body>
 </html>

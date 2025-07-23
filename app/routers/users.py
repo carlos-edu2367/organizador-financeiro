@@ -12,7 +12,7 @@ router = APIRouter(
 def read_users_me(current_user: models.Usuario = Depends(security.get_current_user_from_token)):
     """
     Retorna os dados do utilizador autenticado, incluindo o plano e o ID
-    do seu primeiro grupo.
+    do seu primeiro grupo. Prioriza o grupo onde o usuário é 'dono'.
     """
     if not current_user:
         raise HTTPException(
@@ -24,9 +24,23 @@ def read_users_me(current_user: models.Usuario = Depends(security.get_current_us
     group_id = None
     
     if current_user.associacoes_grupo:
-        first_association = current_user.associacoes_grupo[0]
-        user_plan = first_association.grupo.plano
-        group_id = first_association.grupo.id
+        # INÍCIO DA ALTERAÇÃO: Prioriza o grupo onde o usuário é o dono
+        owner_group_association = next(
+            (assoc for assoc in current_user.associacoes_grupo if assoc.papel == 'dono'),
+            None
+        )
+        
+        if owner_group_association:
+            # Se encontrou um grupo onde é dono, usa esse
+            group_id = owner_group_association.grupo.id
+            user_plan = owner_group_association.grupo.plano
+        else:
+            # Caso contrário, usa o primeiro grupo na lista (pode ser um grupo que ele foi convidado)
+            # A ordem aqui pode depender da forma como as associações são carregadas ou criadas.
+            first_association = current_user.associacoes_grupo[0]
+            group_id = first_association.grupo.id
+            user_plan = first_association.grupo.plano
+        # FIM DA ALTERAÇÃO
 
     return {
         "id": current_user.id,
@@ -92,3 +106,4 @@ def delete_user_me(
     db.delete(current_user)
     db.commit()
     return
+
