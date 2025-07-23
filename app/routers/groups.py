@@ -44,8 +44,12 @@ def get_dashboard_data(group_id: str, db: Session = Depends(database.get_db), cu
 
     total_ganhos = get_total_for_type('ganho')
     total_gastos = get_total_for_type('gasto')
-    total_investido = get_total_for_type('investimento')
     saldo_total = total_ganhos - total_gastos
+
+    # --- INÍCIO DA ALTERAÇÃO: Lógica de cálculo do Total Investido ---
+    # Agora, o total investido é a soma do valor atual de todas as metas.
+    total_investido = db.query(func.sum(models.Meta.valor_atual)).filter(models.Meta.grupo_id == group_id).scalar() or Decimal('0.0')
+    # --- FIM DA ALTERAÇÃO ---
 
     today = datetime.now(timezone.utc)
     
@@ -60,6 +64,19 @@ def get_dashboard_data(group_id: str, db: Session = Depends(database.get_db), cu
 
     ganhos_mes_atual = get_total_for_current_month('ganho')
     gastos_mes_atual = get_total_for_current_month('gasto')
+
+    thirty_days_ago = today - timedelta(days=30)
+    
+    def get_total_for_last_30_days(tipo: str) -> Decimal:
+        total = db.query(func.sum(models.Movimentacao.valor)).filter(
+            models.Movimentacao.grupo_id == group_id,
+            models.Movimentacao.tipo == tipo,
+            models.Movimentacao.data_transacao >= thirty_days_ago
+        ).scalar()
+        return total or Decimal('0.0')
+
+    ganhos_ultimos_30dias = get_total_for_last_30_days('ganho')
+    gastos_ultimos_30dias = get_total_for_last_30_days('gasto')
 
     conquistas_recentes = group.conquistas[:3]
 
@@ -86,6 +103,8 @@ def get_dashboard_data(group_id: str, db: Session = Depends(database.get_db), cu
         "conquistas_recentes": conquistas_recentes,
         "ganhos_mes_atual": ganhos_mes_atual,
         "gastos_mes_atual": gastos_mes_atual,
+        "ganhos_ultimos_30dias": ganhos_ultimos_30dias,
+        "gastos_ultimos_30dias": gastos_ultimos_30dias,
         "ai_usage_count_today": ai_usage_count_today,
         "ai_first_usage_timestamp_today": ai_first_usage_timestamp_today
     }
@@ -193,11 +212,24 @@ def delete_goal(goal_id: str, db: Session = Depends(database.get_db), current_us
     db_goal = db.query(models.Meta).options(joinedload(models.Meta.grupo)).filter(models.Meta.id == goal_id).first()
     if not db_goal or current_user not in db_goal.grupo.member_list:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso não permitido.")
+    
+    # --- INÍCIO DA ALTERAÇÃO: Lógica para retornar fundos ao apagar meta ---
     if db_goal.valor_atual > 0:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Não é possível apagar uma meta com fundos. Por favor, retire os fundos primeiro.")
+        # Cria uma transação de "ganho" para retornar o valor ao saldo principal.
+        return_transaction = models.Movimentacao(
+            grupo_id=db_goal.grupo_id,
+            responsavel_id=current_user.id, # O usuário que apaga a meta é o responsável.
+            tipo='ganho',
+            descricao=f"Valor retornado da meta '{db_goal.titulo}' excluída.",
+            valor=db_goal.valor_atual
+        )
+        db.add(return_transaction)
+    # --- FIM DA ALTERAÇÃO ---
+        
     db.delete(db_goal)
     db.commit()
     return
+
 @router.post("/goals/{goal_id}/add_funds", response_model=schemas.Meta)
 def add_funds_to_goal(goal_id: str, funds: schemas.GoalAddFunds, db: Session = Depends(database.get_db), current_user: models.Usuario = Depends(get_current_user_from_token)):
     db_goal = db.query(models.Meta).options(joinedload(models.Meta.grupo)).filter(models.Meta.id == goal_id).first()
@@ -206,27 +238,30 @@ def add_funds_to_goal(goal_id: str, funds: schemas.GoalAddFunds, db: Session = D
     db_goal.valor_atual += funds.valor
     if db_goal.valor_atual >= db_goal.valor_meta and db_goal.status == 'ativa':
         db_goal.status = 'concluida'
-        medalhas_por_valor = {
-            TipoMedalhaEnum.diamante: (Decimal('1000000.00'), "Atingiu a incrível marca de R$ 1.000.000 em uma meta!"),
-            TipoMedalhaEnum.platina: (Decimal('100000.00'), "Parabéns por atingir uma meta de mais de R$ 100.000!"),
-            TipoMedalhaEnum.ouro: (Decimal('10000.00'), "Vocês atingiram uma meta de mais de R$ 10.000! Excelente!")
-        }
-        for tipo, (valor_minimo, descricao) in medalhas_por_valor.items():
-            if db_goal.valor_meta >= valor_minimo:
-                data_limite_cooldown = datetime.now(timezone.utc) - relativedelta(months=3)
-                ultima_conquista_do_tipo = db.query(models.Conquista).filter(
-                    models.Conquista.grupo_id == db_goal.grupo_id,
-                    models.Conquista.tipo_medalha == tipo,
-                    models.Conquista.data_conquista > data_limite_cooldown
-                ).first()
-                if not ultima_conquista_do_tipo:
-                    nova_conquista = models.Conquista(
-                        grupo_id=db_goal.grupo_id,
-                        tipo_medalha=tipo,
-                        descricao=descricao
-                    )
-                    db.add(nova_conquista)
-                break 
+        
+        if db_goal.grupo.is_premium:
+            medalhas_por_valor = {
+                TipoMedalhaEnum.diamante: (Decimal('1000000.00'), "Atingiu a incrível marca de R$ 1.000.000 em uma meta!"),
+                TipoMedalhaEnum.platina: (Decimal('100000.00'), "Parabéns por atingir uma meta de mais de R$ 100.000!"),
+                TipoMedalhaEnum.ouro: (Decimal('10000.00'), "Vocês atingiram uma meta de mais de R$ 10.000! Excelente!")
+            }
+            for tipo, (valor_minimo, descricao) in medalhas_por_valor.items():
+                if db_goal.valor_meta >= valor_minimo:
+                    data_limite_cooldown = datetime.now(timezone.utc) - relativedelta(months=3)
+                    ultima_conquista_do_tipo = db.query(models.Conquista).filter(
+                        models.Conquista.grupo_id == db_goal.grupo_id,
+                        models.Conquista.tipo_medalha == tipo,
+                        models.Conquista.data_conquista > data_limite_cooldown
+                    ).first()
+                    if not ultima_conquista_do_tipo:
+                        nova_conquista = models.Conquista(
+                            grupo_id=db_goal.grupo_id,
+                            tipo_medalha=tipo,
+                            descricao=descricao
+                        )
+                        db.add(nova_conquista)
+                    break 
+        
     db_transaction = models.Movimentacao(grupo_id=db_goal.grupo_id, responsavel_id=current_user.id, tipo='investimento', descricao=f"Aporte para a meta: {db_goal.titulo}", valor=funds.valor)
     db.add(db_transaction)
     db.commit()
@@ -291,8 +326,6 @@ def remove_group_member(group_id: str, member_id: str, db: Session = Depends(dat
     if str(current_user.id) == member_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="O dono não pode sair do grupo.")
     
-    # --- INÍCIO DA ALTERAÇÃO: Lógica para reverter o grupo ativo ---
-    # Busca o usuário que será removido para poder alterar seu grupo ativo
     user_to_remove = db.query(models.Usuario).options(
         joinedload(models.Usuario.associacoes_grupo).joinedload(models.GrupoMembro.grupo)
     ).filter(models.Usuario.id == member_id).first()
@@ -308,7 +341,6 @@ def remove_group_member(group_id: str, member_id: str, db: Session = Depends(dat
     
     db.delete(association_to_delete)
     
-    # Encontra o grupo original do usuário (onde ele é o dono)
     owner_association = next(
         (assoc for assoc in user_to_remove.associacoes_grupo if assoc.papel == 'dono' and str(assoc.grupo_id) != group_id),
         None
@@ -317,10 +349,8 @@ def remove_group_member(group_id: str, member_id: str, db: Session = Depends(dat
     if owner_association:
         user_to_remove.grupo_ativo_id = owner_association.grupo_id
     else:
-        # Fallback caso não encontre o grupo original (improvável, mas seguro)
         user_to_remove.grupo_ativo_id = None
         
-    # --- FIM DA ALTERAÇÃO ---
     db.commit()
     return
 

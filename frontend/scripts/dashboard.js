@@ -94,8 +94,8 @@ function setupEventListeners() {
     document.getElementById('cancel-payment-reminder-button')?.addEventListener('click', () => toggleModal('payment-reminder-modal', false));
     document.getElementById('view-all-reminders-button')?.addEventListener('click', openAllRemindersModal);
     document.getElementById('close-all-reminders-modal')?.addEventListener('click', () => toggleModal('all-reminders-modal', false));
-    document.getElementById('apply-payment-filters-button')?.addEventListener('click', applyPaymentRemindersFilters); // NOVO: Botão de filtro do modal de pagamentos
-    document.getElementById('clear-payment-filters-button')?.addEventListener('click', clearPaymentRemindersFilters); // NOVO: Botão de limpar filtros
+    document.getElementById('apply-payment-filters-button')?.addEventListener('click', applyPaymentRemindersFilters);
+    document.getElementById('clear-payment-filters-button')?.addEventListener('click', clearPaymentRemindersFilters);
     
     // Reconhecimento de Fala
     document.getElementById('ai-record-button')?.addEventListener('click', toggleSpeechRecognition);
@@ -117,7 +117,6 @@ function toggleMenu() {
 async function fetchDashboardData() {
     const groupId = localStorage.getItem('activeGroupId');
     if (!groupId) {
-        // Se não houver groupId, o usuário pode não estar em um grupo ou a sessão expirou
         await showCustomAlert('Erro de Grupo', 'Não foi possível encontrar um grupo associado à sua conta. Por favor, faça login novamente ou crie/junte-se a um grupo.');
         logout();
         return;
@@ -138,14 +137,13 @@ async function fetchDashboardData() {
         }
 
         const data = await response.json();
-        currentUserId = data.current_user_id; // Armazena o ID do usuário logado
-        localStorage.setItem('userPlan', data.plano); // Garante que o plano esteja atualizado no localStorage
+        currentUserId = data.current_user_id;
+        localStorage.setItem('userPlan', data.plano);
 
         renderDashboard(data);
         fetchMonthlyChartData();
         fetchRecentAchievements(data.conquistas_recentes);
         
-        // NOVO: Buscar todas as metas e lembretes de pagamento
         fetchAllGoals();
         fetchPaymentReminders(); 
 
@@ -164,7 +162,7 @@ async function fetchAllGoals() {
             throw new Error('Não foi possível carregar as metas.');
         }
         allGoals = await response.json();
-        renderGoals(); // Renderiza todas as metas
+        renderGoals();
     } catch (error) {
         showCustomAlert('Erro ao carregar metas', error.message);
     }
@@ -189,8 +187,8 @@ async function fetchMonthlyChartData() {
 
 async function fetchRecentAchievements(achievements) {
     const container = document.getElementById('achievements-list-container');
-    if (!container) return; // Adiciona verificação de nulidade
-    container.innerHTML = ''; // Limpa antes de adicionar
+    if (!container) return;
+    container.innerHTML = '';
 
     if (achievements.length === 0) {
         container.innerHTML = '<p class="text-gray-400">Nenhuma conquista recente. Continue usando o Clarify!</p>';
@@ -215,7 +213,7 @@ async function fetchRecentAchievements(achievements) {
 async function fetchPaymentReminders() {
     const groupId = localStorage.getItem('activeGroupId');
     const container = document.getElementById('payment-reminders-container');
-    if (!container) return; // Adiciona verificação de nulidade
+    if (!container) return;
     container.innerHTML = '<p class="text-center text-gray-400">Carregando lembretes...</p>';
 
     try {
@@ -223,7 +221,6 @@ async function fetchPaymentReminders() {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         if (!response.ok) {
-            // Se o plano não for premium, o backend pode retornar 403. Tratar isso.
             if (response.status === 403) {
                 container.innerHTML = `
                     <div class="bg-background p-4 rounded-lg text-center">
@@ -247,14 +244,13 @@ async function fetchPaymentReminders() {
 async function fetchFullTransactionHistory(applyFilters = false) {
     const groupId = localStorage.getItem('activeGroupId');
     const tableBody = document.getElementById('full-history-table-body');
-    if (!tableBody) return; // Adiciona verificação de nulidade
+    if (!tableBody) return;
     tableBody.innerHTML = '<tr><td colspan="4" class="text-center p-4">Carregando histórico...</td></tr>';
 
     const startDateEl = document.getElementById('filter-start-date');
     const endDateEl = document.getElementById('filter-end-date');
     const typeEl = document.getElementById('filter-type');
 
-    // Adiciona verificações de nulidade para os elementos de filtro
     const startDate = startDateEl ? startDateEl.value : '';
     const endDate = endDateEl ? endDateEl.value : '';
     const type = typeEl ? typeEl.value : '';
@@ -273,7 +269,7 @@ async function fetchFullTransactionHistory(applyFilters = false) {
             throw new Error('Não foi possível carregar o histórico completo de transações.');
         }
         fullTransactionHistory = await response.json();
-        filteredTransactionHistory = fullTransactionHistory; // Inicialmente, todos são filtrados
+        filteredTransactionHistory = fullTransactionHistory;
         renderFullTransactionHistory(fullTransactionHistory);
     } catch (error) {
         tableBody.innerHTML = `<tr><td colspan="4" class="text-center p-4 text-red-400">${error.message}</td></tr>`;
@@ -283,7 +279,6 @@ async function fetchFullTransactionHistory(applyFilters = false) {
 // --- Funções de Renderização ---
 
 function renderDashboard(data) {
-    // Adiciona verificações de nulidade para elementos do dashboard
     document.getElementById('user-name').textContent = `Olá, ${data.nome_utilizador.split(' ')[0]}!`;
     const groupNameEl = document.getElementById('group-name');
     if (groupNameEl) groupNameEl.textContent = `Meu Grupo (${data.membros.length}/${data.plano === 'premium' ? 4 : 2})`;
@@ -294,36 +289,46 @@ function renderDashboard(data) {
     const saldoTotalEl = document.getElementById('saldo-total');
     if (saldoTotalEl) saldoTotalEl.textContent = formatCurrency(data.saldo_total);
 
-    // Lógica do mascote
+    // --- INÍCIO DA ALTERAÇÃO: Lógica do Mascote ---
     const mascotImg = document.getElementById('mascote-img');
     const mascotTitle = document.getElementById('mascote-title');
     const mascotText = document.getElementById('mascote-text');
 
-    if (mascotImg && mascotTitle && mascotText) { // Verifica se os elementos do mascote existem
-        if (data.saldo_total > 0) {
+    if (mascotImg && mascotTitle && mascotText) {
+        const gastos = parseFloat(data.gastos_ultimos_30dias);
+        const ganhos = parseFloat(data.ganhos_ultimos_30dias);
+        let spendingRatio = 0;
+
+        if (ganhos > 0) {
+            spendingRatio = (gastos / ganhos) * 100;
+        } else if (gastos > 0) {
+            spendingRatio = Infinity; // Gastou sem ganhar nada
+        }
+
+        if (spendingRatio <= 75) {
             mascotImg.src = '../../assets/mascote_feliz.png';
             mascotTitle.textContent = 'Situação Financeira: Excelente!';
-            mascotText.textContent = 'Vocês estão no caminho certo! Continuem assim para bater todas as metas.';
-        } else if (data.saldo_total < 0) {
-            mascotImg.src = '../../assets/mascote_triste.png';
-            mascotTitle.textContent = 'Situação Financeira: Atenção!';
-            mascotText.textContent = 'Seu saldo está negativo. Que tal revisar os gastos ou buscar novas fontes de renda?';
-        } else {
+            mascotText.textContent = 'Ótimo controle! Seus gastos nos últimos 30 dias estão bem abaixo dos seus ganhos.';
+        } else if (spendingRatio <= 95) {
             mascotImg.src = '../../assets/mascote_neutro.png';
-            mascotTitle.textContent = 'Situação Financeira: Estável';
-            mascotText.textContent = 'Ótimo trabalho! Seus gastos estão controlados.';
+            mascotTitle.textContent = 'Situação Financeira: Atenção!';
+            mascotText.textContent = 'Cuidado! Seus gastos nos últimos 30 dias estão se aproximando dos seus ganhos.';
+        } else {
+            mascotImg.src = '../../assets/mascote_desesperado.png'; // Poderia ser um mascote "desesperado"
+            mascotTitle.textContent = 'Situação Financeira: Crítica!';
+            mascotText.textContent = 'Alerta vermelho! Você gastou mais de 95% do que ganhou nos últimos 30 dias. É hora de reavaliar.';
         }
     }
+    // --- FIM DA ALTERAÇÃO ---
 
     renderRecentTransactions(data.movimentacoes_recentes);
     renderGroupMembers(data.membros, data.plano);
-    // renderGoals(data.meta_ativa); // REMOVIDO: Agora renderGoals() usa allGoals global
     renderAIAssistantSection(data.plano, data.ai_usage_count_today, data.ai_first_usage_timestamp_today);
 }
 
 function renderMonthlyChart(chartData) {
     const ctx = document.getElementById('monthly-chart')?.getContext('2d');
-    if (!ctx) return; // Adiciona verificação de nulidade
+    if (!ctx) return;
 
     if (monthlyChart) {
         monthlyChart.destroy();
@@ -332,42 +337,40 @@ function renderMonthlyChart(chartData) {
     const labels = chartData.map(d => d.mes);
     const ganhos = chartData.map(d => d.ganhos);
     const gastos = chartData.map(d => d.gastos);
-    // INÍCIO DA ALTERAÇÃO: Corrige o nome da propriedade para 'investimentos'
     const investimentos = chartData.map(d => d.investimentos); 
-    // FIM DA ALTERAÇÃO
     const saldo = chartData.map(d => d.saldo);
 
     monthlyChart = new Chart(ctx, {
-        type: 'bar', // Pode ser 'line', 'bar', etc.
+        type: 'bar',
         data: {
             labels: labels,
             datasets: [
                 {
                     label: 'Ganhos',
                     data: ganhos,
-                    backgroundColor: 'rgba(34, 197, 94, 0.6)', // gain
+                    backgroundColor: 'rgba(34, 197, 94, 0.6)',
                     borderColor: 'rgba(34, 197, 94, 1)',
                     borderWidth: 1
                 },
                 {
                     label: 'Gastos',
                     data: gastos,
-                    backgroundColor: 'rgba(239, 68, 68, 0.6)', // expense
+                    backgroundColor: 'rgba(239, 68, 68, 0.6)',
                     borderColor: 'rgba(239, 68, 68, 1)',
                     borderWidth: 1
                 },
                 {
                     label: 'Investimentos',
-                    data: investimentos, // Usa a variável corrigida
-                    backgroundColor: 'rgba(56, 189, 248, 0.6)', // investment
+                    data: investimentos,
+                    backgroundColor: 'rgba(56, 189, 248, 0.6)',
                     borderColor: 'rgba(56, 189, 248, 1)',
                     borderWidth: 1
                 },
                 {
                     label: 'Saldo',
                     data: saldo,
-                    type: 'line', // Saldo como linha para destaque
-                    borderColor: 'rgba(59, 130, 246, 1)', // primary
+                    type: 'line',
+                    borderColor: 'rgba(59, 130, 246, 1)',
                     backgroundColor: 'rgba(59, 130, 246, 0.2)',
                     fill: true,
                     tension: 0.3,
@@ -426,7 +429,7 @@ function renderMonthlyChart(chartData) {
 
 function renderRecentTransactions(transactions) {
     const tableBody = document.getElementById('transactions-table-body');
-    if (!tableBody) return; // Adiciona verificação de nulidade
+    if (!tableBody) return;
     tableBody.innerHTML = '';
     if (transactions.length === 0) {
         tableBody.innerHTML = '<tr><td colspan="5" class="text-center p-4 text-gray-400">Nenhuma transação recente.</td></tr>';
@@ -457,15 +460,13 @@ function renderGroupMembers(members, plan) {
     const inviteButton = document.getElementById('invite-button');
     const upgradeCard = document.getElementById('upgrade-card');
 
-    if (!membersListEl || !groupNameEl || !inviteButton || !upgradeCard) return; // Adiciona verificação de nulidade
+    if (!membersListEl || !groupNameEl || !inviteButton || !upgradeCard) return;
 
-    membersListEl.innerHTML = ''; // Limpa antes de renderizar
+    membersListEl.innerHTML = '';
     const memberLimit = plan === 'premium' ? 4 : 2;
 
-    // INÍCIO DA ALTERAÇÃO: Adiciona console.log para depuração e garante que o contêiner não esteja oculto
     console.log("Membros recebidos para renderização:", members);
-    membersListEl.classList.remove('hidden'); // Garante que o contêiner não esteja oculto
-    // FIM DA ALTERAÇÃO
+    membersListEl.classList.remove('hidden');
 
     if (members.length === 0) {
         membersListEl.innerHTML = '<p class="text-center text-gray-400">Nenhum membro no grupo. Convide alguém!</p>';
@@ -491,7 +492,7 @@ function renderGroupMembers(members, plan) {
         if (plan === 'gratuito') {
             upgradeCard.classList.remove('hidden');
         } else {
-            upgradeCard.classList.add('hidden'); // Esconde o card de upgrade se já for premium
+            upgradeCard.classList.add('hidden');
         }
     } else {
         inviteButton.classList.remove('hidden');
@@ -499,7 +500,6 @@ function renderGroupMembers(members, plan) {
     }
 }
 
-// INÍCIO DA ALTERAÇÃO: Refatoração da função renderGoals
 function renderGoals() {
     const goalsListContainer = document.getElementById('goals-list-container');
     const addGoalButtonContainer = document.getElementById('add-goal-button-container');
@@ -508,7 +508,7 @@ function renderGoals() {
 
     if (!goalsListContainer || !addGoalButtonContainer || !addGoalButton) return;
 
-    goalsListContainer.innerHTML = ''; // Limpa antes de renderizar
+    goalsListContainer.innerHTML = '';
 
     const activeGoals = allGoals.filter(g => g.status === 'ativa');
 
@@ -547,7 +547,6 @@ function renderGoals() {
         });
     }
 
-    // Lógica para o botão "Adicionar Nova Meta"
     if (userPlan === 'gratuito' && activeGoals.length > 0) {
         addGoalButton.disabled = true;
         addGoalButton.textContent = 'Adicionar Nova Meta (Premium para mais)';
@@ -559,12 +558,9 @@ function renderGoals() {
         addGoalButton.classList.add('bg-primary/80', 'hover:bg-primary');
         addGoalButton.classList.remove('bg-gray-600', 'cursor-not-allowed');
     }
-    addGoalButtonContainer.classList.remove('hidden'); // Garante que o container do botão esteja visível
+    addGoalButtonContainer.classList.remove('hidden');
 }
-// FIM DA ALTERAÇÃO: Refatoração da função renderGoals
 
-
-// INÍCIO DA ALTERAÇÃO: Refatoração da função renderPaymentReminders
 function renderPaymentReminders(reminders) {
     const container = document.getElementById('payment-reminders-container');
     const viewAllRemindersContainer = document.getElementById('view-all-reminders-container');
@@ -572,76 +568,74 @@ function renderPaymentReminders(reminders) {
 
     if (!container || !viewAllRemindersContainer || !addPaymentReminderButton) return;
 
-    container.innerHTML = ''; // Limpa antes de renderizar
+    container.innerHTML = '';
 
-    // Filtra lembretes para mostrar apenas os pendentes e não pagos (e os 3 mais próximos)
-    const relevantReminders = reminders.filter(r => r.status !== 'pago').sort((a, b) => new Date(a.data_vencimento) - new Date(b.data_vencimento));
-    const remindersToShow = relevantReminders.slice(0, 3);
+    const pendingReminders = reminders.filter(r => r.status !== 'pago').sort((a, b) => new Date(a.data_vencimento) - new Date(b.data_vencimento));
+    const remindersToShow = pendingReminders.slice(0, 3);
 
-    if (remindersToShow.length === 0) {
-        container.innerHTML = '<p class="text-center text-gray-400">Nenhum lembrete de pagamento pendente.</p>';
-        viewAllRemindersContainer.classList.add('hidden');
-        addPaymentReminderButton.classList.remove('hidden'); // Garante que o botão de adicionar apareça
-        return;
+    if (reminders.length === 0) { // --- ALTERAÇÃO: Verifica o total de lembretes
+        container.innerHTML = '<p class="text-center text-gray-400">Nenhum lembrete de pagamento agendado.</p>';
+    } else if (remindersToShow.length === 0 && reminders.length > 0) {
+        container.innerHTML = '<p class="text-center text-gray-400">Todos os lembretes foram pagos! 🎉</p>';
+    } else {
+        remindersToShow.forEach(reminder => {
+            const reminderElement = document.createElement('div');
+            const dueDate = new Date(reminder.data_vencimento).toLocaleDateString('pt-BR');
+            const isOverdue = new Date(reminder.data_vencimento) < new Date() && reminder.status !== 'pago';
+            const statusClass = isOverdue ? 'text-expense' : 'text-primary';
+            const statusText = isOverdue ? 'Atrasado' : 'Pendente';
+            const valueDisplay = reminder.valor ? formatCurrency(reminder.valor) : 'Não especificado';
+
+            reminderElement.className = `bg-background p-4 rounded-lg border ${isOverdue ? 'border-expense' : 'border-gray-700'}`;
+            reminderElement.innerHTML = `
+                <div class="flex justify-between items-start mb-2">
+                    <div>
+                        <h4 class="font-bold text-lg">${reminder.titulo}</h4>
+                        <p class="text-sm text-gray-400">Vencimento: ${dueDate} - Valor: ${valueDisplay}</p>
+                    </div>
+                    <div class="flex items-center space-x-2 flex-shrink-0">
+                        <span class="text-sm ${statusClass}">${statusText}</span>
+                        <button onclick="togglePaymentReminderDetails(this, '${reminder.id}')" class="text-gray-400 hover:text-white text-lg">
+                            <i class="fas fa-chevron-down transition-transform"></i>
+                        </button>
+                    </div>
+                </div>
+                <div id="details-${reminder.id}" class="details-content mt-3 pt-3 border-t border-gray-700 space-y-3">
+                    ${reminder.descricao ? `<p class="text-sm text-gray-500">${reminder.descricao}</p>` : '<p class="text-sm text-gray-500 italic">Sem descrição.</p>'}
+                    <div class="flex space-x-2 mt-4">
+                        ${reminder.status !== 'pago' ? `<button onclick="markPaymentAsPaid('${reminder.id}')" class="flex-1 py-2 bg-gain hover:opacity-80 rounded-lg font-medium text-white">Marcar como Pago</button>` : ''}
+                        <button onclick="openPaymentReminderModal('edit', '${reminder.id}')" class="flex-1 py-2 bg-primary/80 hover:bg-primary rounded-lg font-medium text-white">Editar</button>
+                        <button onclick="deletePaymentReminder('${reminder.id}')" class="flex-1 py-2 bg-danger hover:opacity-80 rounded-lg text-white">Apagar</button>
+                    </div>
+                </div>
+            `;
+            container.appendChild(reminderElement);
+        });
     }
 
-    remindersToShow.forEach(reminder => {
-        const reminderElement = document.createElement('div');
-        const dueDate = new Date(reminder.data_vencimento).toLocaleDateString('pt-BR');
-        const isOverdue = new Date(reminder.data_vencimento) < new Date() && reminder.status !== 'pago';
-        const statusClass = isOverdue ? 'text-expense' : 'text-primary';
-        const statusText = isOverdue ? 'Atrasado' : 'Pendente';
-        const valueDisplay = reminder.valor ? formatCurrency(reminder.valor) : 'Não especificado';
-
-        reminderElement.className = `bg-background p-4 rounded-lg border ${isOverdue ? 'border-expense' : 'border-gray-700'}`;
-        reminderElement.innerHTML = `
-            <div class="flex justify-between items-center mb-2">
-                <h4 class="font-bold text-lg">${reminder.titulo}</h4>
-                <div class="flex items-center space-x-2">
-                    <span class="text-sm ${statusClass}">${statusText}</span>
-                    <button onclick="togglePaymentReminderDetails(this, '${reminder.id}')" class="text-gray-400 hover:text-white text-lg ml-2">
-                        <i class="fas fa-chevron-down"></i>
-                    </button>
-                </div>
-            </div>
-            <p class="text-sm text-gray-400">Vencimento: ${dueDate} - Valor: ${valueDisplay}</p>
-            <div id="details-${reminder.id}" class="details-content mt-3 space-y-3 hidden">
-                ${reminder.descricao ? `<p class="text-sm text-gray-500">${reminder.descricao}</p>` : '<p class="text-sm text-gray-500 italic">Sem descrição.</p>'}
-                <div class="flex space-x-2 mt-4">
-                    ${reminder.status !== 'pago' ? `<button onclick="markPaymentAsPaid('${reminder.id}')" class="flex-1 py-2 bg-gain hover:opacity-80 rounded-lg font-medium text-white">Marcar como Pago</button>` : ''}
-                    <button onclick="openPaymentReminderModal('edit', '${reminder.id}')" class="flex-1 py-2 bg-primary/80 hover:bg-primary rounded-lg font-medium text-white">Editar</button>
-                    <button onclick="deletePaymentReminder('${reminder.id}')" class="flex-1 py-2 bg-danger hover:opacity-80 rounded-lg text-white">Apagar</button>
-                </div>
-            </div>
-        `;
-        container.appendChild(reminderElement);
-    });
-
-    if (relevantReminders.length > 3) {
+    // --- ALTERAÇÃO: Lógica de visibilidade do botão "Ver todos" ---
+    if (reminders.length > 0) {
         viewAllRemindersContainer.classList.remove('hidden');
     } else {
         viewAllRemindersContainer.classList.add('hidden');
     }
-    addPaymentReminderButton.classList.remove('hidden'); // Garante que o botão de adicionar esteja visível
+    addPaymentReminderButton.classList.remove('hidden');
 }
 
+// --- ALTERAÇÃO: Função de expandir detalhes corrigida ---
 function togglePaymentReminderDetails(button, reminderId) {
     const detailsDiv = document.getElementById(`details-${reminderId}`);
     const icon = button.querySelector('i');
     if (detailsDiv) {
-        detailsDiv.classList.toggle('hidden');
-        if (detailsDiv.classList.contains('hidden')) {
-            icon.classList.replace('fa-chevron-up', 'fa-chevron-down');
-        } else {
-            icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
-        }
+        detailsDiv.classList.toggle('expanded');
+        icon.classList.toggle('rotate-180');
     }
 }
 
 function renderAllPaymentReminders(reminders) {
     const container = document.getElementById('all-reminders-list');
     if (!container) return;
-    container.innerHTML = ''; // Limpa antes de adicionar
+    container.innerHTML = '';
 
     if (reminders.length === 0) {
         container.innerHTML = '<p class="text-center text-gray-400 p-4">Nenhum lembrete de pagamento agendado para os filtros selecionados.</p>';
@@ -673,12 +667,10 @@ function renderAllPaymentReminders(reminders) {
         container.appendChild(reminderElement);
     });
 }
-// FIM DA ALTERAÇÃO: Refatoração da função renderPaymentReminders
-
 
 function renderFullTransactionHistory(transactions) {
     const tableBody = document.getElementById('full-history-table-body');
-    if (!tableBody) return; // Adiciona verificação de nulidade
+    if (!tableBody) return;
     tableBody.innerHTML = '';
     if (transactions.length === 0) {
         tableBody.innerHTML = '<tr><td colspan="4" class="text-center p-4 text-gray-400">Nenhuma transação encontrada para os filtros aplicados.</td></tr>';
@@ -704,13 +696,11 @@ function renderAIAssistantSection(plan, usageCount, firstUsageTimestamp) {
     const aiTextarea = document.getElementById('ai-textarea');
     const analyzeAiButton = document.getElementById('analyze-ai-button');
     const aiRecordButton = document.getElementById('ai-record-button');
-    const whatsappIntegrationButton = document.getElementById('whatsapp-integration-button'); // Get the WhatsApp button
+    const whatsappIntegrationButton = document.getElementById('whatsapp-integration-button');
 
-    // Adiciona verificações de nulidade para os elementos da seção AI
     if (!aiUsageStatus || !aiTextarea || !analyzeAiButton || !aiRecordButton || !whatsappIntegrationButton) {
         return; 
     }
-
 
     if (plan === 'gratuito') {
         const remainingUses = 2 - usageCount;
@@ -719,28 +709,28 @@ function renderAIAssistantSection(plan, usageCount, firstUsageTimestamp) {
             let resetTimeMessage = '';
             if (firstUsageTimestamp) {
                 const firstUseDate = new Date(firstUsageTimestamp);
-                const resetDate = new Date(firstUseDate.getTime() + 24 * 60 * 60 * 1000); // 24 hours after first use
+                const resetDate = new Date(firstUseDate.getTime() + 24 * 60 * 60 * 1000);
                 resetTimeMessage = ` (Redefine em ${resetDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })})`;
             }
             aiUsageStatus.textContent = `Limite de uso da IA atingido (${usageCount}/2). Faça upgrade para uso ilimitado!${resetTimeMessage}`;
             aiTextarea.disabled = true;
             analyzeAiButton.disabled = true;
             aiRecordButton.disabled = true;
-            whatsappIntegrationButton.disabled = true; // Disable WhatsApp button too
+            whatsappIntegrationButton.disabled = true;
         } else {
             aiUsageStatus.className = 'text-sm text-center bg-blue-500/20 text-blue-300 p-2 rounded-md mb-4';
             aiUsageStatus.textContent = `Usos de IA hoje: ${usageCount}/2. Restam ${remainingUses} usos.`;
             aiTextarea.disabled = false;
             analyzeAiButton.disabled = false;
             aiRecordButton.disabled = false;
-            whatsappIntegrationButton.disabled = false; // Enable WhatsApp button
+            whatsappIntegrationButton.disabled = false;
         }
-    } else { // Premium user
-        aiUsageStatus.classList.add('hidden'); // Esconde o status de uso para premium
+    } else {
+        aiUsageStatus.classList.add('hidden');
         aiTextarea.disabled = false;
         analyzeAiButton.disabled = false;
         aiRecordButton.disabled = false;
-        whatsappIntegrationButton.disabled = false; // Enable WhatsApp button
+        whatsappIntegrationButton.disabled = false;
     }
 }
 
@@ -748,20 +738,19 @@ function renderAIAssistantSection(plan, usageCount, firstUsageTimestamp) {
 // --- Lógica de Modais e Formulários ---
 
 let currentTransactionId = null;
-// let currentGoalId = null; // REMOVIDO: Não é mais necessário com a refatoração de metas
 let currentPaymentReminderId = null;
 
 function openTransactionModal(mode, transactionId = null) {
     const titleEl = document.getElementById('transaction-form-title');
-    const submitButton = document.getElementById('transaction-form')?.querySelector('button[type="submit"]'); // Adiciona verificação de nulidade
-    document.getElementById('transaction-error-message')?.classList.add('hidden'); // Limpa mensagens de erro
+    const submitButton = document.getElementById('transaction-form')?.querySelector('button[type="submit"]');
+    document.getElementById('transaction-error-message')?.classList.add('hidden');
 
-    if (!titleEl || !submitButton) return; // Adiciona verificação de nulidade
+    if (!titleEl || !submitButton) return;
 
     if (mode === 'add') {
         titleEl.textContent = 'Adicionar Nova Transação';
         submitButton.textContent = 'Adicionar';
-        document.getElementById('transaction-form')?.reset(); // Adiciona verificação de nulidade
+        document.getElementById('transaction-form')?.reset();
         currentTransactionId = null;
     } else if (mode === 'edit') {
         titleEl.textContent = 'Editar Transação';
@@ -772,7 +761,7 @@ function openTransactionModal(mode, transactionId = null) {
             document.getElementById('transaction-type').value = tx.tipo;
             document.getElementById('transaction-description').value = tx.descricao;
             document.getElementById('transaction-value').value = tx.valor;
-            document.getElementById('transaction-date').value = tx.data_transacao.split('T')[0]; // Formato YYYY-MM-DD
+            document.getElementById('transaction-date').value = tx.data_transacao.split('T')[0];
         }
     }
     toggleModal('transaction-form-modal', true);
@@ -780,13 +769,13 @@ function openTransactionModal(mode, transactionId = null) {
 
 async function handleTransactionFormSubmit(event) {
     event.preventDefault();
-    const type = document.getElementById('transaction-type')?.value; // Adiciona verificação de nulidade
-    const description = document.getElementById('transaction-description')?.value; // Adiciona verificação de nulidade
-    const value = parseFloat(document.getElementById('transaction-value')?.value); // Adiciona verificação de nulidade
-    const date = document.getElementById('transaction-date')?.value; // Adiciona verificação de nulidade
+    const type = document.getElementById('transaction-type')?.value;
+    const description = document.getElementById('transaction-description')?.value;
+    const value = parseFloat(document.getElementById('transaction-value')?.value);
+    const date = document.getElementById('transaction-date')?.value;
     const groupId = localStorage.getItem('activeGroupId');
 
-    if (!type || !description || isNaN(value) || value <= 0 || !date || !groupId) { // Adiciona validação básica
+    if (!type || !description || isNaN(value) || value <= 0 || !date || !groupId) {
         document.getElementById('transaction-error-message').textContent = 'Por favor, preencha todos os campos corretamente.';
         document.getElementById('transaction-error-message').classList.remove('hidden');
         return;
@@ -798,13 +787,13 @@ async function handleTransactionFormSubmit(event) {
         descricao: description,
         valor: value,
         data_transacao: date,
-        responsavel_id: currentUserId // O usuário logado é o responsável
+        responsavel_id: currentUserId
     };
 
     const submitButton = event.target.querySelector('button[type="submit"]');
     submitButton.disabled = true;
     submitButton.textContent = 'Salvando...';
-    document.getElementById('transaction-error-message')?.classList.add('hidden'); // Adiciona verificação de nulidade
+    document.getElementById('transaction-error-message')?.classList.add('hidden');
 
     try {
         let response;
@@ -829,7 +818,7 @@ async function handleTransactionFormSubmit(event) {
 
         toggleModal('transaction-form-modal', false);
         await showCustomAlert('Sucesso', 'Transação salva com sucesso!');
-        fetchDashboardData(); // Recarrega os dados do dashboard
+        fetchDashboardData();
     } catch (error) {
         document.getElementById('transaction-error-message').textContent = error.message;
         document.getElementById('transaction-error-message').classList.remove('hidden');
@@ -855,7 +844,7 @@ async function deleteTransaction(transactionId) {
         }
 
         await showCustomAlert('Sucesso', 'Transação apagada com sucesso!');
-        fetchDashboardData(); // Recarrega os dados do dashboard
+        fetchDashboardData();
     } catch (error) {
         await showCustomAlert('Erro', error.message);
     }
@@ -863,15 +852,15 @@ async function deleteTransaction(transactionId) {
 
 async function handleAnalyzeAI() {
     const aiTextarea = document.getElementById('ai-textarea');
-    const aiText = aiTextarea?.value.trim(); // Adiciona verificação de nulidade
-    if (!aiTextarea || aiText.length < 3) { // Adiciona verificação de nulidade
+    const aiText = aiTextarea?.value.trim();
+    if (!aiTextarea || aiText.length < 3) {
         showCustomAlert('Atenção', 'Por favor, digite pelo menos 3 caracteres para a análise da IA.');
         return;
     }
 
     const analyzeButton = document.getElementById('analyze-ai-button');
-    const originalButtonText = analyzeButton?.textContent; // Adiciona verificação de nulidade
-    if (analyzeButton) { // Adiciona verificação de nulidade
+    const originalButtonText = analyzeButton?.textContent;
+    if (analyzeButton) {
         analyzeButton.disabled = true;
         analyzeButton.textContent = 'Analisando...';
     }
@@ -884,10 +873,10 @@ async function handleAnalyzeAI() {
             body: JSON.stringify({ text: aiText })
         });
 
-        if (response.status === 429) { // Too Many Requests
+        if (response.status === 429) {
             const errorData = await response.json();
             await showCustomAlert('Limite de Uso', errorData.detail);
-            fetchDashboardData(); // Atualiza o status de uso da IA
+            fetchDashboardData();
             return;
         }
 
@@ -901,7 +890,7 @@ async function handleAnalyzeAI() {
     } catch (error) {
         await showCustomAlert('Erro na IA', error.message);
     } finally {
-        if (analyzeButton) { // Adiciona verificação de nulidade
+        if (analyzeButton) {
             analyzeButton.disabled = false;
             analyzeButton.textContent = originalButtonText;
         }
@@ -911,12 +900,12 @@ async function handleAnalyzeAI() {
 function renderAIResults(transactions) {
     const container = document.getElementById('ai-results-container');
     const saveButton = document.getElementById('save-ai-results-button');
-    if (!container || !saveButton) return; // Adiciona verificação de nulidade
+    if (!container || !saveButton) return;
     container.innerHTML = '';
-    document.getElementById('ai-error-message')?.classList.add('hidden'); // Adiciona verificação de nulidade
+    document.getElementById('ai-error-message')?.classList.add('hidden');
 
     if (transactions.length === 0) {
-        container.innerHTML = '<p class="text-center text-gray-400">Nenhuma transação detectada pela IA.</p>';
+        container.innerHTML = '<p class="text-center text-gray-400">Nenhuma transação foi detectada no texto.</p>';
         saveButton.disabled = true;
         toggleModal('ai-results-modal', true);
         return;
@@ -925,28 +914,28 @@ function renderAIResults(transactions) {
     saveButton.disabled = false;
     transactions.forEach((tx, index) => {
         const txDiv = document.createElement('div');
-        txDiv.className = 'bg-background p-3 rounded-lg flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4';
+        txDiv.className = 'bg-background p-4 rounded-lg grid grid-cols-1 sm:grid-cols-5 gap-4 items-end';
+        
         txDiv.innerHTML = `
-            <input type="hidden" class="ai-tx-original-index" value="${index}">
-            <div class="flex-1">
-                <label class="block text-xs font-medium text-gray-400">Tipo</label>
-                <select class="ai-tx-type mt-1 w-full px-2 py-1 rounded-md bg-gray-700 border border-gray-600 text-white text-sm">
+            <div class="sm:col-span-2">
+                <label for="ai-tx-description-${index}" class="block text-xs font-medium text-gray-400 mb-1">Descrição</label>
+                <input type="text" id="ai-tx-description-${index}" class="ai-tx-description w-full px-2 py-2 rounded-md bg-gray-700 border border-gray-600 text-white text-sm" value="${tx.descricao || ''}">
+            </div>
+            <div>
+                <label for="ai-tx-type-${index}" class="block text-xs font-medium text-gray-400 mb-1">Tipo</label>
+                <select id="ai-tx-type-${index}" class="ai-tx-type w-full px-2 py-2 rounded-md bg-gray-700 border border-gray-600 text-white text-sm">
                     <option value="gasto" ${tx.tipo === 'gasto' ? 'selected' : ''}>Gasto</option>
                     <option value="ganho" ${tx.tipo === 'ganho' ? 'selected' : ''}>Ganho</option>
                     <option value="investimento" ${tx.tipo === 'investimento' ? 'selected' : ''}>Investimento</option>
                 </select>
             </div>
-            <div class="flex-2">
-                <label class="block text-xs font-medium text-gray-400">Descrição</label>
-                <input type="text" class="ai-tx-description mt-1 w-full px-2 py-1 rounded-md bg-gray-700 border border-gray-600 text-white text-sm" value="${tx.descricao || ''}">
+            <div>
+                <label for="ai-tx-value-${index}" class="block text-xs font-medium text-gray-400 mb-1">Valor (R$)</label>
+                <input type="number" id="ai-tx-value-${index}" step="0.01" class="ai-tx-value w-full px-2 py-2 rounded-md bg-gray-700 border border-gray-600 text-white text-sm" value="${tx.valor}">
             </div>
-            <div class="flex-1">
-                <label class="block text-xs font-medium text-gray-400">Valor (R$)</label>
-                <input type="number" step="0.01" class="ai-tx-value mt-1 w-full px-2 py-1 rounded-md bg-gray-700 border border-gray-600 text-white text-sm" value="${tx.valor}">
-            </div>
-            <div class="flex-1">
-                <label class="block text-xs font-medium text-gray-400">Data</label>
-                <input type="date" class="ai-tx-date mt-1 w-full px-2 py-1 rounded-md bg-gray-700 border border-gray-600 text-white text-sm" value="${new Date().toISOString().split('T')[0]}">
+            <div>
+                <label for="ai-tx-date-${index}" class="block text-xs font-medium text-gray-400 mb-1">Data</label>
+                <input type="date" id="ai-tx-date-${index}" class="ai-tx-date w-full px-2 py-2 rounded-md bg-gray-700 border border-gray-600 text-white text-sm" value="${new Date().toISOString().split('T')[0]}">
             </div>
         `;
         container.appendChild(txDiv);
@@ -960,16 +949,16 @@ async function saveAIResults() {
     const transactionElements = document.querySelectorAll('#ai-results-container > div');
     const groupId = localStorage.getItem('activeGroupId');
     const saveButton = document.getElementById('save-ai-results-button');
-    if (!saveButton) return; // Adiciona verificação de nulidade
+    if (!saveButton) return;
     saveButton.disabled = true;
     saveButton.textContent = 'Salvando...';
-    document.getElementById('ai-error-message')?.classList.add('hidden'); // Adiciona verificação de nulidade
+    document.getElementById('ai-error-message')?.classList.add('hidden');
 
     transactionElements.forEach(el => {
-        const type = el.querySelector('.ai-tx-type')?.value; // Adiciona verificação de nulidade
-        const description = el.querySelector('.ai-tx-description')?.value; // Adiciona verificação de nulidade
-        const value = parseFloat(el.querySelector('.ai-tx-value')?.value); // Adiciona verificação de nulidade
-        const date = el.querySelector('.ai-tx-date')?.value; // Adiciona verificação de nulidade
+        const type = el.querySelector('.ai-tx-type')?.value;
+        const description = el.querySelector('.ai-tx-description')?.value;
+        const value = parseFloat(el.querySelector('.ai-tx-value')?.value);
+        const date = el.querySelector('.ai-tx-date')?.value;
 
         if (type && description && !isNaN(value) && value > 0 && date) {
             transactionsToSave.push({
@@ -991,7 +980,6 @@ async function saveAIResults() {
     }
 
     try {
-        // Envia cada transação individualmente
         for (const tx of transactionsToSave) {
             const response = await fetch(`${API_URL}/api/transactions/group/${groupId}`, {
                 method: 'POST',
@@ -1005,7 +993,7 @@ async function saveAIResults() {
         }
         toggleModal('ai-results-modal', false);
         await showCustomAlert('Sucesso', `${transactionsToSave.length} transação(ões) salva(s) com sucesso!`);
-        fetchDashboardData(); // Recarrega os dados do dashboard
+        fetchDashboardData();
     } catch (error) {
         document.getElementById('ai-error-message').textContent = error.message;
         document.getElementById('ai-error-message').classList.remove('hidden');
@@ -1017,23 +1005,21 @@ async function saveAIResults() {
 
 function openGoalModal(mode, goalId = null) {
     const titleEl = document.getElementById('goal-form-title');
-    const submitButton = document.getElementById('goal-form')?.querySelector('button[type="submit"]'); // Adiciona verificação de nulidade
-    document.getElementById('goal-error-message')?.classList.add('hidden'); // Adiciona verificação de nulidade
+    const submitButton = document.getElementById('goal-form')?.querySelector('button[type="submit"]');
+    document.getElementById('goal-error-message')?.classList.add('hidden');
 
-    if (!titleEl || !submitButton) return; // Adiciona verificação de nulidade
+    if (!titleEl || !submitButton) return;
 
     if (mode === 'add') {
         titleEl.textContent = 'Adicionar Nova Meta';
         submitButton.textContent = 'Adicionar';
-        document.getElementById('goal-form')?.reset(); // Adiciona verificação de nulidade
-        // currentGoalId = null; // REMOVIDO: Não é mais necessário
+        document.getElementById('goal-form')?.reset();
     } else if (mode === 'edit') {
         titleEl.textContent = 'Editar Meta';
         submitButton.textContent = 'Salvar Alterações';
-        // currentGoalId = goalId; // REMOVIDO: Não é mais necessário
-        const goal = allGoals.find(g => g.id === goalId); // Busca no array global allGoals
+        const goal = allGoals.find(g => g.id === goalId);
         if (goal) {
-            document.getElementById('goal-id').value = goal.id; // Define o ID para o formulário
+            document.getElementById('goal-id').value = goal.id;
             document.getElementById('goal-title').value = goal.titulo;
             document.getElementById('goal-value').value = goal.valor_meta;
             document.getElementById('goal-date').value = goal.data_limite;
@@ -1044,13 +1030,13 @@ function openGoalModal(mode, goalId = null) {
 
 async function handleGoalFormSubmit(event) {
     event.preventDefault();
-    const goalId = document.getElementById('goal-id')?.value; // Pega o ID do campo hidden
-    const title = document.getElementById('goal-title')?.value; // Adiciona verificação de nulidade
-    const value = parseFloat(document.getElementById('goal-value')?.value); // Adiciona verificação de nulidade
-    const date = document.getElementById('goal-date')?.value; // Adiciona verificação de nulidade
+    const goalId = document.getElementById('goal-id')?.value;
+    const title = document.getElementById('goal-title')?.value;
+    const value = parseFloat(document.getElementById('goal-value')?.value);
+    const date = document.getElementById('goal-date')?.value;
     const groupId = localStorage.getItem('activeGroupId');
 
-    if (!title || isNaN(value) || value <= 0 || !date || !groupId) { // Adiciona validação básica
+    if (!title || isNaN(value) || value <= 0 || !date || !groupId) {
         document.getElementById('goal-error-message').textContent = 'Por favor, preencha todos os campos corretamente.';
         document.getElementById('goal-error-message').classList.remove('hidden');
         return;
@@ -1059,23 +1045,23 @@ async function handleGoalFormSubmit(event) {
     const goalData = {
         titulo: title,
         valor_meta: value,
-        data_limite: date || null // Envia null se a data estiver vazia
+        data_limite: date || null
     };
 
     const submitButton = event.target.querySelector('button[type="submit"]');
     submitButton.disabled = true;
     submitButton.textContent = 'Salvando...';
-    document.getElementById('goal-error-message')?.classList.add('hidden'); // Adiciona verificação de nulidade
+    document.getElementById('goal-error-message')?.classList.add('hidden');
 
     try {
         let response;
-        if (goalId) { // Se o ID da meta existe, é uma atualização
+        if (goalId) {
             response = await fetch(`${API_URL}/api/groups/goals/${goalId}`, {
                 method: 'PUT',
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify(goalData)
             });
-        } else { // Caso contrário, é uma nova meta
+        } else {
             response = await fetch(`${API_URL}/api/groups/${groupId}/goals`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -1090,8 +1076,8 @@ async function handleGoalFormSubmit(event) {
 
         toggleModal('goal-form-modal', false);
         await showCustomAlert('Sucesso', 'Meta salva com sucesso!');
-        fetchAllGoals(); // Recarrega todas as metas
-        fetchDashboardData(); // Recarrega os dados do dashboard para atualizar o mascote, etc.
+        fetchAllGoals();
+        fetchDashboardData();
     } catch (error) {
         document.getElementById('goal-error-message').textContent = error.message;
         document.getElementById('goal-error-message').classList.remove('hidden');
@@ -1117,28 +1103,27 @@ async function deleteGoal(goalId) {
         }
 
         await showCustomAlert('Sucesso', 'Meta apagada com sucesso!');
-        fetchAllGoals(); // Recarrega todas as metas
-        fetchDashboardData(); // Recarrega os dados do dashboard
+        fetchAllGoals();
+        fetchDashboardData();
     } catch (error) {
         await showCustomAlert('Erro', error.message);
     }
 }
 
 async function openAddFundsModal(goalId) {
-    // currentGoalId = goalId; // REMOVIDO: Não é mais necessário, usa o ID do botão
-    document.getElementById('add-funds-form').setAttribute('data-goal-id', goalId); // Armazena o ID no formulário
-    document.getElementById('add-funds-form')?.reset(); // Adiciona verificação de nulidade
-    document.getElementById('funds-error-message')?.classList.add('hidden'); // Adiciona verificação de nulidade
+    document.getElementById('add-funds-form').setAttribute('data-goal-id', goalId);
+    document.getElementById('add-funds-form')?.reset();
+    document.getElementById('funds-error-message')?.classList.add('hidden');
     toggleModal('add-funds-modal', true);
 }
 
 async function handleAddFundsSubmit(event) {
     event.preventDefault();
-    const goalId = event.target.getAttribute('data-goal-id'); // Pega o ID do formulário
-    const amount = parseFloat(document.getElementById('funds-amount')?.value); // Adiciona verificação de nulidade
-    const errorMessageEl = document.getElementById('funds-error-message'); // Adiciona verificação de nulidade
+    const goalId = event.target.getAttribute('data-goal-id');
+    const amount = parseFloat(document.getElementById('funds-amount')?.value);
+    const errorMessageEl = document.getElementById('funds-error-message');
     if (isNaN(amount) || amount <= 0) {
-        if (errorMessageEl) { // Adiciona verificação de nulidade
+        if (errorMessageEl) {
             errorMessageEl.textContent = 'Por favor, insira um valor positivo.';
             errorMessageEl.classList.remove('hidden');
         }
@@ -1148,7 +1133,7 @@ async function handleAddFundsSubmit(event) {
     const submitButton = event.target.querySelector('button[type="submit"]');
     submitButton.disabled = true;
     submitButton.textContent = 'Adicionando...';
-    if (errorMessageEl) errorMessageEl.classList.add('hidden'); // Adiciona verificação de nulidade
+    if (errorMessageEl) errorMessageEl.classList.add('hidden');
 
     try {
         const response = await fetch(`${API_URL}/api/groups/goals/${goalId}/add_funds`, {
@@ -1164,10 +1149,10 @@ async function handleAddFundsSubmit(event) {
 
         toggleModal('add-funds-modal', false);
         await showCustomAlert('Sucesso', 'Fundos adicionados à meta!');
-        fetchAllGoals(); // Recarrega todas as metas
-        fetchDashboardData(); // Recarrega o dashboard
+        fetchAllGoals();
+        fetchDashboardData();
     } catch (error) {
-        if (errorMessageEl) { // Adiciona verificação de nulidade
+        if (errorMessageEl) {
             errorMessageEl.textContent = error.message;
             errorMessageEl.classList.remove('hidden');
         }
@@ -1178,20 +1163,19 @@ async function handleAddFundsSubmit(event) {
 }
 
 async function openWithdrawFundsModal(goalId) {
-    // currentGoalId = goalId; // REMOVIDO: Não é mais necessário, usa o ID do botão
-    document.getElementById('withdraw-funds-form').setAttribute('data-goal-id', goalId); // Armazena o ID no formulário
-    document.getElementById('withdraw-funds-form')?.reset(); // Adiciona verificação de nulidade
-    document.getElementById('withdraw-error-message')?.classList.add('hidden'); // Adiciona verificação de nulidade
+    document.getElementById('withdraw-funds-form').setAttribute('data-goal-id', goalId);
+    document.getElementById('withdraw-funds-form')?.reset();
+    document.getElementById('withdraw-error-message')?.classList.add('hidden');
     toggleModal('withdraw-funds-modal', true);
 }
 
 async function handleWithdrawFundsSubmit(event) {
     event.preventDefault();
-    const goalId = event.target.getAttribute('data-goal-id'); // Pega o ID do formulário
-    const amount = parseFloat(document.getElementById('withdraw-amount')?.value); // Adiciona verificação de nulidade
-    const errorMessageEl = document.getElementById('withdraw-error-message'); // Adiciona verificação de nulidade
+    const goalId = event.target.getAttribute('data-goal-id');
+    const amount = parseFloat(document.getElementById('withdraw-amount')?.value);
+    const errorMessageEl = document.getElementById('withdraw-error-message');
     if (isNaN(amount) || amount <= 0) {
-        if (errorMessageEl) { // Adiciona verificação de nulidade
+        if (errorMessageEl) {
             errorMessageEl.textContent = 'Por favor, insira um valor positivo.';
             errorMessageEl.classList.remove('hidden');
         }
@@ -1201,7 +1185,7 @@ async function handleWithdrawFundsSubmit(event) {
     const submitButton = event.target.querySelector('button[type="submit"]');
     submitButton.disabled = true;
     submitButton.textContent = 'Retirando...';
-    if (errorMessageEl) errorMessageEl.classList.add('hidden'); // Adiciona verificação de nulidade
+    if (errorMessageEl) errorMessageEl.classList.add('hidden');
 
     try {
         const response = await fetch(`${API_URL}/api/groups/goals/${goalId}/withdraw_funds`, {
@@ -1217,10 +1201,10 @@ async function handleWithdrawFundsSubmit(event) {
 
         toggleModal('withdraw-funds-modal', false);
         await showCustomAlert('Sucesso', 'Fundos retirados da meta!');
-        fetchAllGoals(); // Recarrega todas as metas
-        fetchDashboardData(); // Recarrega o dashboard
+        fetchAllGoals();
+        fetchDashboardData();
     } catch (error) {
-        if (errorMessageEl) { // Adiciona verificação de nulidade
+        if (errorMessageEl) {
             errorMessageEl.textContent = error.message;
             errorMessageEl.classList.remove('hidden');
         }
@@ -1243,7 +1227,7 @@ async function handleInviteClick() {
         if (!response.ok) throw new Error(data.detail);
 
         const fullLink = `${window.location.origin}${data.invite_link}`;
-        if (inviteLinkInput) inviteLinkInput.value = fullLink; // Adiciona verificação de nulidade
+        if (inviteLinkInput) inviteLinkInput.value = fullLink;
         toggleModal('invite-modal', true);
 
     } catch (error) {
@@ -1253,12 +1237,11 @@ async function handleInviteClick() {
 
 async function copyInviteLink() {
     const inviteLinkInput = document.getElementById('invite-link-input');
-    if (!inviteLinkInput) return; // Adiciona verificação de nulidade
+    if (!inviteLinkInput) return;
     try {
         await navigator.clipboard.writeText(inviteLinkInput.value);
         await showCustomAlert('Copiado!', 'O link de convite foi copiado para a área de transferência.');
     } catch (err) {
-        // Fallback para document.execCommand('copy') se navigator.clipboard.writeText falhar
         const tempInput = document.createElement('textarea');
         tempInput.value = inviteLinkInput.value;
         document.body.appendChild(tempInput);
@@ -1270,7 +1253,6 @@ async function copyInviteLink() {
 }
 
 function openFullHistoryModal() {
-    // Limpa os filtros e recarrega o histórico completo
     document.getElementById('filter-start-date').value = '';
     document.getElementById('filter-end-date').value = '';
     document.getElementById('filter-type').value = '';
@@ -1284,15 +1266,15 @@ function exportTransactionsToCSV() {
         return;
     }
 
-    let csvContent = "data:text/csv;charset=utf-8,%EF%BB%BF"; // Adiciona BOM para UTF-8
-    csvContent += "Data,Tipo,Descricao,Valor,Responsavel\n"; // Cabeçalho
+    let csvContent = "data:text/csv;charset=utf-8,%EF%BB%BF";
+    csvContent += "Data,Tipo,Descricao,Valor,Responsavel\n";
 
     filteredTransactionHistory.forEach(tx => {
         const row = [
             new Date(tx.data_transacao).toLocaleDateString('pt-BR'),
             tx.tipo,
-            `"${tx.descricao.replace(/"/g, '""')}"`, // Escapa aspas duplas na descrição
-            tx.valor.toFixed(2).replace('.', ','), // Formato brasileiro
+            `"${tx.descricao.replace(/"/g, '""')}"`,
+            tx.valor.toFixed(2).replace('.', ','),
             tx.responsavel_nome
         ].join(',');
         csvContent += row + "\n";
@@ -1321,7 +1303,7 @@ function exportTransactionsToPDF() {
     doc.text("Histórico de Transações - Clarify", 14, 22);
 
     doc.setFontSize(10);
-    doc.text(`Grupo: ${localStorage.getItem('activeGroupId')}`, 14, 30); // Pode buscar o nome do grupo se disponível
+    doc.text(`Grupo: ${localStorage.getItem('activeGroupId')}`, 14, 30);
     doc.text(`Data de Geração: ${new Date().toLocaleDateString('pt-BR')}`, 14, 36);
 
     const tableColumn = ["Data", "Tipo", "Descrição", "Valor", "Responsável"];
@@ -1345,15 +1327,15 @@ function exportTransactionsToPDF() {
 
 function openPaymentReminderModal(mode, reminderId = null) {
     const titleEl = document.getElementById('payment-reminder-form-title');
-    const submitButton = document.getElementById('payment-reminder-form')?.querySelector('button[type="submit"]'); // Adiciona verificação de nulidade
-    document.getElementById('payment-reminder-error-message')?.classList.add('hidden'); // Adiciona verificação de nulidade
+    const submitButton = document.getElementById('payment-reminder-form')?.querySelector('button[type="submit"]');
+    document.getElementById('payment-reminder-error-message')?.classList.add('hidden');
 
-    if (!titleEl || !submitButton) return; // Adiciona verificação de nulidade
+    if (!titleEl || !submitButton) return;
 
     if (mode === 'add') {
         titleEl.textContent = 'Adicionar Novo Lembrete';
         submitButton.textContent = 'Adicionar';
-        document.getElementById('payment-reminder-form')?.reset(); // Adiciona verificação de nulidade
+        document.getElementById('payment-reminder-form')?.reset();
         currentPaymentReminderId = null;
     } else if (mode === 'edit') {
         titleEl.textContent = 'Editar Lembrete';
@@ -1372,18 +1354,18 @@ function openPaymentReminderModal(mode, reminderId = null) {
 
 async function handlePaymentReminderFormSubmit(event) {
     event.preventDefault();
-    const title = document.getElementById('payment-reminder-title')?.value; // Adiciona verificação de nulidade
-    const value = parseFloat(document.getElementById('payment-reminder-value')?.value); // Adiciona verificação de nulidade
-    const dueDate = document.getElementById('payment-reminder-due-date')?.value; // Adiciona verificação de nulidade
-    const description = document.getElementById('payment-reminder-description')?.value; // Adiciona verificação de nulidade
+    const title = document.getElementById('payment-reminder-title')?.value;
+    const value = parseFloat(document.getElementById('payment-reminder-value')?.value);
+    const dueDate = document.getElementById('payment-reminder-due-date')?.value;
+    const description = document.getElementById('payment-reminder-description')?.value;
     const groupId = localStorage.getItem('activeGroupId');
 
-    if (!title || !dueDate || !groupId) { // Adiciona validação básica
+    if (!title || !dueDate || !groupId) {
         document.getElementById('payment-reminder-error-message').textContent = 'Por favor, preencha o título e a data de vencimento.';
         document.getElementById('payment-reminder-error-message').classList.remove('hidden');
         return;
     }
-    if (isNaN(value) && document.getElementById('payment-reminder-value')?.value !== '') { // Se tentou digitar algo mas não é número
+    if (isNaN(value) && document.getElementById('payment-reminder-value')?.value !== '') {
         document.getElementById('payment-reminder-error-message').textContent = 'Por favor, insira um valor numérico válido para o valor.';
         document.getElementById('payment-reminder-error-message').classList.remove('hidden');
         return;
@@ -1392,7 +1374,7 @@ async function handlePaymentReminderFormSubmit(event) {
 
     const reminderData = {
         titulo: title,
-        valor: isNaN(value) ? null : value, // Envia null se o valor não for um número
+        valor: isNaN(value) ? null : value,
         data_vencimento: dueDate,
         descricao: description || null
     };
@@ -1400,7 +1382,7 @@ async function handlePaymentReminderFormSubmit(event) {
     const submitButton = event.target.querySelector('button[type="submit"]');
     submitButton.disabled = true;
     submitButton.textContent = 'Salvando...';
-    document.getElementById('payment-reminder-error-message')?.classList.add('hidden'); // Adiciona verificação de nulidade
+    document.getElementById('payment-reminder-error-message')?.classList.add('hidden');
 
     try {
         let response;
@@ -1425,8 +1407,8 @@ async function handlePaymentReminderFormSubmit(event) {
 
         toggleModal('payment-reminder-modal', false);
         await showCustomAlert('Sucesso', 'Lembrete de pagamento salvo com sucesso!');
-        fetchPaymentReminders(); // Recarrega os lembretes
-        fetchDashboardData(); // Recarrega o dashboard para atualizar a seção de pagamentos
+        fetchPaymentReminders();
+        fetchDashboardData();
     } catch (error) {
         document.getElementById('payment-reminder-error-message').textContent = error.message;
         document.getElementById('payment-reminder-error-message').classList.remove('hidden');
@@ -1452,8 +1434,8 @@ async function markPaymentAsPaid(reminderId) {
         }
 
         await showCustomAlert('Sucesso', 'Lembrete marcado como pago!');
-        fetchPaymentReminders(); // Recarrega os lembretes
-        fetchDashboardData(); // Recarrega o dashboard para atualizar a seção de pagamentos
+        fetchPaymentReminders();
+        fetchDashboardData();
     } catch (error) {
         await showCustomAlert('Erro', error.message);
     }
@@ -1475,20 +1457,19 @@ async function deletePaymentReminder(reminderId) {
         }
 
         await showCustomAlert('Sucesso', 'Lembrete apagado com sucesso!');
-        fetchPaymentReminders(); // Recarrega os lembretes
-        fetchDashboardData(); // Recarrega o dashboard para atualizar a seção de pagamentos
+        fetchPaymentReminders();
+        fetchDashboardData();
     } catch (error) {
         await showCustomAlert('Erro', error.message);
     }
 }
 
 function openAllRemindersModal() {
-    // Limpa os filtros antes de abrir o modal
     document.getElementById('payment-filter-start-date').value = '';
     document.getElementById('payment-filter-end-date').value = '';
     document.getElementById('payment-filter-status').value = 'todos';
     
-    applyPaymentRemindersFilters(); // Aplica os filtros (sem filtro inicial) para renderizar todos
+    applyPaymentRemindersFilters();
     toggleModal('all-reminders-modal', true);
 }
 
@@ -1519,7 +1500,7 @@ function clearPaymentRemindersFilters() {
     document.getElementById('payment-filter-start-date').value = '';
     document.getElementById('payment-filter-end-date').value = '';
     document.getElementById('payment-filter-status').value = 'todos';
-    applyPaymentRemindersFilters(); // Re-renderiza com todos os lembretes
+    applyPaymentRemindersFilters();
 }
 
 
@@ -1531,7 +1512,7 @@ function formatCurrency(value) {
 
 function adjustDashboardLinks() {
     const plan = localStorage.getItem('userPlan');
-    const headerLink = document.querySelector('header a'); // Assume o primeiro link do header
+    const headerLink = document.querySelector('header a');
     const menuDashboardLink = document.querySelector('#menu-card a[href*="dashboard"]');
 
     const dashboardUrl = plan === 'premium' ? './dashboard_premium.html' : './dashboard_free.html';
@@ -1545,11 +1526,10 @@ function toggleModal(modalId, show) {
     if (modal) {
         if (show) {
             modal.classList.remove('hidden');
-            // Adiciona listener para fechar modal ao clicar fora
             modal.addEventListener('click', function handler(event) {
                 if (event.target === modal) {
                     toggleModal(modalId, false);
-                    modal.removeEventListener('click', handler); // Remove o listener para evitar duplicação
+                    modal.removeEventListener('click', handler);
                 }
             });
         } else {
@@ -1608,7 +1588,7 @@ function toggleSpeechRecognition() {
     const aiTextarea = document.getElementById('ai-textarea');
     const aiRecordButton = document.getElementById('ai-record-button');
 
-    if (!aiTextarea || !aiRecordButton) return; // Adiciona verificação de nulidade
+    if (!aiTextarea || !aiRecordButton) return;
 
     if (!('webkitSpeechRecognition' in window)) {
         showCustomAlert('Erro', 'Seu navegador não suporta reconhecimento de fala. Use o Chrome para esta funcionalidade.');
@@ -1617,9 +1597,9 @@ function toggleSpeechRecognition() {
 
     if (!recognition) {
         recognition = new webkitSpeechRecognition();
-        recognition.continuous = false; // Captura uma única frase
-        recognition.interimResults = false; // Apenas resultados finais
-        recognition.lang = 'pt-BR'; // Idioma português do Brasil
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.lang = 'pt-BR';
 
         recognition.onstart = () => {
             isRecording = true;
@@ -1656,8 +1636,7 @@ function stopSpeechRecognition() {
     isRecording = false;
     const aiRecordButton = document.getElementById('ai-record-button');
     const aiTextarea = document.getElementById('ai-textarea');
-    if (aiRecordButton) aiRecordButton.classList.remove('bg-red-500', 'animate-pulse'); // Adiciona verificação de nulidade
-    if (aiRecordButton) aiRecordButton.innerHTML = '<i class="fas fa-microphone"></i>'; // Adiciona verificação de nulidade
-    if (aiTextarea) aiTextarea.placeholder = "Ex: 'gastei 30 reais de uber e investi 50 reais hoje'"; // Adiciona verificação de nulidade
+    if (aiRecordButton) aiRecordButton.classList.remove('bg-red-500', 'animate-pulse');
+    if (aiRecordButton) aiRecordButton.innerHTML = '<i class="fas fa-microphone"></i>';
+    if (aiTextarea) aiTextarea.placeholder = "Ex: 'gastei 30 reais de uber e investi 50 reais hoje'";
 }
-

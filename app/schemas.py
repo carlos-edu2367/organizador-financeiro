@@ -177,6 +177,10 @@ class DashboardData(BaseModel):
     conquistas_recentes: List[Conquista] = []
     ganhos_mes_atual: Decimal = Field(default=0.0, max_digits=10, decimal_places=2)
     gastos_mes_atual: Decimal = Field(default=0.0, max_digits=10, decimal_places=2)
+    # --- INÍCIO DA ALTERAÇÃO: Adicionados campos para a lógica do mascote ---
+    ganhos_ultimos_30dias: Decimal = Field(default=0.0, max_digits=10, decimal_places=2)
+    gastos_ultimos_30dias: Decimal = Field(default=0.0, max_digits=10, decimal_places=2)
+    # --- FIM DA ALTERAÇÃO ---
     ai_usage_count_today: int = 0
     ai_first_usage_timestamp_today: Optional[datetime.datetime] = None
 class InviteLink(BaseModel):
@@ -301,4 +305,3 @@ class PagamentoAgendado(PagamentoAgendadoBase):
     
     class Config:
         from_attributes = True
-
