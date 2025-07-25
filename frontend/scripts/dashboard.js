@@ -571,7 +571,14 @@ function renderPaymentReminders(reminders) {
 
     container.innerHTML = '';
 
-    const pendingReminders = reminders.filter(r => r.status !== 'pago').sort((a, b) => new Date(a.data_vencimento) - new Date(b.data_vencimento));
+    const pendingReminders = reminders.filter(r => r.status !== 'pago').sort((a, b) => {
+        // INÍCIO DA ALTERAÇÃO: Correção da data para evitar problema de fuso horário
+        // Adiciona 'T00:00:00' para garantir que a data seja interpretada como local à meia-noite
+        const dateA = new Date(a.data_vencimento + 'T00:00:00'); 
+        const dateB = new Date(b.data_vencimento + 'T00:00:00'); 
+        return dateA - dateB;
+        // FIM DA ALTERAÇÃO
+    });
     const remindersToShow = pendingReminders.slice(0, 3);
 
     if (reminders.length === 0) {
@@ -580,9 +587,14 @@ function renderPaymentReminders(reminders) {
         container.innerHTML = '<p class="text-center text-gray-400">Todos os lembretes foram pagos! 🎉</p>';
     } else {
         remindersToShow.forEach(reminder => {
-            const reminderElement = document.createElement('div');
-            const dueDate = new Date(reminder.data_vencimento).toLocaleDateString('pt-BR');
-            const isOverdue = new Date(reminder.data_vencimento) < new Date() && reminder.status !== 'pago';
+            const reminderElement = document.createElement('div'); // Garante que reminderElement está definido aqui
+            // INÍCIO DA ALTERAÇÃO: Correção da data para evitar problema de fuso horário
+            // Adiciona 'T00:00:00' para garantir que a data seja interpretada como local à meia-noite
+            const localDueDate = new Date(reminder.data_vencimento + 'T00:00:00'); 
+            const dueDate = localDueDate.toLocaleDateString('pt-BR');
+            // Compara com o início do dia atual para determinar se está vencido
+            const isOverdue = localDueDate < new Date(new Date().setHours(0,0,0,0)) && reminder.status !== 'pago'; 
+            // FIM DA ALTERAÇÃO
             const statusClass = isOverdue ? 'text-expense' : 'text-primary';
             const statusText = isOverdue ? 'Atrasado' : 'Pendente';
             const valueDisplay = reminder.valor ? formatCurrency(reminder.valor) : 'Não especificado';
@@ -642,19 +654,14 @@ function renderAllPaymentReminders(reminders) {
     }
 
     reminders.forEach(reminder => {
-        const reminderElement = document.createElement('div');
-        // Corrige data para garantir exibição igual ao campo de edição
-        let vencDate;
-        if (typeof reminder.data_vencimento === 'string' && reminder.data_vencimento.length === 10 && reminder.data_vencimento.includes('-')) {
-            // Assume formato yyyy-mm-dd
-            const [ano, mes, dia] = reminder.data_vencimento.split('-');
-            vencDate = new Date(Number(ano), Number(mes) - 1, Number(dia), 12, 0, 0, 0);
-        } else {
-            vencDate = new Date(reminder.data_vencimento);
-            vencDate.setHours(12,0,0,0);
-        }
-        const dueDate = vencDate.toLocaleDateString('pt-BR');
-        const isOverdue = vencDate < new Date() && reminder.status !== 'pago';
+        const reminderElement = document.createElement('div'); // Garante que reminderElement está definido aqui
+        // INÍCIO DA ALTERAÇÃO: Correção da data para evitar problema de fuso horário
+        // Adiciona 'T00:00:00' para garantir que a data seja interpretada como local à meia-noite
+        const localDueDate = new Date(reminder.data_vencimento + 'T00:00:00'); 
+        const dueDate = localDueDate.toLocaleDateString('pt-BR');
+        // Compara com o início do dia atual para determinar se está vencido
+        const isOverdue = localDueDate < new Date(new Date().setHours(0,0,0,0)) && reminder.status !== 'pago'; 
+        // FIM DA ALTERAÇÃO
         const statusClass = reminder.status === 'pago' ? 'text-gain' : (isOverdue ? 'text-expense' : 'text-primary');
         const statusText = reminder.status === 'pago' ? 'Pago' : (isOverdue ? 'Atrasado' : 'Pendente');
         const valueDisplay = reminder.valor ? formatCurrency(reminder.valor) : 'Não especificado';
@@ -828,7 +835,8 @@ async function handleTransactionFormSubmit(event) {
         toggleModal('transaction-form-modal', false);
         await showCustomAlert('Sucesso', 'Transação salva com sucesso!');
         fetchDashboardData();
-    } catch (error) {
+    }
+    catch (error) {
         document.getElementById('transaction-error-message').textContent = error.message;
         document.getElementById('transaction-error-message').classList.remove('hidden');
     } finally {
@@ -1490,14 +1498,31 @@ function applyPaymentRemindersFilters() {
     let filtered = allPaymentReminders;
 
     if (startDate) {
-        filtered = filtered.filter(r => new Date(r.data_vencimento) >= new Date(startDate));
+        filtered = filtered.filter(r => {
+            // INÍCIO DA ALTERAÇÃO: Correção da data para evitar problema de fuso horário
+            const reminderDate = new Date(r.data_vencimento + 'T00:00:00');
+            const filterStartDate = new Date(startDate + 'T00:00:00');
+            return reminderDate >= filterStartDate;
+            // FIM DA ALTERAÇÃO
+        });
     }
     if (endDate) {
-        filtered = filtered.filter(r => new Date(r.data_vencimento) <= new Date(endDate));
+        filtered = filtered.filter(r => {
+            // INÍCIO DA ALTERAÇÃO: Correção da data para evitar problema de fuso horário
+            const reminderDate = new Date(r.data_vencimento + 'T00:00:00');
+            const filterEndDate = new Date(endDate + 'T00:00:00');
+            return reminderDate <= filterEndDate;
+            // FIM DA ALTERAÇÃO
+        });
     }
     if (status && status !== 'todos') {
         if (status === 'vencidos') {
-            filtered = filtered.filter(r => new Date(r.data_vencimento) < new Date() && r.status !== 'pago');
+            // INÍCIO DA ALTERAÇÃO: Correção da data para evitar problema de fuso horário
+            filtered = filtered.filter(r => {
+                const reminderDate = new Date(r.data_vencimento + 'T00:00:00');
+                return reminderDate < new Date(new Date().setHours(0,0,0,0)) && r.status !== 'pago';
+            });
+            // FIM DA ALTERAÇÃO
         } else {
             filtered = filtered.filter(r => r.status === status);
         }
