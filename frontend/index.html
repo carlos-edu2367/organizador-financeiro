@@ -24,6 +24,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+  <!-- INÍCIO DA ALTERAÇÃO: Adicionado Favicon -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 19C15.4183 19 19 15.4183 19 11C19 6.58172 15.4183 3 11 3C6.58172 3 3 6.58172 3 11C3 15.4183 6.58172 19 11 19Z' stroke='%233b82f6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M21 21L16.65 16.65' stroke='%233b82f6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M9 11.5L10.5 13L13.5 10' stroke='%233b82f6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" type="image/svg+xml">
+  <!-- FIM DA ALTERAÇÃO -->
 </head>
 <body class="bg-background text-white font-sans">
 
@@ -34,10 +37,12 @@
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11 19C15.4183 19 19 15.4183 19 11C19 6.58172 15.4183 3 11 3C6.58172 3 3 6.58172 3 11C3 15.4183 6.58172 19 11 19Z" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 21L16.65 16.65" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 11.5L10.5 13L13.5 10" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <span class="text-2xl font-bold text-white">Clarify</span>
       </a>
-      <div class="flex items-center space-x-4">
-        <a href="./pages/auth/login_page.html" class="text-gray-300 hover:text-primary transition font-medium">Login</a>
-        <a href="./pages/auth/cadastro.html" class="bg-primary hover:bg-primary-dark text-white font-semibold py-2 px-4 rounded-lg transition">Cadastre-se Grátis</a>
+      <!-- INÍCIO DA ALTERAÇÃO: Melhoria da responsividade do cabeçalho -->
+      <div class="flex items-center space-x-2 sm:space-x-4">
+        <a href="./pages/auth/login_page.html" class="text-gray-300 hover:text-primary transition font-medium text-sm sm:text-base">Login</a>
+        <a href="./pages/auth/cadastro.html" class="bg-primary hover:bg-primary-dark text-white font-semibold py-1.5 px-3 sm:py-2 sm:px-4 rounded-lg transition text-sm sm:text-base">Cadastre-se Grátis</a>
       </div>
+      <!-- FIM DA ALTERAÇÃO -->
     </div>
   </header>
 
@@ -129,7 +134,7 @@
               <p class="text-gray-400 text-sm mt-1">Agende pagamentos e evite multas. O Clarify te ajuda a não esquecer de nada.</p>
             </div>
           </div>
-          <div class="fade-in-section bg-surface p-6 rounded-xl flex items-start space-x-4">
+          <div class="fade-in-section bg-gold/20 p-6 rounded-xl flex items-start space-x-4">
             <div class="bg-gold/20 p-3 rounded-lg"><i class="fab fa-whatsapp text-xl text-gold"></i></div>
             <div>
               <h3 class="font-bold text-lg flex items-center">Integração com WhatsApp <span class="ml-2 text-xs bg-gold/20 text-gold font-bold py-0.5 px-2 rounded-full">PREMIUM</span></h3>
