@@ -306,7 +306,8 @@ function renderDashboard(data) {
             mascotTitle.textContent = 'Situação Financeira: Atenção!';
             mascotText.textContent = 'Cuidado! Seus gastos nos últimos 30 dias estão se aproximando dos seus ganhos.';
         } else {
-            mascotImg.src = '../../assets/mascote_triste.png';
+            // Corrigido o nome da imagem do mascote
+            mascotImg.src = '../../assets/mascote_desesperado.png';
             mascotTitle.textContent = 'Situação Financeira: Crítica!';
             mascotText.textContent = 'Alerta vermelho! Você gastou mais de 95% do que ganhou nos últimos 30 dias. É hora de reavaliar.';
         }

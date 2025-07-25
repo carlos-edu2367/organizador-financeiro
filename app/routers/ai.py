@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session, joinedload
 from ..config import settings
 from .. import schemas, database, models
 from ..security import get_current_user_from_token
-from ..models import Usuario
+from ..models import Usuario, Grupo # Importa Grupo para usar no joinedload
 
 router = APIRouter(
     prefix="/ai",
@@ -97,17 +97,24 @@ async def parse_transaction_from_text(
     Recebe um texto do frontend, envia para a API do Gemini e retorna os dados extraídos.
     Limita o uso a 2 vezes por dia para grupos do plano gratuito.
     """
-    if not current_user.associacoes_grupo:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Usuário não pertence a nenhum grupo.")
+    # INÍCIO DA ALTERAÇÃO: Usar o grupo ativo do usuário para verificar o plano e o limite de IA
+    if not current_user.grupo_ativo_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Usuário não tem um grupo ativo.")
 
-    group = current_user.associacoes_grupo[0].grupo
+    group = db.query(models.Grupo).options(
+        joinedload(models.Grupo.ai_usages) # Carrega os usos de IA para o grupo
+    ).filter(models.Grupo.id == current_user.grupo_ativo_id).first()
+
+    if not group:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Grupo ativo não encontrado.")
+    # FIM DA ALTERAÇÃO
     
     print(f"--- Verificando Limite de IA para o Grupo: {group.id}, Plano: {group.plano} ---")
 
     if group.plano == 'gratuito':
         twenty_four_hours_ago = datetime.now(timezone.utc) - timedelta(days=1)
         
-        # (ALTERADO) Conta o número de usos nas últimas 24h
+        # (ALTERADO) Conta o número de usos nas últimas 24h para o grupo ATIVO
         usage_count = db.query(models.AIUsage).filter(
             models.AIUsage.grupo_id == group.id,
             models.AIUsage.timestamp >= twenty_four_hours_ago
