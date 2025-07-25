@@ -643,8 +643,18 @@ function renderAllPaymentReminders(reminders) {
 
     reminders.forEach(reminder => {
         const reminderElement = document.createElement('div');
-        const dueDate = new Date(reminder.data_vencimento).toLocaleDateString('pt-BR');
-        const isOverdue = new Date(reminder.data_vencimento) < new Date() && reminder.status !== 'pago';
+        // Corrige data para garantir exibição igual ao campo de edição
+        let vencDate;
+        if (typeof reminder.data_vencimento === 'string' && reminder.data_vencimento.length === 10 && reminder.data_vencimento.includes('-')) {
+            // Assume formato yyyy-mm-dd
+            const [ano, mes, dia] = reminder.data_vencimento.split('-');
+            vencDate = new Date(Number(ano), Number(mes) - 1, Number(dia), 12, 0, 0, 0);
+        } else {
+            vencDate = new Date(reminder.data_vencimento);
+            vencDate.setHours(12,0,0,0);
+        }
+        const dueDate = vencDate.toLocaleDateString('pt-BR');
+        const isOverdue = vencDate < new Date() && reminder.status !== 'pago';
         const statusClass = reminder.status === 'pago' ? 'text-gain' : (isOverdue ? 'text-expense' : 'text-primary');
         const statusText = reminder.status === 'pago' ? 'Pago' : (isOverdue ? 'Atrasado' : 'Pendente');
         const valueDisplay = reminder.valor ? formatCurrency(reminder.valor) : 'Não especificado';
